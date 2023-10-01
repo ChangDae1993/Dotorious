@@ -465,5 +465,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   xInput: 0
-  walkSpeed: 0
+  walkSpeed: 5
+  dashSpeed: 20
+  key: 0
   rigid: {fileID: 0}

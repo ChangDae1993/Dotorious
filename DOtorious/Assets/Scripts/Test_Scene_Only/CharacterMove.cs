@@ -4,14 +4,17 @@ using UnityEngine;
 
 public class CharacterMove : MonoBehaviour
 {
-    public float xInput;
     public float walkSpeed;
+    public float dashSpeed;
+
+    public int key = 0;
 
     [SerializeField] private Rigidbody2D rigid;
+
+
     // Start is called before the first frame update
     void Start()
     {
-        walkSpeed = 0.1f;
         rigid = GetComponent<Rigidbody2D>();
     }
 
@@ -19,19 +22,33 @@ public class CharacterMove : MonoBehaviour
     void Update()
     {
         PlayerMove(walkSpeed);
+        PlayerDash();
     }
 
     public void PlayerMove(float speed)
     {
-        xInput = Input.GetAxisRaw("Horizontal");
-        if (Input.GetAxisRaw("Horizontal") != 0f)
+        if (Input.GetAxisRaw("Horizontal") < 0f)
+            key = -1;
+
+        if (0f < Input.GetAxisRaw("Horizontal"))
+            key = 1;
+
+
+        if (key == 1)
+            this.transform.localEulerAngles = new Vector3(0, 0, 0);
+        else if (key == -1)
+            this.transform.localEulerAngles = new Vector3(0, 180, 0);
+
+        Vector2 p_vector = new Vector2(Input.GetAxisRaw("Horizontal"), .0f);
+        Vector2 p_move = p_vector * walkSpeed * Time.deltaTime;
+        rigid.position += p_move;
+    }
+
+    public void PlayerDash()
+    {
+        if (Input.GetKeyDown(KeyCode.LeftShift))
         {
-            this.transform.Translate(new Vector2(xInput * speed, 0));
-        }
-        else
-        {
-            speed = 0f;
-            this.transform.Translate(new Vector2(speed, 0));
+            rigid.AddForce(new Vector2(dashSpeed * key, 0f), ForceMode2D.Impulse);
         }
     }
 }
