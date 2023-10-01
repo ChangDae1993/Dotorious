@@ -9,6 +9,10 @@ public class CharacterMove : MonoBehaviour
 
     public int key = 0;
 
+    public float jumpForce;
+    public bool doublejump;
+    public int jumpCnt;
+
     [SerializeField] private Rigidbody2D rigid;
 
 
@@ -16,6 +20,9 @@ public class CharacterMove : MonoBehaviour
     void Start()
     {
         rigid = GetComponent<Rigidbody2D>();
+
+        doublejump = false;
+        jumpCnt = 0;
     }
 
     // Update is called once per frame
@@ -23,6 +30,7 @@ public class CharacterMove : MonoBehaviour
     {
         PlayerMove(walkSpeed);
         PlayerDash();
+        PlayerJump();
     }
 
     public void PlayerMove(float speed)
@@ -49,6 +57,40 @@ public class CharacterMove : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.LeftShift))
         {
             rigid.AddForce(new Vector2(dashSpeed * key, 0f), ForceMode2D.Impulse);
+        }
+    }
+
+    public void PlayerJump()
+    {
+        if(Input.GetKeyDown(KeyCode.Space))
+        {
+            if (!doublejump)
+            {
+                if (jumpCnt < 1)
+                {
+                    //그라운드에 닿으면 다시 jumpCnt 0으로 초기화
+                    rigid.AddForce(new Vector2(0f, jumpForce), ForceMode2D.Impulse);
+                    jumpCnt++;
+                }
+            }
+            else
+            {
+                if (jumpCnt < 2)
+                {
+                    //그라운드에 닿으면 다시 jumpCnt 0으로 초기화
+                    rigid.AddForce(new Vector2(0f, jumpForce), ForceMode2D.Impulse);
+                    jumpCnt++;
+                }
+            }
+        }
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        if(collision.gameObject.tag.Contains("Ground"))
+        {
+            Debug.Log("jumpCnt reset");
+            jumpCnt = 0;
         }
     }
 }
