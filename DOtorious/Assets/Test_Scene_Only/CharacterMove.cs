@@ -50,9 +50,9 @@ public class CharacterMove : MonoBehaviour
 
 
         if (key == 1)
-            this.transform.localEulerAngles = new Vector3(0, 0, 0);
+            this.transform.localScale = new Vector3(1, 1, 1);
         else if (key == -1)
-            this.transform.localEulerAngles = new Vector3(0, 180, 0);
+            this.transform.localScale = new Vector3(-1, 1, 1);
 
         Vector2 p_vector = new Vector2(Input.GetAxisRaw("Horizontal"), .0f);
         Vector2 p_move = p_vector * walkSpeed * Time.deltaTime;
@@ -69,7 +69,7 @@ public class CharacterMove : MonoBehaviour
 
     public void PlayerJump(float jump)
     {
-        if(Input.GetKeyDown(KeyCode.Space))
+        if (Input.GetKeyDown(KeyCode.Space))
         {
             if (!doublejump)
             {
@@ -94,7 +94,7 @@ public class CharacterMove : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if(collision.gameObject.tag.Contains("Ground"))
+        if (collision.gameObject.tag.Contains("Ground"))
         {
             Debug.Log("jumpCnt reset");
             //rigid.velocity = Vector2.zero;
