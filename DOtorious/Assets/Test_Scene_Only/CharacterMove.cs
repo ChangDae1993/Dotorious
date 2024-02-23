@@ -4,12 +4,19 @@ using UnityEngine;
 
 public class CharacterMove : MonoBehaviour
 {
-    public float walkSpeed;
-    public float dashSpeed;
-
     public int key = 0;
 
+    //일반 이동 속도
+    public float walkSpeed;
+
+    //대쉬 속도
+    public float dashSpeed;
+
+
+    //점프력
     public float jumpForce;
+
+    //이중 점프가 가능하도록 하는 bool값
     public bool doublejump;
     public int jumpCnt;
 
@@ -29,8 +36,8 @@ public class CharacterMove : MonoBehaviour
     void Update()
     {
         PlayerMove(walkSpeed);
-        PlayerDash();
-        PlayerJump();
+        PlayerDash(dashSpeed);
+        PlayerJump(jumpForce);
     }
 
     public void PlayerMove(float speed)
@@ -38,7 +45,7 @@ public class CharacterMove : MonoBehaviour
         if (Input.GetAxisRaw("Horizontal") < 0f)
             key = -1;
 
-        if (0f < Input.GetAxisRaw("Horizontal"))
+        if (Input.GetAxisRaw("Horizontal") > 0f)
             key = 1;
 
 
@@ -52,15 +59,15 @@ public class CharacterMove : MonoBehaviour
         rigid.position += p_move;
     }
 
-    public void PlayerDash()
+    public void PlayerDash(float dash)
     {
         if (Input.GetKeyDown(KeyCode.LeftShift))
         {
-            rigid.AddForce(new Vector2(dashSpeed * key, 0f), ForceMode2D.Impulse);
+            rigid.AddForce(new Vector2(dash * key, 0f), ForceMode2D.Impulse);
         }
     }
 
-    public void PlayerJump()
+    public void PlayerJump(float jump)
     {
         if(Input.GetKeyDown(KeyCode.Space))
         {
@@ -69,7 +76,7 @@ public class CharacterMove : MonoBehaviour
                 if (jumpCnt < 1)
                 {
                     //그라운드에 닿으면 다시 jumpCnt 0으로 초기화
-                    rigid.AddForce(new Vector2(0f, jumpForce), ForceMode2D.Impulse);
+                    rigid.AddForce(new Vector2(0f, jump), ForceMode2D.Impulse);
                     jumpCnt++;
                 }
             }
@@ -78,7 +85,7 @@ public class CharacterMove : MonoBehaviour
                 if (jumpCnt < 2)
                 {
                     //그라운드에 닿으면 다시 jumpCnt 0으로 초기화
-                    rigid.AddForce(new Vector2(0f, jumpForce), ForceMode2D.Impulse);
+                    rigid.AddForce(new Vector2(0f, jump), ForceMode2D.Impulse);
                     jumpCnt++;
                 }
             }
@@ -90,6 +97,7 @@ public class CharacterMove : MonoBehaviour
         if(collision.gameObject.tag.Contains("Ground"))
         {
             Debug.Log("jumpCnt reset");
+            //rigid.velocity = Vector2.zero;
             jumpCnt = 0;
         }
     }
