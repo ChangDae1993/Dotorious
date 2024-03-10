@@ -21,9 +21,13 @@ public class PlayerCameraScript : MonoBehaviour
         RaycastHit[] hits = Physics.RaycastAll(this.transform.position, direction, Mathf.Infinity,
             1 << LayerMask.NameToLayer("BG_Front_Front"));
 
-        for(int i = 0; i < hits.Length; i++)
+        for (int i = 0; i < hits.Length; i++)
         {
-            Debug.Log("Cast");
+            if (hits[i].transform.TryGetComponent(out BGFFAlpha alpha))
+            {
+                alpha.FadeStart();
+                //Debug.Log("Cast");
+            }
         }
     }
 }

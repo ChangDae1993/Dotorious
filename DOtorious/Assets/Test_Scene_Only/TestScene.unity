@@ -991,6 +991,7 @@ GameObject:
   - component: {fileID: 1901611395}
   - component: {fileID: 1901611394}
   - component: {fileID: 1901611396}
+  - component: {fileID: 1901611397}
   m_Layer: 14
   m_Name: F_F_BG
   m_TagString: BG
@@ -1078,6 +1079,19 @@ BoxCollider:
   serializedVersion: 2
   m_Size: {x: 1, y: 1, z: 0.2}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1901611397
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1901611393}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6d51056889e153419aca2a6785f04d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sprite: {fileID: 0}
 --- !u!1 &2037571094
 GameObject:
   m_ObjectHideFlags: 0
