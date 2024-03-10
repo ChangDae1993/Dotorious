@@ -336,7 +336,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 11e07477fe9eea643b4743fb3d0fa44c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Player: {fileID: 0}
+  Player: {fileID: 1812781893}
+  transparentOBJ: []
 --- !u!1 &547927969
 GameObject:
   m_ObjectHideFlags: 0
@@ -1037,8 +1038,8 @@ SpriteRenderer:
   m_AutoUVMaxDistance: 0.5
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: 164253935
+  m_SortingLayer: 1
   m_SortingOrder: 80
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
   m_Color: {r: 0.4811321, g: 0.4811321, b: 0.4811321, a: 1}
@@ -1059,7 +1060,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1901611393}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 4.644339, y: 1.0824647, z: -15.836206}
+  m_LocalPosition: {x: 8.48, y: 1.0824647, z: -15.836206}
   m_LocalScale: {x: 4.972, y: 5.1674, z: 2}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -1092,6 +1093,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   sprite: {fileID: 0}
+  alphaOn: 0
 --- !u!1 &2037571094
 GameObject:
   m_ObjectHideFlags: 0
