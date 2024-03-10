@@ -28,7 +28,7 @@ public class BGFFAlpha : MonoBehaviour
         }
         else
         {
-            FadeRESET();
+            FadeReset();
         }
     }
 
@@ -37,18 +37,13 @@ public class BGFFAlpha : MonoBehaviour
         StartCoroutine(fadeSTartCo());
     }
 
-    public void FadeRESET()
-    {
-        StartCoroutine(fadeResetCo());
-    }
-
     IEnumerator fadeSTartCo()
     {
         if (sprite != null)
         {
             while (sprite.color.a > 0.5f)
             {
-                Debug.Log("FadeOut");
+                //Debug.Log("FadeOut");
                 sprite.color = new Color(
                     sprite.color.r,
                     sprite.color.g,
@@ -61,7 +56,7 @@ public class BGFFAlpha : MonoBehaviour
 
     public void FadeReset()
     {
-
+        StartCoroutine(fadeResetCo());
     }
 
     IEnumerator fadeResetCo()
