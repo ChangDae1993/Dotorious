@@ -13,13 +13,18 @@ public class PlayerCameraScript : MonoBehaviour
     void Start()
     {
         Player = GameObject.FindWithTag("Player");
-        this.transform.SetParent(Player.transform);
-        this.transform.localPosition = new Vector3(0, 0, this.transform.localPosition.z);
+        //this.transform.SetParent(Player.transform);
+        //this.transform.localPosition = new Vector3(0, 0, this.transform.localPosition.z);
     }
 
     // Update is called once per frame
     void Update()
     {
+        this.transform.position = new Vector3(
+            Player.transform.position.x, 
+            Player.transform.position.y, 
+            this.transform.position.z);
+
         direction = (Player.transform.position - this.transform.position).normalized;
         hits = Physics.RaycastAll(this.transform.position, direction, Mathf.Infinity,
             1 << LayerMask.NameToLayer("BG_Front_Front"));

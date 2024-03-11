@@ -15,6 +15,7 @@ public class CharacterMove : MonoBehaviour
 
     //점프력
     public float jumpForce;
+    public float doublejumpForce;
 
     //이중 점프가 가능하도록 하는 bool값
     public bool doublejump;
@@ -37,7 +38,7 @@ public class CharacterMove : MonoBehaviour
     {
         PlayerMove(walkSpeed);
         PlayerDash(dashSpeed);
-        PlayerJump(jumpForce);
+        PlayerJump(jumpForce, doublejumpForce);
     }
 
     public void PlayerMove(float speed)
@@ -67,7 +68,7 @@ public class CharacterMove : MonoBehaviour
         }
     }
 
-    public void PlayerJump(float jump)
+    public void PlayerJump(float jumpforce , float doublejumpforce)
     {
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -76,7 +77,7 @@ public class CharacterMove : MonoBehaviour
                 if (jumpCnt < 1)
                 {
                     //그라운드에 닿으면 다시 jumpCnt 0으로 초기화
-                    rigid.AddForce(new Vector2(0f, jump), ForceMode2D.Impulse);
+                    rigid.AddForce(new Vector2(0f, jumpforce), ForceMode2D.Impulse);
                     jumpCnt++;
                 }
             }
@@ -85,7 +86,7 @@ public class CharacterMove : MonoBehaviour
                 if (jumpCnt < 2)
                 {
                     //그라운드에 닿으면 다시 jumpCnt 0으로 초기화
-                    rigid.AddForce(new Vector2(0f, jump), ForceMode2D.Impulse);
+                    rigid.AddForce(new Vector2(0f, doublejumpforce), ForceMode2D.Impulse);
                     jumpCnt++;
                 }
             }
@@ -96,7 +97,7 @@ public class CharacterMove : MonoBehaviour
     {
         if (collision.gameObject.tag.Contains("Ground"))
         {
-            Debug.Log("jumpCnt reset");
+            //Debug.Log("jumpCnt reset");
             //rigid.velocity = Vector2.zero;
             jumpCnt = 0;
         }

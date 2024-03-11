@@ -65,7 +65,7 @@ public class BGFFAlpha : MonoBehaviour
         {
             while (sprite.color.a <1f)
             {
-                Debug.Log("FadeOut");
+                //Debug.Log("FadeOut");
                 sprite.color = new Color(
                     sprite.color.r,
                     sprite.color.g,
