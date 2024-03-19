@@ -49,7 +49,7 @@ public class CharacterMove : MonoBehaviour
         if (Input.GetAxisRaw("Horizontal") > 0f)
             key = 1;
 
-
+        //ÁÂ¿ì ÀÌµ¿
         if (key == 1)
             this.transform.localScale = new Vector3(1, 1, 1);
         else if (key == -1)
