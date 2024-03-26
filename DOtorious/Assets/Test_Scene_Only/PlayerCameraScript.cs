@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class PlayerCameraScript : MonoBehaviour
@@ -22,7 +23,7 @@ public class PlayerCameraScript : MonoBehaviour
     {
         this.transform.position = new Vector3(
             Player.transform.position.x, 
-            Player.transform.position.y, 
+            Player.transform.position.y + 2f, 
             this.transform.position.z);
 
         direction = (Player.transform.position - this.transform.position).normalized;
