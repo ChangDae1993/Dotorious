@@ -679,7 +679,8 @@ Transform:
   m_LocalPosition: {x: 0.66, y: 0.26, z: 0}
   m_LocalScale: {x: 1.03, y: 0.40169996, z: 1.03}
   m_ConstrainProportionsScale: 1
-  m_Children: []
+  m_Children:
+  - {fileID: 1453067200}
   m_Father: {fileID: 1812781897}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1379,6 +1380,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   bgLayer: 3
   bgManager: {fileID: 0}
+--- !u!1 &1453067199
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1453067200}
+  m_Layer: 0
+  m_Name: RopeShootPoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1453067200
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1453067199}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.38, y: -0.12, z: 0}
+  m_LocalScale: {x: 0.9708738, y: 2.4894202, z: 0.9708738}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 567518496}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1620891327
 GameObject:
   m_ObjectHideFlags: 0
@@ -1406,7 +1438,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1620891327}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 22.49, y: 8.27, z: 4.2651987}
+  m_LocalPosition: {x: 22.49, y: 8.27, z: 0}
   m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -1620,7 +1652,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1661942875}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 66.5, y: 8.27, z: 4.2651987}
+  m_LocalPosition: {x: 66.5, y: 8.27, z: 0}
   m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -1813,12 +1845,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 718aedde1c2869145b9ee74c0db1cffd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  pointDetectRange: 11
   ropePointLayer:
     serializedVersion: 2
     m_Bits: 8
   ropePoint: []
-  pointDetectRange: 11
   joint: {fileID: 1812781900}
+  ropeShootPoint: {fileID: 1453067200}
 --- !u!231 &1812781900
 SpringJoint2D:
   m_ObjectHideFlags: 0
@@ -1826,7 +1859,7 @@ SpringJoint2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1812781893}
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 4
   m_EnableCollision: 0
   m_ConnectedRigidBody: {fileID: 0}
