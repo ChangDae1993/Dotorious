@@ -14,6 +14,7 @@ public class RopeAction : MonoBehaviour
     [Header("Rope Make")]
     public SpringJoint2D joint;
     public Transform ropeShootPoint;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -23,7 +24,7 @@ public class RopeAction : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-       ropePoint =  Physics2D.OverlapCircleAll(this.transform.position, pointDetectRange, ropePointLayer);
+        ropePoint = Physics2D.OverlapCircleAll(this.transform.position, pointDetectRange, ropePointLayer);
         foreach (Collider2D col in ropePoint)
         {
             if (col.gameObject.TryGetComponent(out RopePoint rP))
@@ -32,9 +33,19 @@ public class RopeAction : MonoBehaviour
 
                 if (Input.GetKeyDown(KeyCode.LeftControl))
                 {
+                    if (!joint.enabled)
+                    {
+                        joint.enabled = true;
+                    }
                     joint.connectedAnchor = rP.transform.position;
                 }
+
                 //Debug.Log("Check");
+            }
+
+            if(Input.GetMouseButtonDown(0))
+            {
+                Debug.Log("Mouse");
             }
         }
 

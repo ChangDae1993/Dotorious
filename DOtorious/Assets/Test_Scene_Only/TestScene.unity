@@ -1438,7 +1438,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1620891327}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 22.49, y: 8.27, z: 0}
+  m_LocalPosition: {x: 22.42, y: 8.2, z: 0}
   m_LocalScale: {x: 2, y: 2, z: 2}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -1845,7 +1845,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 718aedde1c2869145b9ee74c0db1cffd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pointDetectRange: 11
+  pointDetectRange: 17
   ropePointLayer:
     serializedVersion: 2
     m_Bits: 8
@@ -1859,7 +1859,7 @@ SpringJoint2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1812781893}
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 4
   m_EnableCollision: 0
   m_ConnectedRigidBody: {fileID: 0}
@@ -1869,9 +1869,9 @@ SpringJoint2D:
   m_Anchor: {x: 0, y: 0}
   m_ConnectedAnchor: {x: 5.838104, y: 8.774724}
   m_AutoConfigureDistance: 1
-  m_Distance: 4.6945195
+  m_Distance: 2
   m_DampingRatio: 0
-  m_Frequency: 1
+  m_Frequency: 2
 --- !u!1 &1901611393
 GameObject:
   m_ObjectHideFlags: 0
