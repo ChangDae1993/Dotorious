@@ -1852,6 +1852,7 @@ MonoBehaviour:
   ropePoint: []
   joint: {fileID: 1812781900}
   ropeShootPoint: {fileID: 1453067200}
+  ropeOnOff: 0
 --- !u!231 &1812781900
 SpringJoint2D:
   m_ObjectHideFlags: 0
@@ -1868,10 +1869,10 @@ SpringJoint2D:
   m_AutoConfigureConnectedAnchor: 0
   m_Anchor: {x: 0, y: 0}
   m_ConnectedAnchor: {x: 5.838104, y: 8.774724}
-  m_AutoConfigureDistance: 1
-  m_Distance: 2
+  m_AutoConfigureDistance: 0
+  m_Distance: 10
   m_DampingRatio: 0
-  m_Frequency: 2
+  m_Frequency: 3
 --- !u!1 &1901611393
 GameObject:
   m_ObjectHideFlags: 0

@@ -14,11 +14,15 @@ public class RopeAction : MonoBehaviour
     [Header("Rope Make")]
     public SpringJoint2D joint;
     public Transform ropeShootPoint;
+    public bool ropeOnOff;
 
     // Start is called before the first frame update
     void Start()
     {
         joint.anchor = ropeShootPoint.position;
+        //joint.autoConfigureConnectedAnchor = false;
+        //joint.autoConfigureDistance = false;
+        //joint.distance = f;
     }
 
     // Update is called once per frame
@@ -29,24 +33,51 @@ public class RopeAction : MonoBehaviour
         {
             if (col.gameObject.TryGetComponent(out RopePoint rP))
             {
-                rP.RopePosition();
+                joint.connectedAnchor = rP.transform.position;
 
-                if (Input.GetKeyDown(KeyCode.LeftControl))
+                if (Input.GetKey(KeyCode.LeftControl))
                 {
-                    if (!joint.enabled)
+                    rP.RopePosition();
+
+                    if (Input.GetMouseButtonDown(0))
                     {
-                        joint.enabled = true;
+
+
+                        if (!ropeOnOff)
+                        {
+                            ropeOnOff = true;
+                            Debug.Log("Mouse");
+                            if (!joint.enabled)
+                            {
+                                joint.enabled = true;
+                            }
+                        }
+                        else
+                        {
+                            ropeOnOff = false;
+                            if (joint.enabled)
+                            {
+                                joint.enabled = false;
+                            }
+                        }
+
                     }
-                    joint.connectedAnchor = rP.transform.position;
                 }
+                //else
+                //{
+                //    if (joint.enabled)
+                //    {
+                //        joint.enabled = false;
+                //    }
+                //}
 
                 //Debug.Log("Check");
             }
 
-            if(Input.GetMouseButtonDown(0))
-            {
-                Debug.Log("Mouse");
-            }
+            //if(Input.GetMouseButtonDown(0))
+            //{
+            //    Debug.Log("Mouse");
+            //}
         }
 
     }
