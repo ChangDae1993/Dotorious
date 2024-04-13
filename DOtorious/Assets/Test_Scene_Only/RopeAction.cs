@@ -43,6 +43,7 @@ public class RopeAction : MonoBehaviour
                     if (!firstIN)
                     {
                         ropePointList[ropeindex].AnchorCheck(true);
+                        joint.connectedAnchor = ropePointList[ropeindex].transform.position;
                         firstIN = true;
                     }
                     else
@@ -60,6 +61,7 @@ public class RopeAction : MonoBehaviour
                             ropePointList[i].AnchorCheck(false);
                         }
                         ropePointList[ropeindex].AnchorCheck(true);
+                        joint.connectedAnchor = ropePointList[ropeindex].transform.position;
                         ropeindex++;
                     }
                     else
@@ -71,23 +73,8 @@ public class RopeAction : MonoBehaviour
                             ropePointList[i].AnchorCheck(false);
                         }
                         ropePointList[ropeindex].AnchorCheck(true);
+                        joint.connectedAnchor = ropePointList[ropeindex].transform.position;
                         ropeindex++;
-                        //if (!firstIN)
-                        //{
-                        //    ropePointList[ropeindex].AnchorCheck(true);
-                        //    firstIN = true;
-                        //}
-                        //else
-                        //{
-                        //    ropePointList[ropeindex].AnchorCheck(false);
-                        //    firstIN = false;
-                        //}
-
-                        //for (int i = 0; i < ropePointList.Count; i++)
-                        //{
-                        //    ropePointList[i].AnchorCheck(false);
-                        //}
-                        //ropePointList[ropeindex].AnchorCheck(true);
                     }
                 }
 
