@@ -33,20 +33,27 @@ public class RopeAction : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.LeftControl))
             {
-                HighlightActiveCHker(ropeindex);
-                //ropePointList[ropeindex].AnchorCheck();
-                ropeindex++;
+                //HighlightActiveCHker(ropeindex);
 
-                //if (ropeindex < ropePointList.Count - 1)
-                //{
-                //    ropePointList[ropeindex].AnchorCheck() ;
-                //    ropeindex++;
-                //}
-                //else
-                //{
-                //    ropePointList[ropeindex].AnchorCheck();
-                //    ropeindex = 0;
-                //}
+                if (ropeindex < ropePointList.Count)
+                {
+                    for (int i = 0; i < ropePointList.Count; i++)
+                    {
+                        ropePointList[i].AnchorCheck(false);
+                    }
+                    ropePointList[ropeindex].AnchorCheck(true);
+                    ropeindex++;
+                }
+                else
+                {
+                    ropeindex = 0;
+
+                    for (int i = 0; i < ropePointList.Count; i++)
+                    {
+                        ropePointList[i].AnchorCheck(false);
+                    }
+                    ropePointList[ropeindex].AnchorCheck(true);
+                }
             }
         }
 
@@ -107,17 +114,17 @@ public class RopeAction : MonoBehaviour
     }
 
 
-    void HighlightActiveCHker(int idx)
-    {
-        if (ropePointList.Count > 1)
-        {
-            ropePointList[ropeindex].AnchorCheck(false);
-            ropePointList[ropeindex++].RopePosition(false);
-        }
-        ropeindex %= ropePointList.Count;
-        ropePointList[ropeindex].RopePosition(true);
-        ropePointList[ropeindex].AnchorCheck(true);
-    }
+    //void HighlightActiveCHker(int idx)
+    //{
+    //    if (ropePointList.Count > 1)
+    //    {
+    //        ropePointList[ropeindex].AnchorCheck(false);
+    //        ropePointList[ropeindex++].RopePosition(false);
+    //    }
+    //    ropeindex %= ropePointList.Count;
+    //    ropePointList[ropeindex].RopePosition(true);
+    //    ropePointList[ropeindex].AnchorCheck(true);
+    //}
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
@@ -138,7 +145,8 @@ public class RopeAction : MonoBehaviour
                 ropeindex = 0;
             }
 
-            ropePointList[ropeindex].RopePosition(false);
+            rp.RopePosition(false);
+            //ropePointList[0].RopePosition(false);
             ropePointList.Remove(rp);
             //rp.RopePosition(false);
         }
