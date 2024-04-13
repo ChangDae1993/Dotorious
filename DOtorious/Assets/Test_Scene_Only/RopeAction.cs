@@ -10,6 +10,7 @@ public class RopeAction : MonoBehaviour
     //public Collider2D[] ropePoint;
     public List<RopePoint> ropePointList = new List<RopePoint>();
     public int ropeindex;
+    public bool firstIN;
 
     [Space(10f)]
     [Header("Rope Make")]
@@ -35,25 +36,61 @@ public class RopeAction : MonoBehaviour
             {
                 //HighlightActiveCHker(ropeindex);
 
-                if (ropeindex < ropePointList.Count)
-                {
-                    for (int i = 0; i < ropePointList.Count; i++)
-                    {
-                        ropePointList[i].AnchorCheck(false);
-                    }
-                    ropePointList[ropeindex].AnchorCheck(true);
-                    ropeindex++;
-                }
-                else
+                if(ropePointList.Count == 1)
                 {
                     ropeindex = 0;
 
-                    for (int i = 0; i < ropePointList.Count; i++)
+                    if (!firstIN)
                     {
-                        ropePointList[i].AnchorCheck(false);
+                        ropePointList[ropeindex].AnchorCheck(true);
+                        firstIN = true;
                     }
-                    ropePointList[ropeindex].AnchorCheck(true);
+                    else
+                    {
+                        ropePointList[ropeindex].AnchorCheck(false);
+                        firstIN = false;
+                    }
                 }
+                else
+                {
+                    if (ropeindex < ropePointList.Count)
+                    {
+                        for (int i = 0; i < ropePointList.Count; i++)
+                        {
+                            ropePointList[i].AnchorCheck(false);
+                        }
+                        ropePointList[ropeindex].AnchorCheck(true);
+                        ropeindex++;
+                    }
+                    else
+                    {
+                        ropeindex = 0;
+
+                        for (int i = 0; i < ropePointList.Count; i++)
+                        {
+                            ropePointList[i].AnchorCheck(false);
+                        }
+                        ropePointList[ropeindex].AnchorCheck(true);
+                        ropeindex++;
+                        //if (!firstIN)
+                        //{
+                        //    ropePointList[ropeindex].AnchorCheck(true);
+                        //    firstIN = true;
+                        //}
+                        //else
+                        //{
+                        //    ropePointList[ropeindex].AnchorCheck(false);
+                        //    firstIN = false;
+                        //}
+
+                        //for (int i = 0; i < ropePointList.Count; i++)
+                        //{
+                        //    ropePointList[i].AnchorCheck(false);
+                        //}
+                        //ropePointList[ropeindex].AnchorCheck(true);
+                    }
+                }
+
             }
         }
 
