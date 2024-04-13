@@ -29,19 +29,27 @@ public class RopeAction : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.LeftControl))
+        if (ropePointList.Count > 0)
         {
-            if (ropeindex < ropePointList.Count - 1)
+            if (Input.GetKeyDown(KeyCode.LeftControl))
             {
-                ropePointList[ropeindex].RopePosition(true);
+                HighlightActiveCHker(ropeindex);
+                //ropePointList[ropeindex].AnchorCheck();
                 ropeindex++;
-            }
-            else
-            {
-                ropePointList[ropeindex].RopePosition(true);
-                ropeindex = 0;
+
+                //if (ropeindex < ropePointList.Count - 1)
+                //{
+                //    ropePointList[ropeindex].AnchorCheck() ;
+                //    ropeindex++;
+                //}
+                //else
+                //{
+                //    ropePointList[ropeindex].AnchorCheck();
+                //    ropeindex = 0;
+                //}
             }
         }
+
 
         //ropePoint = Physics2D.OverlapCircleAll(this.transform.position, pointDetectRange, ropePointLayer);
         //foreach (Collider2D col in ropePoint)
@@ -98,11 +106,25 @@ public class RopeAction : MonoBehaviour
 
     }
 
+
+    void HighlightActiveCHker(int idx)
+    {
+        if (ropePointList.Count > 1)
+        {
+            ropePointList[ropeindex].AnchorCheck(false);
+            ropePointList[ropeindex++].RopePosition(false);
+        }
+        ropeindex %= ropePointList.Count;
+        ropePointList[ropeindex].RopePosition(true);
+        ropePointList[ropeindex].AnchorCheck(true);
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.gameObject.TryGetComponent(out RopePoint rp))
         {
             ropePointList.Add(rp);
+            rp.RopePosition(true);
         }
     }
 
