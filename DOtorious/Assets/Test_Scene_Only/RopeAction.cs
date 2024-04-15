@@ -48,6 +48,7 @@ public class RopeAction : MonoBehaviour
                     }
                     else
                     {
+                        joint.connectedAnchor = Vector2.zero;
                         ropePointList[ropeindex].AnchorCheck(false);
                         firstIN = false;
                     }
@@ -58,6 +59,7 @@ public class RopeAction : MonoBehaviour
                     {
                         for (int i = 0; i < ropePointList.Count; i++)
                         {
+                            joint.connectedAnchor = Vector2.zero;
                             ropePointList[i].AnchorCheck(false);
                         }
                         ropePointList[ropeindex].AnchorCheck(true);
@@ -70,6 +72,7 @@ public class RopeAction : MonoBehaviour
 
                         for (int i = 0; i < ropePointList.Count; i++)
                         {
+                            joint.connectedAnchor = Vector2.zero;
                             ropePointList[i].AnchorCheck(false);
                         }
                         ropePointList[ropeindex].AnchorCheck(true);
