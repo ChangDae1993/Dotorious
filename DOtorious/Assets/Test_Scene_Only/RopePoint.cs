@@ -18,7 +18,7 @@ public class RopePoint : MonoBehaviour
     //{
 
     //}
-
+    
     public void AnchorCheck(bool checkOn)
     {
         if (checkOn)

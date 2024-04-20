@@ -2369,6 +2369,8 @@ GameObject:
   - component: {fileID: 1812781900}
   - component: {fileID: 1812781899}
   - component: {fileID: 1812781901}
+  - component: {fileID: 1812781902}
+  - component: {fileID: 1812781903}
   m_Layer: 0
   m_Name: Character
   m_TagString: Player
@@ -2495,6 +2497,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ropePointList: []
   ropeindex: 0
+  firstIN: 0
   joint: {fileID: 1812781899}
   ropeShootPoint: {fileID: 1453067200}
   ropeOnOff: 0
@@ -2514,6 +2517,33 @@ CircleCollider2D:
   m_Offset: {x: 0, y: 0}
   serializedVersion: 2
   m_Radius: 17
+--- !u!114 &1812781902
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1812781893}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ae0adf66a82ee949b57a15c576872be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  p_moveState: 0
+  p_weaponState: 0
+--- !u!114 &1812781903
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1812781893}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1bad8508673e758469ee39cf662465e4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  p_State: {fileID: 1812781902}
 --- !u!1 &1901611393
 GameObject:
   m_ObjectHideFlags: 0

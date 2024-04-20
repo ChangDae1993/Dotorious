@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class CharacterMove : MonoBehaviour
+public class PlayerMove : MonoBehaviour
 {
     public int key = 0;
 
@@ -36,12 +36,12 @@ public class CharacterMove : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        PlayerMove(walkSpeed);
+        PlayerWalkMove(walkSpeed);
         PlayerDash(dashSpeed);
         PlayerJump(jumpForce, doublejumpForce);
     }
 
-    public void PlayerMove(float speed)
+    public void PlayerWalkMove(float speed)
     {
         if (Input.GetAxisRaw("Horizontal") < 0f)
             key = -1;
