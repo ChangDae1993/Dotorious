@@ -2365,12 +2365,12 @@ GameObject:
   - component: {fileID: 1812781897}
   - component: {fileID: 1812781895}
   - component: {fileID: 1812781894}
+  - component: {fileID: 1812781902}
+  - component: {fileID: 1812781903}
   - component: {fileID: 1812781898}
   - component: {fileID: 1812781900}
   - component: {fileID: 1812781899}
   - component: {fileID: 1812781901}
-  - component: {fileID: 1812781902}
-  - component: {fileID: 1812781903}
   m_Layer: 0
   m_Name: Character
   m_TagString: Player

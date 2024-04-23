@@ -15,7 +15,22 @@ public class PlayerInput : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if(Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
+        //이동을 Input에서 관리하고 싶다
+        //근데 어케함...?
+
+        if (Input.GetAxisRaw("Horizontal") < 0f)
+        {
+
+        }
+            //key = -1;
+
+        if (Input.GetAxisRaw("Horizontal") > 0f)
+        {
+
+        }
+            //key = 1;
+
+        if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
         {
             p_State.p_weaponState = PlayerState.PlayerWeaponState.Sword;
         }
