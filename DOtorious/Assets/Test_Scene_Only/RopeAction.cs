@@ -87,12 +87,11 @@ public class RopeAction : MonoBehaviour
             }
 
 
-            if (ropeOnOff && Input.GetMouseButtonDown(0))
+            if (Input.GetMouseButtonDown(0))
             {
-                Debug.Log("Rope On");
+                RopeOnOFf(ropeOnOff);
             }
         }
-
 
         //ropePoint = Physics2D.OverlapCircleAll(this.transform.position, pointDetectRange, ropePointLayer);
         //foreach (Collider2D col in ropePoint)
@@ -146,9 +145,21 @@ public class RopeAction : MonoBehaviour
         //    //    Debug.Log("Mouse");
         //    //}
         //}
-
     }
 
+    public void RopeOnOFf(bool onoff)
+    {
+        if(onoff)
+        {
+            joint.enabled = true;
+            Debug.Log("Rope On");
+        }
+        else
+        {
+            joint.enabled = false;
+            Debug.Log("Rope Off");
+        }
+    }
 
     //void HighlightActiveCHker(int idx)
     //{
