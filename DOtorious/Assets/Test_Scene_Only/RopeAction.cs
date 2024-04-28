@@ -198,11 +198,4 @@ public class RopeAction : MonoBehaviour
             //rp.RopePosition(false);
         }
     }
-
-    //private void OnDrawGizmos()
-    //{
-    //    Gizmos.color = Color.red;
-    //    Gizmos.DrawWireSphere(this.transform.position, pointDetectRange);
-    //}
-
 }
