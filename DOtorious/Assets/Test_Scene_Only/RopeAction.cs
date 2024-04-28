@@ -36,7 +36,7 @@ public class RopeAction : MonoBehaviour
             {
                 //HighlightActiveCHker(ropeindex);
 
-                if(ropePointList.Count == 1)
+                if (ropePointList.Count == 1)
                 {
                     ropeindex = 0;
 
@@ -48,8 +48,8 @@ public class RopeAction : MonoBehaviour
                     }
                     else
                     {
-                        joint.connectedAnchor = Vector2.zero;
                         ropePointList[ropeindex].AnchorCheck(false);
+                        joint.connectedAnchor = Vector2.zero;
                         firstIN = false;
                     }
                 }
@@ -61,8 +61,10 @@ public class RopeAction : MonoBehaviour
                         {
                             joint.connectedAnchor = Vector2.zero;
                             ropePointList[i].AnchorCheck(false);
+                            ropeOnOff = false;
                         }
                         ropePointList[ropeindex].AnchorCheck(true);
+                        ropeOnOff = true;
                         joint.connectedAnchor = ropePointList[ropeindex].transform.position;
                         ropeindex++;
                     }
@@ -74,13 +76,20 @@ public class RopeAction : MonoBehaviour
                         {
                             joint.connectedAnchor = Vector2.zero;
                             ropePointList[i].AnchorCheck(false);
+                            ropeOnOff = false;
                         }
                         ropePointList[ropeindex].AnchorCheck(true);
+                        ropeOnOff = true;
                         joint.connectedAnchor = ropePointList[ropeindex].transform.position;
                         ropeindex++;
                     }
                 }
+            }
 
+
+            if (ropeOnOff && Input.GetMouseButtonDown(0))
+            {
+                Debug.Log("Rope On");
             }
         }
 
