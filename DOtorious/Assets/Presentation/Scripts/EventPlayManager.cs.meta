@@ -1,0 +1,23 @@
+fileFormatVersion: 2
+guid: 2704b25cb31084e488354b95367dd461
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - softSpeechPrefab: {fileID: 6616472123035368123, guid: 00c366de392e1424e871abf62b1dc3b0,
+      type: 3}
+  - hardSpeechPrefab: {fileID: 6616472123035368123, guid: b6a66dd42ecd8f74587a206befa695f0,
+      type: 3}
+  - memoPrefab: {fileID: 7002526125472452948, guid: 9447052421f5fa34db48941fdea773ca,
+      type: 3}
+  - eventCamera: {fileID: 3880962040686794066, guid: 4401339c56720e24d816b7fe9f2ea2bb,
+      type: 3}
+  - choiceCanvasPrefab: {fileID: 9127147122880995110, guid: d8140f2b7552adb48890b2a1fe9357a4,
+      type: 3}
+  - choiceContentsPrefab: {fileID: 8458442413539215267, guid: 6bbda07d145aadc48bf53be54baa87e0,
+      type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
