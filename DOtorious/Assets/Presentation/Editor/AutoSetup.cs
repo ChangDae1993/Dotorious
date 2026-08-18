@@ -10,6 +10,7 @@ using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 namespace JYW.Game.EventPlay.Editor
 {
@@ -18,6 +19,8 @@ namespace JYW.Game.EventPlay.Editor
     {
         private const string EventSOScriptGuid = "ae62fcccccff824489cb424ff73c83a1";
         private const string PresentationSceneGuid = "f40f6eb4eff654544a6074c65687655d";
+        private const string MemoPrefabGuid = "9447052421f5fa34db48941fdea773ca";
+        private const string TooltipPrefabPath = "Assets/Presentation/Prefabs/Tooltip.prefab";
         private const string SessionKey = "JYW.Presentation.AutoSetup.v2";
         private const long FirstRid = 1000000000000000000L;
         private const int MaxPasses = 10000;
@@ -27,6 +30,7 @@ namespace JYW.Game.EventPlay.Editor
             "softSpeechPrefab",
             "hardSpeechPrefab",
             "memoPrefab",
+            "tooltipPrefab",
             "eventCamera",
             "choiceCanvasPrefab",
             "choiceContentsPrefab"
@@ -36,7 +40,8 @@ namespace JYW.Game.EventPlay.Editor
         {
             "00c366de392e1424e871abf62b1dc3b0",
             "b6a66dd42ecd8f74587a206befa695f0",
-            "9447052421f5fa34db48941fdea773ca",
+            MemoPrefabGuid,
+            "f95d06c07f91466d9a6407277d3eee04",
             "4401339c56720e24d816b7fe9f2ea2bb",
             "d8140f2b7552adb48890b2a1fe9357a4",
             "6bbda07d145aadc48bf53be54baa87e0"
@@ -205,6 +210,7 @@ namespace JYW.Game.EventPlay.Editor
             try
             {
                 if (!RegisterPresentationScene()) completed = false;
+                if (!EnsureTooltipPrefab()) completed = false;
                 if (!RepairPresentationManagerWiring()) completed = false;
                 migrated = ScanEventSOAssets(ref completed);
 
@@ -233,6 +239,72 @@ namespace JYW.Game.EventPlay.Editor
             }
 
             return completed;
+        }
+
+        private static bool EnsureTooltipPrefab()
+        {
+            GameObject existingPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(TooltipPrefabPath);
+            if (existingPrefab != null)
+            {
+                if (existingPrefab.GetComponent<MemoCanvas>() != null &&
+                    existingPrefab.GetComponentInChildren<Image>(true) != null &&
+                    existingPrefab.GetComponentInChildren<Text>(true) != null)
+                    return true;
+
+                Debug.LogError("[Presentation AutoSetup] 기존 Tooltip 프리팹이 MemoCanvas 구조가 아닙니다. 사용자 프리팹을 덮어쓰지 않았습니다.");
+                return false;
+            }
+
+            string memoPrefabPath = AssetDatabase.GUIDToAssetPath(MemoPrefabGuid);
+            GameObject memoPrefab = string.IsNullOrEmpty(memoPrefabPath)
+                ? null
+                : AssetDatabase.LoadAssetAtPath<GameObject>(memoPrefabPath);
+            if (memoPrefab == null)
+            {
+                Debug.LogError("[Presentation AutoSetup] Tooltip의 기준이 되는 MemoCanvas 프리팹을 찾지 못했습니다.");
+                return false;
+            }
+
+            if (!AssetDatabase.CopyAsset(memoPrefabPath, TooltipPrefabPath))
+            {
+                Debug.LogError("[Presentation AutoSetup] MemoCanvas 구조의 Tooltip 프리팹을 만들지 못했습니다.");
+                return false;
+            }
+
+            GameObject root = null;
+            try
+            {
+                root = PrefabUtility.LoadPrefabContents(TooltipPrefabPath);
+                MemoCanvas view = root.GetComponent<MemoCanvas>();
+                Image background = root.GetComponentInChildren<Image>(true);
+                Text text = root.GetComponentInChildren<Text>(true);
+                if (view == null || background == null || text == null)
+                    throw new InvalidOperationException("복사한 MemoCanvas 프리팹의 필수 Canvas/Image/Text/IEventUI 연결이 없습니다.");
+
+                root.name = "Tooltip";
+                background.gameObject.name = "TooltipBackground";
+                background.color = Color.black;
+                text.gameObject.name = "TooltipText";
+                text.text = "Tooltip";
+                text.color = Color.white;
+
+                if (PrefabUtility.SaveAsPrefabAsset(root, TooltipPrefabPath) == null)
+                    throw new InvalidOperationException("Tooltip 프리팹 저장에 실패했습니다.");
+
+                AssetDatabase.ImportAsset(TooltipPrefabPath, ImportAssetOptions.ForceUpdate);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                Debug.LogError($"[Presentation AutoSetup] Tooltip 프리팹 자동 생성에 실패했습니다.\n{exception}");
+                AssetDatabase.DeleteAsset(TooltipPrefabPath);
+                return false;
+            }
+            finally
+            {
+                if (root != null)
+                    PrefabUtility.UnloadPrefabContents(root);
+            }
         }
 
         private static bool RegisterPresentationScene()
@@ -317,7 +389,12 @@ namespace JYW.Game.EventPlay.Editor
                 for (int i = 0; i < ManagerPrefabFields.Length; i++)
                 {
                     SerializedProperty property = serializedManager.FindProperty(ManagerPrefabFields[i]);
-                    string prefabPath = AssetDatabase.GUIDToAssetPath(ManagerPrefabGuids[i]);
+                    string prefabPath = string.Equals(
+                        ManagerPrefabFields[i],
+                        "tooltipPrefab",
+                        StringComparison.Ordinal)
+                        ? TooltipPrefabPath
+                        : AssetDatabase.GUIDToAssetPath(ManagerPrefabGuids[i]);
                     GameObject prefab = string.IsNullOrEmpty(prefabPath)
                         ? null
                         : AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);

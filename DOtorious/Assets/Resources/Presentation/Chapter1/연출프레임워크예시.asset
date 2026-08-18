@@ -1,0 +1,1224 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae62fcccccff824489cb424ff73c83a1, type: 3}
+  m_Name: "\uC5F0\uCD9C\uD504\uB808\uC784\uC6CC\uD06C\uC608\uC2DC"
+  m_EditorClassIdentifier: JYW.Framework::JYW.Game.EventPlay.EventSO
+  UseCondition: 1
+  Conditions:
+  - Checks: 0
+    TimeCountSeconds: 0
+    Conditions: []
+    CollisionObjectA: 
+    CollisionObjectB: 
+  ConditionSteps:
+  - Flags:
+      IsSetGlobals: 0
+      IsObjects: 0
+      IsSpeeches: 1
+      IsScenes: 0
+      IsCameras: 1
+      IsComponents: 0
+      IsTransforms: 0
+      IsWait: 0
+      IsLock: 0
+      IsSound: 0
+      IsFadePlay: 0
+      IsCursorVisible: 0
+      IsChoice: 0
+      IsAction: 0
+      IsEventExe: 1
+      IsJustText: 0
+      IsRename: 0
+      IsSpawnObject: 0
+      IsDestroyObject: 0
+      IsEnableObject: 0
+      IsDisableObject: 0
+      IsEnableComponent: 0
+      IsDisableComponent: 0
+      IsDisableColliderObject: 0
+      IsSoftSpeech: 0
+      IsHardSpeech: 0
+      IsMoveObject: 0
+      IsRotateObject: 0
+      IsSetActiveScene: 0
+      IsSceneChange: 0
+      IsSceneAdd: 0
+      IsSceneOff: 0
+      IsScenePause: 0
+      IsSceneUnPause: 0
+      IsCameraMove: 0
+      IsCameraAiming: 0
+      IsTooltip: 0
+    SetGlobals:
+      SetValues: []
+    Objects:
+      IsSpawnObject: 0
+      IsDestroyObject: 0
+      IsEnableObject: 0
+      IsDisableObject: 0
+      IsRename: 0
+      SpawnObject:
+        SpawnDatas: []
+      DestroyObject:
+        DestroyObjectNames: []
+      EnableObject:
+        EnableObjectNames: []
+      DisableObject:
+        DisableObjectNames: []
+      Rename:
+        ObjectName: 
+        NewName: 
+    Speeches:
+      IsSoftSpeech: 1
+      IsHardSpeech: 0
+      SoftSpeech:
+        SoftSpeechTexts:
+        - Duration: 3
+          Text: "\uC624\uD504\uB2DD \uB300\uC0AC 1 (\uC790\uB3D9 \uC2E4\uD589, 3\uCD08\uAC04)"
+        - Duration: 2
+          Text: "\uC624\uD504\uB2DD \uB300\uC0AC 2 (\uC790\uB3D9 \uC2E4\uD589, 2\uCD08\uAC04)"
+        - Duration: 3
+          Text: "\uC624\uD504\uB2DD \uB300\uC0AC 3 (\uC790\uB3D9 \uC2E4\uD589, 5\uCD08\uAC04)"
+        isTyping: 0
+      HardSpeech:
+        HardSpeechKey: 0
+        HardSpeechTexts: []
+        IsTyping: 0
+    Scenes:
+      IsSetActiveScene: 0
+      IsSceneChange: 0
+      IsSceneAdd: 0
+      IsSceneOff: 0
+      IsScenePause: 0
+      IsSceneUnPause: 0
+      SetActiveScene:
+        Scene: 
+      SceneChange:
+        Scene: 
+      SceneAdd:
+        Scenes: []
+      SceneOff:
+        Scenes: []
+      ScenePause:
+        Scenes: []
+      SceneUnPause:
+        Scenes: []
+    Cameras:
+      IsCameraMove: 1
+      IsCameraAiming: 0
+      CameraMovement:
+        IsCameraMoveUseMain: 1
+        IsRelative: 1
+        CenterObject: Player1
+        StartPosition: {x: -10, y: 10, z: -10}
+        EndPosition: {x: 0, y: 0, z: -10}
+        StartTime: 0
+        EndTime: 5
+      CameraAim:
+        IsCameraAimingUseMain: 1
+        aimedTargetName: Player1
+        StartTime: 0
+        EndTime: 5
+        InitDuration: 0
+        TargetLocalOffset: {x: 0, y: 0, z: 0}
+    Components:
+      IsEnableComponent: 0
+      IsDisableComponent: 0
+      IsDisableColliderObject: 0
+      IsUpdateComponent: 0
+      EnableComponent:
+        ComponentDatas: []
+      DisableComponent:
+        ComponentDatas: []
+      DisableColliderObject:
+        DisableColliderObjectNames: []
+      UpdateComponent:
+        UpdateComponents: []
+    Transforms:
+      IsMoveObject: 0
+      IsRotateObject: 0
+      MoveObject:
+        MoveObjects: []
+      RotateObject:
+        ObjectName: 
+        isLookAt: 0
+        LookAtName: 
+        Duration: 0
+        isLocal: 0
+        isDelta: 0
+        eulerAngles: {x: 0, y: 0, z: 0}
+        isDoor: 0
+        doorEulerOffset: {x: 0, y: 0, z: 0}
+        isRelative: 0
+        TargetName: 
+    Wait:
+      WaitTime: 0
+    Lock:
+      IsLockCamera: 0
+      IsLockMove: 0
+    Sound:
+      time: 0
+      audioClip: {fileID: 0}
+      volume: 0
+      isLoop: 0
+    FadeInfo:
+      FadeIn: 0
+      StartTime: 0
+      EndTime: 0
+    Cursor:
+      isCursorVisible: 0
+    Choice:
+      Candidates: []
+    Action:
+      ActionName: 
+    EventExe:
+      eventSO: {fileID: 0}
+      UseCondition: 0
+      Conditions: []
+      ConditionSteps:
+      - rid: 8316055348376764486
+    JustText:
+      Text: 
+    Rename:
+      ObjectName: 
+      NewName: 
+    SpawnObject:
+      SpawnDatas: []
+    DestroyObject:
+      DestroyObjectNames: []
+    EnableObject:
+      EnableObjectNames: []
+    DisableObject:
+      DisableObjectNames: []
+    EnableComponent:
+      ComponentDatas: []
+    DisableComponent:
+      ComponentDatas: []
+    DisableColliderObject:
+      DisableColliderObjectNames: []
+    SoftSpeech:
+      SoftSpeechTexts: []
+      isTyping: 0
+    HardSpeech:
+      HardSpeechKey: 0
+      HardSpeechTexts: []
+      IsTyping: 0
+    MoveObject:
+      MoveObjects: []
+    RotateObject:
+      ObjectName: 
+      isLookAt: 0
+      LookAtName: 
+      Duration: 0
+      isLocal: 0
+      isDelta: 0
+      eulerAngles: {x: 0, y: 0, z: 0}
+      isDoor: 0
+      doorEulerOffset: {x: 0, y: 0, z: 0}
+      isRelative: 0
+      TargetName: 
+    SetActiveScene:
+      Scene: 
+    SceneChange:
+      Scene: 
+    SceneAdd:
+      Scenes: []
+    SceneOff:
+      Scenes: []
+    ScenePause:
+      Scenes: []
+    SceneUnPause:
+      Scenes: []
+    CameraMovement:
+      IsCameraMoveUseMain: 0
+      IsRelative: 0
+      CenterObject: 
+      StartPosition: {x: 0, y: 0, z: 0}
+      EndPosition: {x: 0, y: 0, z: 0}
+      StartTime: 0
+      EndTime: 0
+    CameraAim:
+      IsCameraAimingUseMain: 0
+      aimedTargetName: 
+      StartTime: 0
+      EndTime: 0
+      InitDuration: 0
+      TargetLocalOffset: {x: 0, y: 0, z: 0}
+    Tooltip:
+      Content: fasfasdf
+      Duration: 5
+      isBlocked: 0
+      IsRelative: 1
+      CenterObject: Player1
+      Position: {x: 0, y: 0}
+  legacy_Condition:
+    IsCheck: 0
+    ConditionInfos: []
+  legacy_steps: []
+  legacy_noSteps: []
+  stepsGroups: []
+  elseSteps: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 8316055348376764486
+      type: {class: EventSO/EventStep, ns: JYW.Game.EventPlay, asm: JYW.Framework}
+      data:
+        Flags:
+          IsSetGlobals: 0
+          IsObjects: 0
+          IsSpeeches: 0
+          IsScenes: 0
+          IsCameras: 0
+          IsComponents: 0
+          IsTransforms: 0
+          IsWait: 0
+          IsLock: 0
+          IsSound: 0
+          IsFadePlay: 0
+          IsCursorVisible: 0
+          IsChoice: 0
+          IsAction: 0
+          IsEventExe: 1
+          IsJustText: 0
+          IsRename: 0
+          IsSpawnObject: 0
+          IsDestroyObject: 0
+          IsEnableObject: 0
+          IsDisableObject: 0
+          IsEnableComponent: 0
+          IsDisableComponent: 0
+          IsDisableColliderObject: 0
+          IsSoftSpeech: 0
+          IsHardSpeech: 0
+          IsMoveObject: 0
+          IsRotateObject: 0
+          IsSetActiveScene: 0
+          IsSceneChange: 0
+          IsSceneAdd: 0
+          IsSceneOff: 0
+          IsScenePause: 0
+          IsSceneUnPause: 0
+          IsCameraMove: 0
+          IsCameraAiming: 0
+          IsTooltip: 1
+        SetGlobals:
+          SetValues: []
+        Objects:
+          IsSpawnObject: 0
+          IsDestroyObject: 0
+          IsEnableObject: 0
+          IsDisableObject: 0
+          IsRename: 0
+          SpawnObject:
+            SpawnDatas: []
+          DestroyObject:
+            DestroyObjectNames: []
+          EnableObject:
+            EnableObjectNames: []
+          DisableObject:
+            DisableObjectNames: []
+          Rename:
+            ObjectName: 
+            NewName: 
+        Speeches:
+          IsSoftSpeech: 0
+          IsHardSpeech: 0
+          SoftSpeech:
+            SoftSpeechTexts: []
+            isTyping: 0
+          HardSpeech:
+            HardSpeechKey: 101
+            HardSpeechTexts:
+            - "\uC624\uD504\uB2DD \uB300\uC0AC 1 (\uC9C1\uC811 \uB118\uAE30\uAE30)"
+            - "\uC624\uD504\uB2DD \uB300\uC0AC 2 (\uC9C1\uC811 \uB118\uAE30\uAE30)"
+            - "\uC624\uD504\uB2DD \uB300\uC0AC 3 (\uC9C1\uC811 \uB118\uAE30\uAE30)"
+            IsTyping: 1
+        Scenes:
+          IsSetActiveScene: 0
+          IsSceneChange: 0
+          IsSceneAdd: 0
+          IsSceneOff: 0
+          IsScenePause: 0
+          IsSceneUnPause: 0
+          SetActiveScene:
+            Scene: 
+          SceneChange:
+            Scene: 
+          SceneAdd:
+            Scenes: []
+          SceneOff:
+            Scenes: []
+          ScenePause:
+            Scenes: []
+          SceneUnPause:
+            Scenes: []
+        Cameras:
+          IsCameraMove: 0
+          IsCameraAiming: 0
+          CameraMovement:
+            IsCameraMoveUseMain: 0
+            IsRelative: 0
+            CenterObject: 
+            StartPosition: {x: 0, y: 0, z: 0}
+            EndPosition: {x: 0, y: 0, z: 0}
+            StartTime: 0
+            EndTime: 0
+          CameraAim:
+            IsCameraAimingUseMain: 0
+            aimedTargetName: 
+            StartTime: 0
+            EndTime: 0
+            InitDuration: 0
+            TargetLocalOffset: {x: 0, y: 0, z: 0}
+        Components:
+          IsEnableComponent: 0
+          IsDisableComponent: 0
+          IsDisableColliderObject: 0
+          IsUpdateComponent: 0
+          EnableComponent:
+            ComponentDatas: []
+          DisableComponent:
+            ComponentDatas: []
+          DisableColliderObject:
+            DisableColliderObjectNames: []
+          UpdateComponent:
+            UpdateComponents: []
+        Transforms:
+          IsMoveObject: 0
+          IsRotateObject: 0
+          MoveObject:
+            MoveObjects: []
+          RotateObject:
+            ObjectName: 
+            isLookAt: 1
+            LookAtName: 
+            Duration: 0
+            isLocal: 1
+            isDelta: 1
+            eulerAngles: {x: 0, y: 0, z: 0}
+            isDoor: 0
+            doorEulerOffset: {x: 0, y: 0, z: 0}
+            isRelative: 0
+            TargetName: 
+        Wait:
+          WaitTime: 0
+        Lock:
+          IsLockCamera: 0
+          IsLockMove: 0
+        Sound:
+          time: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+        FadeInfo:
+          FadeIn: 0
+          StartTime: 0
+          EndTime: 0
+        Cursor:
+          isCursorVisible: 0
+        Choice:
+          Candidates: []
+        Action:
+          ActionName: 
+        EventExe:
+          eventSO: {fileID: 0}
+          UseCondition: 0
+          Conditions: []
+          ConditionSteps:
+          - rid: 8316055369468084293
+        JustText:
+          Text: 
+        Rename:
+          ObjectName: 
+          NewName: 
+        SpawnObject:
+          SpawnDatas: []
+        DestroyObject:
+          DestroyObjectNames: []
+        EnableObject:
+          EnableObjectNames: []
+        DisableObject:
+          DisableObjectNames: []
+        EnableComponent:
+          ComponentDatas: []
+        DisableComponent:
+          ComponentDatas: []
+        DisableColliderObject:
+          DisableColliderObjectNames: []
+        SoftSpeech:
+          SoftSpeechTexts: []
+          isTyping: 0
+        HardSpeech:
+          HardSpeechKey: 101
+          HardSpeechTexts: []
+          IsTyping: 0
+        MoveObject:
+          MoveObjects: []
+        RotateObject:
+          ObjectName: 
+          isLookAt: 1
+          LookAtName: 
+          Duration: 0
+          isLocal: 1
+          isDelta: 1
+          eulerAngles: {x: 0, y: 0, z: 0}
+          isDoor: 0
+          doorEulerOffset: {x: 0, y: 0, z: 0}
+          isRelative: 0
+          TargetName: 
+        SetActiveScene:
+          Scene: 
+        SceneChange:
+          Scene: 
+        SceneAdd:
+          Scenes: []
+        SceneOff:
+          Scenes: []
+        ScenePause:
+          Scenes: []
+        SceneUnPause:
+          Scenes: []
+        CameraMovement:
+          IsCameraMoveUseMain: 0
+          IsRelative: 0
+          CenterObject: 
+          StartPosition: {x: 0, y: 0, z: 0}
+          EndPosition: {x: 0, y: 0, z: 0}
+          StartTime: 0
+          EndTime: 0
+        CameraAim:
+          IsCameraAimingUseMain: 0
+          aimedTargetName: 
+          StartTime: 0
+          EndTime: 0
+          InitDuration: 0
+          TargetLocalOffset: {x: 0, y: 0, z: 0}
+        Tooltip:
+          Content: ...
+          Duration: 3
+          isBlocked: 0
+          IsRelative: 1
+          CenterObject: Player1
+          Position: {x: 0.5, y: 2.5}
+    - rid: 8316055369468084293
+      type: {class: EventSO/EventStep, ns: JYW.Game.EventPlay, asm: JYW.Framework}
+      data:
+        Flags:
+          IsSetGlobals: 0
+          IsObjects: 0
+          IsSpeeches: 1
+          IsScenes: 0
+          IsCameras: 0
+          IsComponents: 0
+          IsTransforms: 0
+          IsWait: 0
+          IsLock: 0
+          IsSound: 0
+          IsFadePlay: 0
+          IsCursorVisible: 0
+          IsChoice: 0
+          IsAction: 0
+          IsEventExe: 1
+          IsJustText: 0
+          IsRename: 0
+          IsSpawnObject: 0
+          IsDestroyObject: 0
+          IsEnableObject: 0
+          IsDisableObject: 0
+          IsEnableComponent: 0
+          IsDisableComponent: 0
+          IsDisableColliderObject: 0
+          IsSoftSpeech: 0
+          IsHardSpeech: 0
+          IsMoveObject: 0
+          IsRotateObject: 0
+          IsSetActiveScene: 0
+          IsSceneChange: 0
+          IsSceneAdd: 0
+          IsSceneOff: 0
+          IsScenePause: 0
+          IsSceneUnPause: 0
+          IsCameraMove: 0
+          IsCameraAiming: 0
+          IsTooltip: 0
+        SetGlobals:
+          SetValues: []
+        Objects:
+          IsSpawnObject: 0
+          IsDestroyObject: 0
+          IsEnableObject: 0
+          IsDisableObject: 0
+          IsRename: 0
+          SpawnObject:
+            SpawnDatas: []
+          DestroyObject:
+            DestroyObjectNames: []
+          EnableObject:
+            EnableObjectNames: []
+          DisableObject:
+            DisableObjectNames: []
+          Rename:
+            ObjectName: 
+            NewName: 
+        Speeches:
+          IsSoftSpeech: 0
+          IsHardSpeech: 1
+          SoftSpeech:
+            SoftSpeechTexts: []
+            isTyping: 0
+          HardSpeech:
+            HardSpeechKey: 101
+            HardSpeechTexts:
+            - "\uC54C \uC218 \uC5C6\uB294 \uACF3\uC5D0 \uB5A8\uC5B4\uC84C\uB2E4."
+            - "\uCD9C\uAD6C\uB97C \uCC3E\uC544 \uC774\uB3D9\uD558\uC790."
+            IsTyping: 1
+        Scenes:
+          IsSetActiveScene: 0
+          IsSceneChange: 0
+          IsSceneAdd: 0
+          IsSceneOff: 0
+          IsScenePause: 0
+          IsSceneUnPause: 0
+          SetActiveScene:
+            Scene: 
+          SceneChange:
+            Scene: Chapter2
+          SceneAdd:
+            Scenes: []
+          SceneOff:
+            Scenes: []
+          ScenePause:
+            Scenes: []
+          SceneUnPause:
+            Scenes: []
+        Cameras:
+          IsCameraMove: 0
+          IsCameraAiming: 0
+          CameraMovement:
+            IsCameraMoveUseMain: 0
+            IsRelative: 0
+            CenterObject: 
+            StartPosition: {x: 0, y: 0, z: 0}
+            EndPosition: {x: 0, y: 0, z: 0}
+            StartTime: 0
+            EndTime: 0
+          CameraAim:
+            IsCameraAimingUseMain: 0
+            aimedTargetName: 
+            StartTime: 0
+            EndTime: 0
+            InitDuration: 0
+            TargetLocalOffset: {x: 0, y: 0, z: 0}
+        Components:
+          IsEnableComponent: 0
+          IsDisableComponent: 0
+          IsDisableColliderObject: 0
+          IsUpdateComponent: 0
+          EnableComponent:
+            ComponentDatas: []
+          DisableComponent:
+            ComponentDatas: []
+          DisableColliderObject:
+            DisableColliderObjectNames: []
+          UpdateComponent:
+            UpdateComponents: []
+        Transforms:
+          IsMoveObject: 0
+          IsRotateObject: 0
+          MoveObject:
+            MoveObjects: []
+          RotateObject:
+            ObjectName: 
+            isLookAt: 1
+            LookAtName: 
+            Duration: 0
+            isLocal: 1
+            isDelta: 1
+            eulerAngles: {x: 0, y: 0, z: 0}
+            isDoor: 0
+            doorEulerOffset: {x: 0, y: 0, z: 0}
+            isRelative: 0
+            TargetName: 
+        Wait:
+          WaitTime: 0
+        Lock:
+          IsLockCamera: 0
+          IsLockMove: 0
+        Sound:
+          time: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+        FadeInfo:
+          FadeIn: 0
+          StartTime: 0
+          EndTime: 0
+        Cursor:
+          isCursorVisible: 0
+        Choice:
+          Candidates: []
+        Action:
+          ActionName: 
+        EventExe:
+          eventSO: {fileID: 0}
+          UseCondition: 0
+          Conditions: []
+          ConditionSteps:
+          - rid: 8316055369468084294
+        JustText:
+          Text: 
+        Rename:
+          ObjectName: 
+          NewName: 
+        SpawnObject:
+          SpawnDatas: []
+        DestroyObject:
+          DestroyObjectNames: []
+        EnableObject:
+          EnableObjectNames: []
+        DisableObject:
+          DisableObjectNames: []
+        EnableComponent:
+          ComponentDatas: []
+        DisableComponent:
+          ComponentDatas: []
+        DisableColliderObject:
+          DisableColliderObjectNames: []
+        SoftSpeech:
+          SoftSpeechTexts: []
+          isTyping: 0
+        HardSpeech:
+          HardSpeechKey: 101
+          HardSpeechTexts: []
+          IsTyping: 0
+        MoveObject:
+          MoveObjects: []
+        RotateObject:
+          ObjectName: 
+          isLookAt: 1
+          LookAtName: 
+          Duration: 0
+          isLocal: 1
+          isDelta: 1
+          eulerAngles: {x: 0, y: 0, z: 0}
+          isDoor: 0
+          doorEulerOffset: {x: 0, y: 0, z: 0}
+          isRelative: 0
+          TargetName: 
+        SetActiveScene:
+          Scene: 
+        SceneChange:
+          Scene: 
+        SceneAdd:
+          Scenes: []
+        SceneOff:
+          Scenes: []
+        ScenePause:
+          Scenes: []
+        SceneUnPause:
+          Scenes: []
+        CameraMovement:
+          IsCameraMoveUseMain: 0
+          IsRelative: 0
+          CenterObject: 
+          StartPosition: {x: 0, y: 0, z: 0}
+          EndPosition: {x: 0, y: 0, z: 0}
+          StartTime: 0
+          EndTime: 0
+        CameraAim:
+          IsCameraAimingUseMain: 0
+          aimedTargetName: 
+          StartTime: 0
+          EndTime: 0
+          InitDuration: 0
+          TargetLocalOffset: {x: 0, y: 0, z: 0}
+        Tooltip:
+          Content: 
+          Duration: 0
+          isBlocked: 0
+          IsRelative: 0
+          CenterObject: 
+          Position: {x: 0, y: 0}
+    - rid: 8316055369468084294
+      type: {class: EventSO/EventStep, ns: JYW.Game.EventPlay, asm: JYW.Framework}
+      data:
+        Flags:
+          IsSetGlobals: 0
+          IsObjects: 0
+          IsSpeeches: 0
+          IsScenes: 1
+          IsCameras: 0
+          IsComponents: 0
+          IsTransforms: 0
+          IsWait: 0
+          IsLock: 0
+          IsSound: 0
+          IsFadePlay: 0
+          IsCursorVisible: 0
+          IsChoice: 0
+          IsAction: 0
+          IsEventExe: 0
+          IsJustText: 0
+          IsRename: 0
+          IsSpawnObject: 0
+          IsDestroyObject: 0
+          IsEnableObject: 0
+          IsDisableObject: 0
+          IsEnableComponent: 0
+          IsDisableComponent: 0
+          IsDisableColliderObject: 0
+          IsSoftSpeech: 0
+          IsHardSpeech: 0
+          IsMoveObject: 0
+          IsRotateObject: 0
+          IsSetActiveScene: 0
+          IsSceneChange: 0
+          IsSceneAdd: 0
+          IsSceneOff: 0
+          IsScenePause: 0
+          IsSceneUnPause: 0
+          IsCameraMove: 0
+          IsCameraAiming: 0
+          IsTooltip: 0
+        SetGlobals:
+          SetValues: []
+        Objects:
+          IsSpawnObject: 0
+          IsDestroyObject: 0
+          IsEnableObject: 0
+          IsDisableObject: 0
+          IsRename: 0
+          SpawnObject:
+            SpawnDatas: []
+          DestroyObject:
+            DestroyObjectNames: []
+          EnableObject:
+            EnableObjectNames: []
+          DisableObject:
+            DisableObjectNames: []
+          Rename:
+            ObjectName: 
+            NewName: 
+        Speeches:
+          IsSoftSpeech: 0
+          IsHardSpeech: 0
+          SoftSpeech:
+            SoftSpeechTexts: []
+            isTyping: 0
+          HardSpeech:
+            HardSpeechKey: 101
+            HardSpeechTexts: []
+            IsTyping: 0
+        Scenes:
+          IsSetActiveScene: 0
+          IsSceneChange: 1
+          IsSceneAdd: 0
+          IsSceneOff: 0
+          IsScenePause: 0
+          IsSceneUnPause: 0
+          SetActiveScene:
+            Scene: 
+          SceneChange:
+            Scene: Chapter2
+          SceneAdd:
+            Scenes: []
+          SceneOff:
+            Scenes: []
+          ScenePause:
+            Scenes: []
+          SceneUnPause:
+            Scenes: []
+        Cameras:
+          IsCameraMove: 0
+          IsCameraAiming: 0
+          CameraMovement:
+            IsCameraMoveUseMain: 0
+            IsRelative: 0
+            CenterObject: 
+            StartPosition: {x: 0, y: 0, z: 0}
+            EndPosition: {x: 0, y: 0, z: 0}
+            StartTime: 0
+            EndTime: 0
+          CameraAim:
+            IsCameraAimingUseMain: 0
+            aimedTargetName: 
+            StartTime: 0
+            EndTime: 0
+            InitDuration: 0
+            TargetLocalOffset: {x: 0, y: 0, z: 0}
+        Components:
+          IsEnableComponent: 0
+          IsDisableComponent: 0
+          IsDisableColliderObject: 0
+          IsUpdateComponent: 0
+          EnableComponent:
+            ComponentDatas: []
+          DisableComponent:
+            ComponentDatas: []
+          DisableColliderObject:
+            DisableColliderObjectNames: []
+          UpdateComponent:
+            UpdateComponents: []
+        Transforms:
+          IsMoveObject: 0
+          IsRotateObject: 0
+          MoveObject:
+            MoveObjects: []
+          RotateObject:
+            ObjectName: 
+            isLookAt: 1
+            LookAtName: 
+            Duration: 0
+            isLocal: 1
+            isDelta: 1
+            eulerAngles: {x: 0, y: 0, z: 0}
+            isDoor: 0
+            doorEulerOffset: {x: 0, y: 0, z: 0}
+            isRelative: 0
+            TargetName: 
+        Wait:
+          WaitTime: 0
+        Lock:
+          IsLockCamera: 0
+          IsLockMove: 0
+        Sound:
+          time: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+        FadeInfo:
+          FadeIn: 0
+          StartTime: 0
+          EndTime: 0
+        Cursor:
+          isCursorVisible: 0
+        Choice:
+          Candidates: []
+        Action:
+          ActionName: 
+        EventExe:
+          eventSO: {fileID: 0}
+          UseCondition: 0
+          Conditions: []
+          ConditionSteps:
+          - rid: 8316055461327536196
+        JustText:
+          Text: 
+        Rename:
+          ObjectName: 
+          NewName: 
+        SpawnObject:
+          SpawnDatas: []
+        DestroyObject:
+          DestroyObjectNames: []
+        EnableObject:
+          EnableObjectNames: []
+        DisableObject:
+          DisableObjectNames: []
+        EnableComponent:
+          ComponentDatas: []
+        DisableComponent:
+          ComponentDatas: []
+        DisableColliderObject:
+          DisableColliderObjectNames: []
+        SoftSpeech:
+          SoftSpeechTexts: []
+          isTyping: 0
+        HardSpeech:
+          HardSpeechKey: 101
+          HardSpeechTexts: []
+          IsTyping: 0
+        MoveObject:
+          MoveObjects: []
+        RotateObject:
+          ObjectName: 
+          isLookAt: 1
+          LookAtName: 
+          Duration: 0
+          isLocal: 1
+          isDelta: 1
+          eulerAngles: {x: 0, y: 0, z: 0}
+          isDoor: 0
+          doorEulerOffset: {x: 0, y: 0, z: 0}
+          isRelative: 0
+          TargetName: 
+        SetActiveScene:
+          Scene: 
+        SceneChange:
+          Scene: 
+        SceneAdd:
+          Scenes: []
+        SceneOff:
+          Scenes: []
+        ScenePause:
+          Scenes: []
+        SceneUnPause:
+          Scenes: []
+        CameraMovement:
+          IsCameraMoveUseMain: 0
+          IsRelative: 0
+          CenterObject: 
+          StartPosition: {x: 0, y: 0, z: 0}
+          EndPosition: {x: 0, y: 0, z: 0}
+          StartTime: 0
+          EndTime: 0
+        CameraAim:
+          IsCameraAimingUseMain: 0
+          aimedTargetName: 
+          StartTime: 0
+          EndTime: 0
+          InitDuration: 0
+          TargetLocalOffset: {x: 0, y: 0, z: 0}
+        Tooltip:
+          Content: 
+          Duration: 0
+          isBlocked: 0
+          IsRelative: 0
+          CenterObject: 
+          Position: {x: 0, y: 0}
+    - rid: 8316055461327536196
+      type: {class: EventSO/EventStep, ns: JYW.Game.EventPlay, asm: JYW.Framework}
+      data:
+        Flags:
+          IsSetGlobals: 0
+          IsObjects: 0
+          IsSpeeches: 0
+          IsScenes: 0
+          IsCameras: 0
+          IsComponents: 0
+          IsTransforms: 0
+          IsWait: 0
+          IsLock: 0
+          IsSound: 0
+          IsFadePlay: 0
+          IsCursorVisible: 0
+          IsChoice: 0
+          IsAction: 0
+          IsEventExe: 0
+          IsJustText: 0
+          IsRename: 0
+          IsSpawnObject: 0
+          IsDestroyObject: 0
+          IsEnableObject: 0
+          IsDisableObject: 0
+          IsEnableComponent: 0
+          IsDisableComponent: 0
+          IsDisableColliderObject: 0
+          IsSoftSpeech: 0
+          IsHardSpeech: 0
+          IsMoveObject: 0
+          IsRotateObject: 0
+          IsSetActiveScene: 0
+          IsSceneChange: 0
+          IsSceneAdd: 0
+          IsSceneOff: 0
+          IsScenePause: 0
+          IsSceneUnPause: 0
+          IsCameraMove: 0
+          IsCameraAiming: 0
+          IsTooltip: 0
+        SetGlobals:
+          SetValues: []
+        Objects:
+          IsSpawnObject: 0
+          IsDestroyObject: 0
+          IsEnableObject: 0
+          IsDisableObject: 0
+          IsRename: 0
+          SpawnObject:
+            SpawnDatas: []
+          DestroyObject:
+            DestroyObjectNames: []
+          EnableObject:
+            EnableObjectNames: []
+          DisableObject:
+            DisableObjectNames: []
+          Rename:
+            ObjectName: 
+            NewName: 
+        Speeches:
+          IsSoftSpeech: 0
+          IsHardSpeech: 0
+          SoftSpeech:
+            SoftSpeechTexts: []
+            isTyping: 0
+          HardSpeech:
+            HardSpeechKey: 101
+            HardSpeechTexts: []
+            IsTyping: 0
+        Scenes:
+          IsSetActiveScene: 0
+          IsSceneChange: 0
+          IsSceneAdd: 0
+          IsSceneOff: 0
+          IsScenePause: 0
+          IsSceneUnPause: 0
+          SetActiveScene:
+            Scene: 
+          SceneChange:
+            Scene: 
+          SceneAdd:
+            Scenes: []
+          SceneOff:
+            Scenes: []
+          ScenePause:
+            Scenes: []
+          SceneUnPause:
+            Scenes: []
+        Cameras:
+          IsCameraMove: 0
+          IsCameraAiming: 0
+          CameraMovement:
+            IsCameraMoveUseMain: 0
+            IsRelative: 0
+            CenterObject: 
+            StartPosition: {x: 0, y: 0, z: 0}
+            EndPosition: {x: 0, y: 0, z: 0}
+            StartTime: 0
+            EndTime: 0
+          CameraAim:
+            IsCameraAimingUseMain: 0
+            aimedTargetName: 
+            StartTime: 0
+            EndTime: 0
+            InitDuration: 0
+            TargetLocalOffset: {x: 0, y: 0, z: 0}
+        Components:
+          IsEnableComponent: 0
+          IsDisableComponent: 0
+          IsDisableColliderObject: 0
+          IsUpdateComponent: 0
+          EnableComponent:
+            ComponentDatas: []
+          DisableComponent:
+            ComponentDatas: []
+          DisableColliderObject:
+            DisableColliderObjectNames: []
+          UpdateComponent:
+            UpdateComponents: []
+        Transforms:
+          IsMoveObject: 0
+          IsRotateObject: 0
+          MoveObject:
+            MoveObjects: []
+          RotateObject:
+            ObjectName: 
+            isLookAt: 1
+            LookAtName: 
+            Duration: 0
+            isLocal: 1
+            isDelta: 1
+            eulerAngles: {x: 0, y: 0, z: 0}
+            isDoor: 0
+            doorEulerOffset: {x: 0, y: 0, z: 0}
+            isRelative: 0
+            TargetName: 
+        Wait:
+          WaitTime: 0
+        Lock:
+          IsLockCamera: 0
+          IsLockMove: 0
+        Sound:
+          time: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+        FadeInfo:
+          FadeIn: 0
+          StartTime: 0
+          EndTime: 0
+        Cursor:
+          isCursorVisible: 0
+        Choice:
+          Candidates: []
+        Action:
+          ActionName: 
+        EventExe:
+          eventSO: {fileID: 0}
+          UseCondition: 1
+          Conditions: []
+          ConditionSteps: []
+        JustText:
+          Text: 
+        Rename:
+          ObjectName: 
+          NewName: 
+        SpawnObject:
+          SpawnDatas: []
+        DestroyObject:
+          DestroyObjectNames: []
+        EnableObject:
+          EnableObjectNames: []
+        DisableObject:
+          DisableObjectNames: []
+        EnableComponent:
+          ComponentDatas: []
+        DisableComponent:
+          ComponentDatas: []
+        DisableColliderObject:
+          DisableColliderObjectNames: []
+        SoftSpeech:
+          SoftSpeechTexts: []
+          isTyping: 0
+        HardSpeech:
+          HardSpeechKey: 101
+          HardSpeechTexts: []
+          IsTyping: 0
+        MoveObject:
+          MoveObjects: []
+        RotateObject:
+          ObjectName: 
+          isLookAt: 1
+          LookAtName: 
+          Duration: 0
+          isLocal: 1
+          isDelta: 1
+          eulerAngles: {x: 0, y: 0, z: 0}
+          isDoor: 0
+          doorEulerOffset: {x: 0, y: 0, z: 0}
+          isRelative: 0
+          TargetName: 
+        SetActiveScene:
+          Scene: 
+        SceneChange:
+          Scene: 
+        SceneAdd:
+          Scenes: []
+        SceneOff:
+          Scenes: []
+        ScenePause:
+          Scenes: []
+        SceneUnPause:
+          Scenes: []
+        CameraMovement:
+          IsCameraMoveUseMain: 0
+          IsRelative: 0
+          CenterObject: 
+          StartPosition: {x: 0, y: 0, z: 0}
+          EndPosition: {x: 0, y: 0, z: 0}
+          StartTime: 0
+          EndTime: 0
+        CameraAim:
+          IsCameraAimingUseMain: 0
+          aimedTargetName: 
+          StartTime: 0
+          EndTime: 0
+          InitDuration: 0
+          TargetLocalOffset: {x: 0, y: 0, z: 0}
+        Tooltip:
+          Content: 
+          Duration: 0
+          isBlocked: 0
+          IsRelative: 0
+          CenterObject: 
+          Position: {x: 0, y: 0}

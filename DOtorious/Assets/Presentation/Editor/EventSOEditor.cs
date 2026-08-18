@@ -45,13 +45,14 @@ public class EventSOEditor : Editor
         UpdateTargetsKeyCache();
 
         var useCondProp = serializedObject.FindProperty("UseCondition");
+        DrawExecutionModeSelector(useCondProp);
         bool useCondition = useCondProp != null && useCondProp.boolValue;
 
         DrawConditionStepsArray(
             serializedObject.FindProperty("ConditionSteps"),
             null,
             useCondition,
-            useCondProp,
+            null,
             serializedObject.FindProperty("Conditions")
         );
 
@@ -59,6 +60,40 @@ public class EventSOEditor : Editor
 
         if (dragInProgress)
             Repaint();
+    }
+
+    private void DrawExecutionModeSelector(SerializedProperty useConditionProp)
+    {
+        if (useConditionProp == null) return;
+
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        EditorGUILayout.LabelField("EVENT EXECUTION", EditorStyles.boldLabel);
+        EditorGUI.showMixedValue = useConditionProp.hasMultipleDifferentValues;
+        int current = useConditionProp.boolValue ? 1 : 0;
+        int selected = GUILayout.Toolbar(current, new[] { "None", "Condition" }, GUILayout.Height(24));
+        EditorGUI.showMixedValue = false;
+        if (selected != current)
+            useConditionProp.boolValue = selected == 1;
+
+        EditorGUILayout.HelpBox(
+            selected == 1
+                ? "Condition: Resources에서 자동 감시하며, 설정한 조건이 충족되면 이 EventSO를 한 번 실행합니다."
+                : "None: 자동 실행하지 않습니다. 기존처럼 EventPlayManager.PlayEvent(...)로 호출해야 합니다.",
+            selected == 1 ? MessageType.Info : MessageType.None);
+        EditorGUILayout.EndVertical();
+        EditorGUILayout.Space(4);
+    }
+
+    private static void DrawSectionBanner(string title, string subtitle, Color color)
+    {
+        Rect rect = GUILayoutUtility.GetRect(0f, 25f, GUILayout.ExpandWidth(true));
+        EditorGUI.DrawRect(rect, color);
+        var titleStyle = new GUIStyle(EditorStyles.boldLabel);
+        titleStyle.normal.textColor = Color.white;
+        titleStyle.alignment = TextAnchor.MiddleLeft;
+        GUI.Label(new Rect(rect.x + 8f, rect.y, rect.width - 16f, rect.height), title, titleStyle);
+        if (!string.IsNullOrEmpty(subtitle))
+            EditorGUILayout.LabelField(subtitle, EditorStyles.wordWrappedMiniLabel);
     }
     private void UpdateTargetsKeyCache()
     {
@@ -117,12 +152,6 @@ public class EventSOEditor : Editor
         return element;
     }
 
-    private static void EnsureEventStepElements(SerializedProperty arrayProp)
-    {
-        if (arrayProp == null || !arrayProp.isArray) return;
-        for (int i = 0; i < arrayProp.arraySize; i++) EnsureEventStepElement(arrayProp, i);
-    }
-
     private T GetFieldValue<T>(object obj, string fieldName) where T : class
     {
         if (obj == null) return null;
@@ -151,7 +180,8 @@ public class EventSOEditor : Editor
             "IsScenes",
             "IsSound","IsFadePlay",
             "IsCameras",
-            "IsCursorVisible","IsChoice","IsAction"
+            "IsCursorVisible","IsChoice","IsAction",
+            "IsTooltip"
         };
         string[] topFlagLabels = {
             "Set Globals",
@@ -163,7 +193,8 @@ public class EventSOEditor : Editor
             "Scenes (Active/Change/Add/Off/Pause/UnPause)",
             "Sound","Fade Play",
             "Cameras (Move/Aim)",
-            "Cursor","Choice","Action"
+            "Cursor","Choice","Action",
+            "Tooltip"
         };
 
         int mask = 0;
@@ -182,6 +213,9 @@ public class EventSOEditor : Editor
                 p.boolValue = (newMask & (1 << fi)) != 0;
             }
             flagsProp.serializedObject.ApplyModifiedProperties();
+            Repaint();
+            GUIUtility.ExitGUI();
+            return;
         }
 
         DrawSetGlobalsCustom(flagsProp, stepProp, "IsSetGlobals", "SetGlobals");
@@ -198,7 +232,82 @@ public class EventSOEditor : Editor
         DrawFlagAndData(flagsProp, stepProp, "IsCursorVisible", "Cursor");
         DrawChoiceCustom(flagsProp, stepProp, "IsChoice", "Choice");
         DrawFlagAndData(flagsProp, stepProp, "IsAction", "Action");
+        DrawTooltipCustom(flagsProp, stepProp);
         // IsEventExe는 DrawStepContent에서 직접 그리지 않음 ? Phase 체인 UI가 처리
+    }
+
+    private void DrawTooltipCustom(SerializedProperty flagsProp, SerializedProperty stepProp)
+    {
+        SerializedProperty flag = flagsProp.FindPropertyRelative("IsTooltip");
+        if (flag == null || !flag.boolValue) return;
+
+        const string dataName = "Tooltip";
+        string dataKey = stepProp.propertyPath + "." + dataName;
+        if (drawnDataKeys.Contains(dataKey)) return;
+        drawnDataKeys.Add(dataKey);
+
+        SerializedProperty dataProp = stepProp.FindPropertyRelative(dataName);
+        if (dataProp == null) return;
+
+        string foldKey = BuildKey(stepProp.propertyPath, "." + dataName);
+        if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
+        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], dataName, true);
+        if (!masterFoldouts[foldKey]) return;
+
+        SerializedProperty contentProp = dataProp.FindPropertyRelative("Content");
+        SerializedProperty durationProp = dataProp.FindPropertyRelative("Duration");
+        SerializedProperty blockedProp = dataProp.FindPropertyRelative("isBlocked");
+        SerializedProperty isRelativeProp = dataProp.FindPropertyRelative("IsRelative");
+        SerializedProperty centerObjectProp = dataProp.FindPropertyRelative("CenterObject");
+        SerializedProperty positionProp = dataProp.FindPropertyRelative("Position");
+
+        EditorGUILayout.BeginVertical("box");
+        if (contentProp != null)
+            EditorGUILayout.PropertyField(contentProp, new GUIContent("Content"));
+
+        if (isRelativeProp != null)
+            EditorGUILayout.PropertyField(isRelativeProp, new GUIContent("Is Relative"));
+
+        bool isRelative = isRelativeProp != null && isRelativeProp.boolValue;
+        if (isRelative && centerObjectProp != null)
+        {
+            EditorGUILayout.LabelField("Center Object Name (기준 오브젝트)");
+            EditorGUILayout.PropertyField(centerObjectProp, GUIContent.none);
+        }
+
+        if (positionProp != null)
+        {
+            string positionLabel = isRelative
+                ? "Offset (World Right=X, Up=Y)"
+                : "Position (Canvas X/Y, Center = 0,0)";
+            EditorGUILayout.PropertyField(positionProp, new GUIContent(positionLabel));
+        }
+
+        EditorGUILayout.HelpBox(
+            isRelative
+                ? "기준 오브젝트 위치에 Right×X + Up×Y 월드 오프셋을 더한 뒤, 매 프레임 실제 표시 카메라 기준의 UI 위치로 변환합니다. 이름이나 경로를 찾지 못하면 Position을 화면 중앙 기준 절대 좌표로 사용합니다."
+                : "화면 중앙을 (0,0)으로 하는 Canvas X/Y 절대 좌표입니다.",
+            MessageType.Info);
+
+        if (blockedProp != null)
+            EditorGUILayout.PropertyField(
+                blockedProp,
+                new GUIContent("Is Blocked", "켜면 시간 제한 없이 다음 키보드 키 또는 마우스 버튼 입력까지 기다립니다."));
+
+        bool isBlocked = blockedProp != null && blockedProp.boolValue;
+        EditorGUI.BeginDisabledGroup(isBlocked);
+        if (durationProp != null)
+            EditorGUILayout.PropertyField(
+                durationProp,
+                new GUIContent("Duration", "Is Blocked가 꺼져 있을 때 Tooltip을 표시할 시간입니다."));
+        EditorGUI.EndDisabledGroup();
+
+        EditorGUILayout.HelpBox(
+            isBlocked
+                ? "키보드 키 또는 마우스 버튼 입력이 들어오면 다음 Phase로 진행합니다. Duration 값은 변경하지 않고 보존합니다."
+                : "Duration이 끝나면 자동으로 다음 Phase로 진행합니다.",
+            MessageType.Info);
+        EditorGUILayout.EndVertical();
     }
 
     private void DrawConditionStepsArray(SerializedProperty stepsArrayProp, string keySuffix, bool useCondition, SerializedProperty useCondToggleProp, SerializedProperty conditionsArrayProp)
@@ -207,46 +316,76 @@ public class EventSOEditor : Editor
 
         if (!useCondition)
         {
-            if (stepsArrayProp.arraySize < 1) stepsArrayProp.arraySize = 1;
-            var stepProp = EnsureEventStepElement(stepsArrayProp, 0);
-            if (stepProp == null) return;
-            DrawPhaseList(stepProp, keySuffix, useCondToggleProp);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            DrawSectionBanner("EVENT", "수동 PlayEvent 호출 시 실행할 연출입니다.", new Color(0.18f, 0.46f, 0.29f, 1f));
+            if (stepsArrayProp.arraySize < 1)
+            {
+                EditorGUILayout.HelpBox("실행할 Event Step이 없습니다.", MessageType.Warning);
+                if (GUILayout.Button("+ Add Manual Event"))
+                {
+                    stepsArrayProp.arraySize = 1;
+                    EnsureEventStepElement(stepsArrayProp, 0);
+                }
+                EditorGUILayout.EndVertical();
+                return;
+            }
+            var stepProp = stepsArrayProp.GetArrayElementAtIndex(0);
+            if (stepProp != null &&
+                stepProp.propertyType == SerializedPropertyType.ManagedReference &&
+                stepProp.managedReferenceValue == null)
+            {
+                EditorGUILayout.HelpBox("Manual Event 데이터가 비어 있습니다. 표시만으로는 데이터를 변경하지 않습니다.", MessageType.Warning);
+                if (GUILayout.Button("Repair Manual Event"))
+                    stepProp.managedReferenceValue = new EventSO.EventStep();
+            }
+            else if (stepProp != null)
+            {
+                DrawPhaseList(stepProp, keySuffix, null);
+            }
+            EditorGUILayout.EndVertical();
             return;
         }
 
-        // useCondition == true: Conditions + ConditionSteps 두 블록
+        // Condition과 Event Step을 서로 다른 카드로 분리하여 매핑 관계를 명확히 표시한다.
         string key = BuildKey(string.IsNullOrEmpty(keySuffix) ? "ConditionStepsArray" : $"ConditionStepsArray_{keySuffix}");
-        if (!masterFoldouts.TryGetValue(key, out _)) masterFoldouts[key] = true;
+
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        DrawSectionBanner("WHEN · CONDITIONS", "어떤 조건에서 실행할지 설정합니다. 각 Condition은 같은 번호의 Event Step과 연결됩니다.", new Color(0.18f, 0.39f, 0.68f, 1f));
+        if (conditionsArrayProp != null)
+            DrawConditionsArrayTop(conditionsArrayProp, keySuffix);
+        EditorGUILayout.EndVertical();
+
+        EditorGUILayout.Space(8);
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        DrawSectionBanner("THEN · EVENT STEPS", "조건이 참일 때 실행할 연출입니다. 이 영역은 위 Condition 카드의 자식이 아닙니다.", new Color(0.18f, 0.50f, 0.30f, 1f));
 
         EditorGUILayout.BeginHorizontal();
-        masterFoldouts[key] = EditorGUILayout.Foldout(masterFoldouts[key], "ConditionSteps (array)", true);
-        GUILayout.FlexibleSpace();
-        if (useCondToggleProp != null)
+        EditorGUILayout.LabelField("Event Steps", EditorStyles.boldLabel, GUILayout.Width(90));
+        int oldSize = stepsArrayProp.arraySize;
+        int newSize = EditorGUILayout.IntField(oldSize, GUILayout.Width(60));
+        if (newSize != oldSize)
         {
-            bool newUseCond = GUILayout.Toggle(true, "Condition", "Button", GUILayout.Width(70));
-            if (!newUseCond) { useCondToggleProp.boolValue = false; useCondToggleProp.serializedObject.ApplyModifiedProperties(); }
+            stepsArrayProp.arraySize = Mathf.Max(0, newSize);
+            for (int i = oldSize; i < stepsArrayProp.arraySize; i++)
+                EnsureEventStepElement(stepsArrayProp, i);
+        }
+        if (GUILayout.Button("+", GUILayout.Width(22)))
+        {
+            int index = stepsArrayProp.arraySize++;
+            EnsureEventStepElement(stepsArrayProp, index);
+        }
+        if (GUILayout.Button("-", GUILayout.Width(22))) { if (stepsArrayProp.arraySize > 0) stepsArrayProp.arraySize--; }
+        GUILayout.Space(8);
+        if (GUILayout.Button("Add Event Step", GUILayout.Width(110)))
+        {
+            int index = stepsArrayProp.arraySize++;
+            EnsureEventStepElement(stepsArrayProp, index);
         }
         EditorGUILayout.EndHorizontal();
 
-        if (!masterFoldouts[key]) return;
-
-        EditorGUILayout.BeginVertical("box");
-
-        // Conditions 배열
-        if (conditionsArrayProp != null)
-            DrawConditionsArrayTop(conditionsArrayProp, keySuffix);
-
-        // ConditionSteps 배열 ? 각 Step[i]는 Conditions[i]에 대응 (형제)
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Size", GUILayout.Width(40));
-        int newSize = EditorGUILayout.IntField(stepsArrayProp.arraySize, GUILayout.Width(60));
-        if (newSize != stepsArrayProp.arraySize) stepsArrayProp.arraySize = Mathf.Max(0, newSize);
-        if (GUILayout.Button("+", GUILayout.Width(22))) stepsArrayProp.arraySize++;
-        if (GUILayout.Button("-", GUILayout.Width(22))) { if (stepsArrayProp.arraySize > 0) stepsArrayProp.arraySize--; }
-        GUILayout.Space(8);
-        if (GUILayout.Button("Add Step", GUILayout.Width(80))) stepsArrayProp.arraySize++;
-        EditorGUILayout.EndHorizontal();
-        EnsureEventStepElements(stepsArrayProp);
+        int conditionCount = conditionsArrayProp != null ? conditionsArrayProp.arraySize : 0;
+        if (stepsArrayProp.arraySize < conditionCount)
+            EditorGUILayout.HelpBox("일부 Condition에 연결된 Event Step이 없습니다. 같은 번호의 Event Step을 추가해 주세요.", MessageType.Warning);
 
         if (!elementFoldouts.TryGetValue(key, out _)) elementFoldouts[key] = new List<bool>();
         if (!itemHeaderRects.TryGetValue(key, out _)) itemHeaderRects[key] = new List<Rect>();
@@ -257,15 +396,25 @@ public class EventSOEditor : Editor
 
         for (int i = 0; i < stepsArrayProp.arraySize; i++)
         {
-            var stepProp = EnsureEventStepElement(stepsArrayProp, i); if (stepProp == null) continue;
-            EditorGUILayout.BeginVertical("box");
+            var stepProp = stepsArrayProp.GetArrayElementAtIndex(i); if (stepProp == null) continue;
+            Color oldBackground = GUI.backgroundColor;
+            GUI.backgroundColor = i < conditionCount
+                ? new Color(0.72f, 1f, 0.78f, 1f)
+                : new Color(1f, 0.88f, 0.62f, 1f);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            GUI.backgroundColor = oldBackground;
             Rect headerRect = GUILayoutUtility.GetRect(1, EditorGUIUtility.singleLineHeight);
             float rightButtonsWidth = 170f; float handleW = 18f; float pad = 6f;
             Rect handleRect = new Rect(headerRect.x, headerRect.y, handleW, headerRect.height);
             GUI.Label(handleRect, "=");
             if (Event.current.type == EventType.MouseDown && handleRect.Contains(Event.current.mousePosition)) { dragInProgress = true; dragActiveKey = key; dragFromIndex = i; dragToIndex = i; Event.current.Use(); }
             Rect labelRect = new Rect(handleRect.xMax + pad, headerRect.y, headerRect.width - (handleW + pad + rightButtonsWidth), headerRect.height);
-            folds[i] = EditorGUI.Foldout(labelRect, folds[i], $"Step [{i}]", true);
+            string stepLabel = i < conditionCount
+                ? $"Event Step {i + 1}  ←  Condition {i + 1}"
+                : i == conditionCount
+                    ? "Else Event  ·  수동 PlayEvent의 조건 불일치 때만 실행"
+                    : $"Unmapped Event Step {i + 1}";
+            folds[i] = EditorGUI.Foldout(labelRect, folds[i], stepLabel, true);
             EditorGUILayout.BeginHorizontal(); GUILayout.FlexibleSpace();
             var assetInstance = stepsArrayProp.serializedObject.targetObject as EventSO;
             bool canUseElemClipboard = assetInstance != null;
@@ -279,9 +428,20 @@ public class EventSOEditor : Editor
             if (GUILayout.Button("X", GUILayout.Width(22))) { stepsArrayProp.DeleteArrayElementAtIndex(i); EditorGUILayout.EndHorizontal(); EditorGUILayout.EndVertical(); break; }
             EditorGUILayout.EndHorizontal();
             itemHeaderRects[key].Add(headerRect);
-            // 각 Step[i]는 Phase 체인을 가짐 (자식 관계, Condition 없음)
-            if (folds[i]) DrawPhaseList(stepProp, $"{keySuffix}_Step{i}", null);
+            bool missingManagedStep = stepProp.propertyType == SerializedPropertyType.ManagedReference &&
+                                      stepProp.managedReferenceValue == null;
+            if (folds[i] && missingManagedStep)
+            {
+                EditorGUILayout.HelpBox("Event Step 데이터가 비어 있습니다. 표시만으로는 데이터를 변경하지 않습니다.", MessageType.Warning);
+                if (GUILayout.Button("Repair Event Step"))
+                    stepProp.managedReferenceValue = new EventSO.EventStep();
+            }
+            else if (folds[i])
+            {
+                DrawPhaseList(stepProp, $"{keySuffix}_Step{i}", null);
+            }
             EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(3);
         }
         HandleReorderDrag(stepsArrayProp, key);
         EditorGUILayout.EndVertical();
@@ -314,13 +474,18 @@ public class EventSOEditor : Editor
             masterFoldouts[phaseKey] = EditorGUILayout.Foldout(masterFoldouts[phaseKey], $"Phase {pi + 1}", true);
             GUILayout.FlexibleSpace();
 
-            // Condition 버튼
+            // Phase 실행 방식: 클릭할 때 None ↔ Condition으로 명확하게 전환한다.
             var useCondProp = isFirst ? topUseCondToggleProp : node.UseCondProp;
             if (useCondProp != null)
             {
                 bool curCond = useCondProp.boolValue;
-                bool newCond = GUILayout.Toggle(curCond, "Condition", "Button", GUILayout.Width(70));
-                if (newCond != curCond) { useCondProp.boolValue = newCond; useCondProp.serializedObject.ApplyModifiedProperties(); }
+                int newMode = GUILayout.Toolbar(curCond ? 1 : 0, new[] { "None", "Condition" }, GUILayout.Width(150));
+                bool newCond = newMode == 1;
+                if (newCond != curCond)
+                {
+                    useCondProp.boolValue = newCond;
+                    useCondProp.serializedObject.ApplyModifiedProperties();
+                }
             }
 
             // X 버튼 (Phase 1 제외)
@@ -373,6 +538,8 @@ public class EventSOEditor : Editor
 
             EditorGUILayout.EndVertical();
         }
+
+        DrawBrokenNextPhaseRepair(steps[steps.Count - 1]);
 
         // "+ Next Phase" 버튼
         var lastNode = steps[steps.Count - 1];
@@ -428,11 +595,12 @@ public class EventSOEditor : Editor
             var useCond = exe.FindPropertyRelative("UseCondition");
             var conds = exe.FindPropertyRelative("Conditions");
             var condSteps = exe.FindPropertyRelative("ConditionSteps");
-            if (condSteps == null) break;
-            if (condSteps.arraySize < 1) condSteps.arraySize = 1;
+            if (condSteps == null || condSteps.arraySize < 1) break;
 
-            var nextStep = EnsureEventStepElement(condSteps, 0);
-            if (nextStep == null) break;
+            var nextStep = condSteps.GetArrayElementAtIndex(0);
+            if (nextStep == null ||
+                (nextStep.propertyType == SerializedPropertyType.ManagedReference &&
+                 nextStep.managedReferenceValue == null)) break;
 
             result.Add(new PhaseNode
             {
@@ -1195,18 +1363,76 @@ public class EventSOEditor : Editor
         if (condsArrayProp == null) return;
         string key = BuildKey(string.IsNullOrEmpty(keySuffix) ? "ConditionsArray" : $"ConditionsArray_{keySuffix}");
         if (!masterFoldouts.TryGetValue(key, out _)) masterFoldouts[key] = true;
-        masterFoldouts[key] = EditorGUILayout.Foldout(masterFoldouts[key], "Conditions (array)", true);
+        masterFoldouts[key] = EditorGUILayout.Foldout(masterFoldouts[key], $"Condition Branches ({condsArrayProp.arraySize})", true);
         if (!masterFoldouts[key]) return;
-        EditorGUILayout.BeginVertical("box");
+
         EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Size", GUILayout.Width(40));
-        int newSize = EditorGUILayout.IntField(condsArrayProp.arraySize, GUILayout.Width(60));
-        if (newSize != condsArrayProp.arraySize) condsArrayProp.arraySize = Mathf.Max(0, newSize);
-        if (GUILayout.Button("+", GUILayout.Width(22))) condsArrayProp.arraySize++;
-        if (GUILayout.Button("-", GUILayout.Width(22))) { if (condsArrayProp.arraySize > 0) condsArrayProp.arraySize--; }
+        GUILayout.FlexibleSpace();
+        if (GUILayout.Button("+ Add Condition", GUILayout.Width(120)))
+        {
+            int index = condsArrayProp.arraySize;
+            condsArrayProp.arraySize++;
+            SerializedProperty added = condsArrayProp.GetArrayElementAtIndex(index);
+            SerializedProperty checks = added?.FindPropertyRelative("Checks");
+            SerializedProperty seconds = added?.FindPropertyRelative("TimeCountSeconds");
+            SerializedProperty values = added?.FindPropertyRelative("Conditions");
+            if (checks != null) checks.intValue = (int)EventSO.ConditionChecks.CheckValue;
+            if (seconds != null) seconds.floatValue = 0f;
+            if (values != null) values.arraySize = 0;
+        }
         EditorGUILayout.EndHorizontal();
-        for (int i = 0; i < condsArrayProp.arraySize; i++) { var elem = condsArrayProp.GetArrayElementAtIndex(i); if (elem == null) continue; DrawConditionGroupElement(elem, $"Conditions[{i}]"); }
-        EditorGUILayout.EndVertical();
+
+        if (condsArrayProp.arraySize == 0)
+            EditorGUILayout.HelpBox("Condition이 없습니다. 자동 실행하려면 Condition을 추가하세요.", MessageType.Warning);
+
+        for (int i = 0; i < condsArrayProp.arraySize; i++)
+        {
+            SerializedProperty elem = condsArrayProp.GetArrayElementAtIndex(i);
+            if (elem == null) continue;
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField($"Condition {i + 1}", EditorStyles.boldLabel);
+            if (GUILayout.Button("X", GUILayout.Width(24)))
+            {
+                condsArrayProp.DeleteArrayElementAtIndex(i);
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.EndVertical();
+                break;
+            }
+            EditorGUILayout.EndHorizontal();
+            DrawConditionGroupElement(elem, elem.propertyPath);
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(3);
+        }
+    }
+
+    private void DrawBrokenNextPhaseRepair(PhaseNode lastNode)
+    {
+        SerializedProperty flags = lastNode.StepProp?.FindPropertyRelative("Flags");
+        SerializedProperty isEventExe = flags?.FindPropertyRelative("IsEventExe");
+        if (isEventExe == null || !isEventExe.boolValue) return;
+
+        SerializedProperty eventExe = lastNode.StepProp.FindPropertyRelative("EventExe");
+        SerializedProperty conditionSteps = eventExe?.FindPropertyRelative("ConditionSteps");
+        bool needsRepair = conditionSteps == null || conditionSteps.arraySize == 0;
+        if (!needsRepair && conditionSteps != null)
+        {
+            SerializedProperty next = conditionSteps.GetArrayElementAtIndex(0);
+            needsRepair = next != null &&
+                          next.propertyType == SerializedPropertyType.ManagedReference &&
+                          next.managedReferenceValue == null;
+        }
+
+        if (!needsRepair) return;
+
+        EditorGUILayout.HelpBox("Next Phase가 활성화되어 있지만 Phase 데이터가 비어 있습니다. 표시만으로는 데이터를 변경하지 않습니다.", MessageType.Warning);
+        if (conditionSteps != null && GUILayout.Button("Repair Next Phase"))
+        {
+            if (conditionSteps.arraySize < 1) conditionSteps.arraySize = 1;
+            EnsureEventStepElement(conditionSteps, 0);
+            conditionSteps.serializedObject.ApplyModifiedProperties();
+        }
     }
 
     private void DrawConditionGroupElement(SerializedProperty condGroupProp, string label)
@@ -1214,34 +1440,115 @@ public class EventSOEditor : Editor
         if (condGroupProp == null) return;
         string key = BuildKey(condGroupProp.propertyPath);
         if (!masterFoldouts.TryGetValue(key, out _)) masterFoldouts[key] = true;
-        masterFoldouts[key] = EditorGUILayout.Foldout(masterFoldouts[key], label, true);
+        masterFoldouts[key] = EditorGUILayout.Foldout(masterFoldouts[key], "Condition Settings", true);
         if (!masterFoldouts[key]) return;
-        EditorGUILayout.BeginVertical("box");
+
+        SerializedProperty checksProp = condGroupProp.FindPropertyRelative("Checks");
+        SerializedProperty secondsProp = condGroupProp.FindPropertyRelative("TimeCountSeconds");
+        SerializedProperty collisionAProp = condGroupProp.FindPropertyRelative("CollisionObjectA");
+        SerializedProperty collisionBProp = condGroupProp.FindPropertyRelative("CollisionObjectB");
         var condsProp = condGroupProp.FindPropertyRelative("Conditions");
-        if (condsProp == null) { EditorGUILayout.LabelField("No Conditions field found."); EditorGUILayout.EndVertical(); return; }
-        DrawConditionsArrayInline(condsProp, condGroupProp.propertyPath + ".Conditions");
-        EditorGUILayout.EndVertical();
+        if (checksProp == null || condsProp == null)
+        {
+            EditorGUILayout.HelpBox("Condition 데이터를 읽을 수 없습니다.", MessageType.Error);
+            return;
+        }
+
+        int checksMask = checksProp.intValue;
+        int newMask = EditorGUILayout.MaskField(
+            "Condition Checks",
+            checksMask,
+            new[] { "Check Value", "Time Count", "A ↔ B Collision" });
+        if (newMask != checksMask)
+        {
+            checksProp.intValue = newMask;
+            checksProp.serializedObject.ApplyModifiedProperties();
+            Repaint();
+            GUIUtility.ExitGUI();
+            return;
+        }
+
+        bool checkValue = (newMask & (int)EventSO.ConditionChecks.CheckValue) != 0;
+        bool timeCount = (newMask & (int)EventSO.ConditionChecks.TimeCount) != 0;
+        bool collisionAB = (newMask & (int)EventSO.ConditionChecks.CollisionAB) != 0;
+        if (!checkValue && !timeCount && !collisionAB)
+            EditorGUILayout.HelpBox(
+                "Nothing: 별도 조건을 검사하지 않고 이 Condition의 Event Step을 즉시 실행합니다.",
+                MessageType.Info);
+
+        if (checkValue)
+        {
+            EditorGUILayout.Space(3);
+            EditorGUILayout.LabelField("CHECK VALUE", EditorStyles.miniBoldLabel);
+            DrawConditionsArrayInline(condsProp, condGroupProp.propertyPath + ".Conditions");
+        }
+
+        if (timeCount && secondsProp != null)
+        {
+            EditorGUILayout.Space(5);
+            EditorGUILayout.LabelField("TIME COUNT", EditorStyles.miniBoldLabel);
+            EditorGUILayout.PropertyField(secondsProp, new GUIContent("Seconds After Game Start"));
+            if (secondsProp.floatValue < 0f)
+                EditorGUILayout.HelpBox("시간은 0초 이상이어야 합니다. 런타임에서는 음수를 0초로 처리합니다.", MessageType.Warning);
+        }
+
+        if (collisionAB)
+        {
+            EditorGUILayout.Space(5);
+            EditorGUILayout.LabelField("A ↔ B COLLISION", EditorStyles.miniBoldLabel);
+            if (collisionAProp != null)
+                EditorGUILayout.PropertyField(collisionAProp, new GUIContent("Object A (Name / Path)"));
+            if (collisionBProp != null)
+                EditorGUILayout.PropertyField(collisionBProp, new GUIContent("Object B (Name / Path)"));
+            EditorGUILayout.HelpBox(
+                "3D/2D의 Collision 또는 Trigger에서 A와 B가 접촉하면 참이 됩니다. " +
+                "짧게 접촉해도 이번 Play의 해당 오브젝트 생명주기 동안 기억합니다.",
+                MessageType.Info);
+
+            string objectA = collisionAProp?.stringValue?.Trim() ?? string.Empty;
+            string objectB = collisionBProp?.stringValue?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(objectA) || string.IsNullOrEmpty(objectB))
+                EditorGUILayout.HelpBox("Object A와 Object B를 모두 입력해야 합니다.", MessageType.Warning);
+            else if (string.Equals(objectA, objectB, StringComparison.Ordinal))
+                EditorGUILayout.HelpBox("Object A와 Object B는 서로 다른 오브젝트여야 합니다.", MessageType.Warning);
+        }
+
+        int selectedCheckCount = (checkValue ? 1 : 0) + (timeCount ? 1 : 0) + (collisionAB ? 1 : 0);
+        if (selectedCheckCount > 1)
+            EditorGUILayout.HelpBox("선택한 조건을 모두 만족해야 이 Condition이 실행됩니다. (AND)", MessageType.Info);
     }
 
     private void DrawConditionsArrayInline(SerializedProperty condsProp, string baseKey)
     {
         if (condsProp == null) return;
         EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Size", GUILayout.Width(40));
-        int newSize = EditorGUILayout.IntField(condsProp.arraySize, GUILayout.Width(60));
-        if (newSize != condsProp.arraySize) condsProp.arraySize = Mathf.Max(0, newSize);
-        if (GUILayout.Button("+", GUILayout.Width(22))) condsProp.arraySize++;
-        if (GUILayout.Button("-", GUILayout.Width(22))) { if (condsProp.arraySize > 0) condsProp.arraySize--; }
+        EditorGUILayout.LabelField($"Values ({condsProp.arraySize})", EditorStyles.miniBoldLabel);
+        GUILayout.FlexibleSpace();
+        if (GUILayout.Button("+ Add Value", GUILayout.Width(90))) condsProp.arraySize++;
         EditorGUILayout.EndHorizontal();
+
+        if (condsProp.arraySize == 0)
+            EditorGUILayout.HelpBox("Check Value가 선택됐지만 비교할 값이 없습니다.", MessageType.Warning);
+
         for (int ci = 0; ci < condsProp.arraySize; ci++)
         {
             var condElem = condsProp.GetArrayElementAtIndex(ci); if (condElem == null) continue;
-            EditorGUILayout.BeginVertical("box"); EditorGUILayout.LabelField($"Condition [{ci}]", EditorStyles.miniBoldLabel);
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField($"Value {ci + 1}", EditorStyles.miniBoldLabel);
+            if (GUILayout.Button("X", GUILayout.Width(22)))
+            {
+                condsProp.DeleteArrayElementAtIndex(ci);
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.EndVertical();
+                break;
+            }
+            EditorGUILayout.EndHorizontal();
             var nameProp = condElem.FindPropertyRelative("GlobalNames"); var valueTypeProp = condElem.FindPropertyRelative("valueType"); var prefProp = condElem.FindPropertyRelative("isPlayerPrefData"); var checkTypeProp = condElem.FindPropertyRelative("checkType");
             if (nameProp != null) EditorGUILayout.PropertyField(nameProp, new GUIContent("Global Key"));
             if (checkTypeProp != null) EditorGUILayout.PropertyField(checkTypeProp, new GUIContent("Check Type"));
             int ct = checkTypeProp != null ? checkTypeProp.enumValueIndex : 0;
-            if (ct != 0) { if (valueTypeProp != null && valueTypeProp.enumValueIndex != 0) valueTypeProp.enumValueIndex = 0; EditorGUI.BeginDisabledGroup(true); EditorGUILayout.Popup("Value Type", 0, new[] { "Int" }); EditorGUI.EndDisabledGroup(); EditorGUILayout.HelpBox("Odd/Even은 Int 전용이며 기대값 입력이 필요 없습니다.", MessageType.Info); }
+            if (ct != 0) { EditorGUI.BeginDisabledGroup(true); EditorGUILayout.Popup("Value Type", 0, new[] { "Int" }); EditorGUI.EndDisabledGroup(); EditorGUILayout.HelpBox("Odd/Even은 Int 전용이며 기대값 입력이 필요 없습니다.", MessageType.Info); }
             else { if (valueTypeProp != null) EditorGUILayout.PropertyField(valueTypeProp, new GUIContent("Value Type")); int vt = valueTypeProp != null ? valueTypeProp.enumValueIndex : 1; switch (vt) { case 0: var ep = condElem.FindPropertyRelative("ExpectedInt"); if (ep != null) EditorGUILayout.PropertyField(ep, new GUIContent("Expected Int")); break; case 1: var fp = condElem.FindPropertyRelative("ExpectedFloat"); if (fp != null) EditorGUILayout.PropertyField(fp, new GUIContent("Expected Float")); break; case 2: var bp = condElem.FindPropertyRelative("ExpectedBool"); if (bp != null) EditorGUILayout.PropertyField(bp, new GUIContent("Expected Bool")); break; case 3: var sp = condElem.FindPropertyRelative("ExpectedString"); if (sp != null) EditorGUILayout.PropertyField(sp, new GUIContent("Expected String")); break; case 4: var gp = condElem.FindPropertyRelative("ExpectedGameObject"); if (gp != null) EditorGUILayout.PropertyField(gp, new GUIContent("Expected GameObject")); break; } }
             bool isGameObjectCondition = valueTypeProp != null && valueTypeProp.enumValueIndex == (int)EventSO.ValueType.GameObject;
             if (prefProp != null)

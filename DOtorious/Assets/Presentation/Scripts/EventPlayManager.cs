@@ -17,6 +17,7 @@ namespace JYW.Game.EventPlay
         [SerializeField] private GameObject softSpeechPrefab;
         [SerializeField] private GameObject hardSpeechPrefab;
         [SerializeField] private GameObject memoPrefab;
+        [SerializeField] private GameObject tooltipPrefab;
         [SerializeField] private GameObject eventCamera;
         [SerializeField] private GameObject choiceCanvasPrefab;
         [SerializeField] private GameObject choiceContentsPrefab;
@@ -63,11 +64,27 @@ namespace JYW.Game.EventPlay
         private float eventCameraPrevDepth = 0f;
         private bool eventCameraDepthStored = false;
 
+        private GameObject activeTooltipObject = null;
+        private TooltipData activeTooltipData = null;
+        private GameObject activeTooltipCenterObject = null;
+        private Camera[] tooltipCameraBuffer = Array.Empty<Camera>();
+
         private readonly Dictionary<string, List<GameObject>> pausedSceneRoots = new Dictionary<string, List<GameObject>>();
 
         private readonly Dictionary<string, GameObject> cachedObjectsByName = new Dictionary<string, GameObject>();
 
         private readonly HashSet<GameObject> cachedObjectsSet = new HashSet<GameObject>();
+
+        private sealed class CollisionBinding
+        {
+            public string LocatorA;
+            public string LocatorB;
+            public GameObject ObjectA;
+            public GameObject ObjectB;
+        }
+
+        private readonly Dictionary<EventSO.ConditionGroupData, CollisionBinding> collisionBindings =
+            new Dictionary<EventSO.ConditionGroupData, CollisionBinding>();
 
         private sealed class EventContext
         {
@@ -139,6 +156,26 @@ namespace JYW.Game.EventPlay
             // 비활성화된 MonoBehaviour의 코루틴은 다시 활성화해도 재개되지 않는다.
             // 추적 상태와 UI/Lock 정리가 영구 고착되지 않도록 즉시 취소한다.
             CancelAllRunningEvents();
+        }
+
+        private void LateUpdate()
+        {
+            if (activeTooltipObject == null || activeTooltipData == null ||
+                !activeTooltipObject.activeInHierarchy)
+            {
+                ClearTooltipTracking();
+                return;
+            }
+
+            if (activeTooltipData.IsRelative && activeTooltipCenterObject == null &&
+                !string.IsNullOrWhiteSpace(activeTooltipData.CenterObject))
+                activeTooltipCenterObject = ResolveByName(activeTooltipData.CenterObject);
+
+            ApplyTooltipPosition(
+                activeTooltipObject,
+                activeTooltipData,
+                activeTooltipCenterObject,
+                false);
         }
 
 
@@ -353,6 +390,36 @@ namespace JYW.Game.EventPlay
             return true;
         }
 
+        internal bool TryPlayCapturedEventIfIdle(
+            EventSO eventSO,
+            GameObject caller,
+            EventSO.EventStep capturedStep)
+        {
+            if (eventSO == null || capturedStep == null || !isActiveAndEnabled ||
+                !gameObject.activeInHierarchy || HasRunningEvents)
+                return false;
+
+            var pair = (eventSO, caller);
+            if (runningEventPairs.Contains(pair)) return false;
+
+            var context = new EventContext();
+            runningEventPairs.Add(pair);
+            runningContexts[pair] = context;
+
+            var coroutine = StartCoroutine(
+                ProcessEventConcurrently(eventSO, capturedStep, Time.time, caller, context)
+            );
+            if (coroutine != null && runningEventPairs.Contains(pair) &&
+                runningContexts.TryGetValue(pair, out var activeContext) &&
+                ReferenceEquals(activeContext, context))
+            {
+                runningCoroutines[pair] = coroutine;
+                context.RegisterCoroutine(coroutine);
+            }
+
+            return true;
+        }
+
         private void CancelAllRunningEvents()
         {
             if (runningContexts.Count == 0 && runningCoroutines.Count == 0) return;
@@ -384,7 +451,32 @@ namespace JYW.Game.EventPlay
 
         private bool EvaluateConditionGroup(EventSO.ConditionGroupData condGroup, GameObject caller)
         {
-            if (condGroup == null || condGroup.Conditions == null || condGroup.Conditions.Length == 0)
+            if (condGroup == null)
+                return false;
+
+            EventSO.ConditionChecks checks = condGroup.Checks;
+            if (checks == EventSO.ConditionChecks.None) return true;
+
+            bool selectedChecksPass = true;
+
+            if ((checks & EventSO.ConditionChecks.TimeCount) != 0)
+            {
+                double requiredSeconds = Math.Max(0d, condGroup.TimeCountSeconds);
+                if (Time.timeAsDouble < requiredSeconds) selectedChecksPass = false;
+            }
+
+            if ((checks & EventSO.ConditionChecks.CollisionAB) != 0)
+            {
+                ResolveCollisionObjects(condGroup, out GameObject objectA, out GameObject objectB);
+                if (objectA == null || objectB == null || objectA == objectB ||
+                    !EventCollisionTracker.HasCollided(objectA, objectB))
+                    selectedChecksPass = false;
+            }
+
+            if ((checks & EventSO.ConditionChecks.CheckValue) == 0)
+                return selectedChecksPass;
+
+            if (condGroup.Conditions == null || condGroup.Conditions.Length == 0)
                 return false;
 
             bool allMatch = true;
@@ -459,7 +551,139 @@ namespace JYW.Game.EventPlay
                 if (!pass) { allMatch = false; break; }
             }
 
-            return allMatch;
+            return allMatch && selectedChecksPass;
+        }
+
+        private void ResolveCollisionObjects(
+            EventSO.ConditionGroupData condition,
+            out GameObject objectA,
+            out GameObject objectB)
+        {
+            objectA = null;
+            objectB = null;
+            if (condition == null) return;
+
+            string locatorA = condition.CollisionObjectA?.Trim() ?? string.Empty;
+            string locatorB = condition.CollisionObjectB?.Trim() ?? string.Empty;
+            if (!collisionBindings.TryGetValue(condition, out CollisionBinding binding))
+            {
+                binding = new CollisionBinding();
+                collisionBindings.Add(condition, binding);
+            }
+
+            if (!string.Equals(binding.LocatorA, locatorA, StringComparison.Ordinal))
+            {
+                binding.LocatorA = locatorA;
+                binding.ObjectA = null;
+            }
+            if (!string.Equals(binding.LocatorB, locatorB, StringComparison.Ordinal))
+            {
+                binding.LocatorB = locatorB;
+                binding.ObjectB = null;
+            }
+
+            if (binding.ObjectA == null && !string.IsNullOrEmpty(locatorA))
+                binding.ObjectA = ResolveByName(locatorA);
+            if (binding.ObjectB == null && !string.IsNullOrEmpty(locatorB))
+                binding.ObjectB = ResolveByName(locatorB);
+
+            objectA = binding.ObjectA;
+            objectB = binding.ObjectB;
+        }
+
+        internal bool IsAutoConditionReady(EventSO eventSO, GameObject caller)
+        {
+            return TryGetAutoConditionStep(eventSO, caller, out _);
+        }
+
+        internal void ArmCollisionConditions(EventSO eventSO)
+        {
+            if (eventSO == null || eventSO.Conditions == null) return;
+            for (int i = 0; i < eventSO.Conditions.Length; i++)
+            {
+                EventSO.ConditionGroupData condition = eventSO.Conditions[i];
+                if (condition == null ||
+                    (condition.Checks & EventSO.ConditionChecks.CollisionAB) == 0)
+                    continue;
+
+                ResolveCollisionObjects(condition, out GameObject objectA, out GameObject objectB);
+                if (objectA != null && objectB != null && objectA != objectB)
+                    EventCollisionTracker.HasCollided(objectA, objectB);
+            }
+        }
+
+        internal bool TryGetAutoConditionStep(
+            EventSO eventSO,
+            GameObject caller,
+            out EventSO.EventStep capturedStep)
+        {
+            capturedStep = null;
+            if (eventSO == null || !eventSO.UseCondition ||
+                eventSO.Conditions == null || eventSO.Conditions.Length == 0)
+                return false;
+
+            for (int i = 0; i < eventSO.Conditions.Length; i++)
+            {
+                EventSO.ConditionGroupData condition = eventSO.Conditions[i];
+                if (!IsCompleteAutoCondition(condition) || !EvaluateConditionGroup(condition, caller))
+                    continue;
+
+                if (eventSO.ConditionSteps != null && i < eventSO.ConditionSteps.Length)
+                {
+                    capturedStep = eventSO.ConditionSteps[i];
+                    return capturedStep != null;
+                }
+
+                if (eventSO.stepsGroups != null && i < eventSO.stepsGroups.Length)
+                {
+                    EventSO.EventStepGroup group = eventSO.stepsGroups[i];
+                    if (group != null && group.Steps != null && group.Steps.Length > 0)
+                    {
+                        capturedStep = group.Steps[0];
+                        return capturedStep != null;
+                    }
+                }
+
+                return false;
+            }
+
+            return false;
+        }
+
+        private static bool IsCompleteAutoCondition(EventSO.ConditionGroupData condition)
+        {
+            if (condition == null)
+                return false;
+            if (condition.Checks == EventSO.ConditionChecks.None)
+                return true;
+
+            if ((condition.Checks & EventSO.ConditionChecks.CollisionAB) != 0)
+            {
+                if (string.IsNullOrWhiteSpace(condition.CollisionObjectA) ||
+                    string.IsNullOrWhiteSpace(condition.CollisionObjectB) ||
+                    string.Equals(
+                        condition.CollisionObjectA.Trim(),
+                        condition.CollisionObjectB.Trim(),
+                        StringComparison.Ordinal))
+                    return false;
+            }
+
+            if ((condition.Checks & EventSO.ConditionChecks.CheckValue) == 0)
+                return true;
+
+            if (condition.Conditions == null || condition.Conditions.Length == 0)
+                return false;
+
+            // 새 Value 행의 기본값(빈 Key)이 0/false/empty와 우연히 일치해
+            // 자동 이벤트가 즉시 발화하지 않도록, 자동 감시에서만 완성도를 검사한다.
+            for (int i = 0; i < condition.Conditions.Length; i++)
+            {
+                EventSO.ConditionSubData value = condition.Conditions[i];
+                if (value == null || string.IsNullOrWhiteSpace(value.GlobalNames))
+                    return false;
+            }
+
+            return true;
         }
 
         // ??????????????????????????????????????????????????????????????
@@ -904,6 +1128,26 @@ namespace JYW.Game.EventPlay
                 }
             }
 
+            // Tooltip (독립)
+            if (step.Flags.IsTooltip && step.Tooltip != null)
+            {
+                var tooltipObject = GetOrCreateSingletonUI(tooltipPrefab);
+                Action onCancelTooltip = () =>
+                {
+                    try
+                    {
+                        var eventUI = tooltipObject != null
+                            ? tooltipObject.GetComponentInChildren<IEventUI>(true) ?? tooltipObject.GetComponent<IEventUI>()
+                            : null;
+                        if (eventUI != null) eventUI.SetText(string.Empty);
+                    }
+                    catch { }
+                    ClearTooltipTracking(tooltipObject);
+                    try { if (tooltipObject != null) tooltipObject.SetActive(false); } catch { }
+                };
+                StartCoroutine(RunRoutine(TooltipRoutine(tooltipObject, step.Tooltip), onCancelTooltip));
+            }
+
             if (step.Flags.IsJustText && step.JustText != null)
             {
                 var uiObj = GetOrCreateSingletonUI(memoPrefab);
@@ -1230,6 +1474,179 @@ namespace JYW.Game.EventPlay
                 eventUI.SetText(string.Empty);
             }
             uiObj.SetActive(false);
+        }
+
+        private IEnumerator TooltipRoutine(GameObject tooltipObject, TooltipData tooltip)
+        {
+            if (tooltipObject == null || tooltip == null) yield break;
+
+            var eventUI = tooltipObject.GetComponentInChildren<IEventUI>(true) ??
+                          tooltipObject.GetComponent<IEventUI>();
+            if (eventUI == null)
+            {
+                Debug.LogWarning("[EventPlayManager] Tooltip 프리팹에 IEventUI가 없습니다.");
+                yield break;
+            }
+
+            eventUI.SetText(tooltip.Content ?? string.Empty);
+            if (!tooltipObject.activeSelf) tooltipObject.SetActive(true);
+            Canvas.ForceUpdateCanvases();
+
+            GameObject centerObject = tooltip.IsRelative &&
+                                      !string.IsNullOrWhiteSpace(tooltip.CenterObject)
+                ? ResolveByName(tooltip.CenterObject)
+                : null;
+            activeTooltipObject = tooltipObject;
+            activeTooltipData = tooltip;
+            activeTooltipCenterObject = centerObject;
+            ApplyTooltipPosition(tooltipObject, tooltip, centerObject, true);
+
+            // 이벤트를 시작한 입력이 같은 프레임에 툴팁까지 닫지 않게 한다.
+            yield return null;
+
+            if (tooltip.isBlocked)
+            {
+                while (true)
+                {
+                    if (!EventInputReader.TryWasAnyKeyboardOrMousePressedThisFrame(out bool pressed))
+                    {
+                        Debug.LogError("[EventPlayManager] Tooltip 진행에 필요한 키보드/마우스 입력을 읽을 수 없습니다.");
+                        break;
+                    }
+                    if (pressed) break;
+                    yield return null;
+                }
+            }
+            else
+            {
+                float duration = Mathf.Max(0f, tooltip.Duration);
+                float elapsed = 0f;
+                while (elapsed < duration)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+            }
+
+            ClearTooltipTracking(tooltipObject);
+            eventUI.SetText(string.Empty);
+            tooltipObject.SetActive(false);
+        }
+
+        private void ApplyTooltipPosition(
+            GameObject tooltipObject,
+            TooltipData tooltip,
+            GameObject centerObject,
+            bool logFailure)
+        {
+            if (tooltipObject == null || tooltip == null) return;
+
+            Canvas canvas = tooltipObject.GetComponent<Canvas>() ??
+                            tooltipObject.GetComponentInChildren<Canvas>(true);
+            RectTransform canvasRect = canvas != null ? canvas.transform as RectTransform : null;
+            RectTransform contentRect = FindTooltipContentRect(tooltipObject, canvasRect);
+            if (canvasRect == null || contentRect == null)
+            {
+                if (logFailure)
+                    Debug.LogWarning("[EventPlayManager] Tooltip의 Canvas 또는 배치할 UI 패널을 찾을 수 없어 기존 위치를 유지합니다.");
+                return;
+            }
+
+            Vector2 canvasLocalPosition = canvasRect.rect.center + tooltip.Position;
+            if (tooltip.IsRelative)
+            {
+                Camera worldCamera = GetTooltipProjectionCamera(canvas, centerObject);
+                if (centerObject != null && worldCamera != null)
+                {
+                    Transform centerTransform = centerObject.transform;
+                    Vector3 worldPosition = centerTransform.position +
+                                            centerTransform.right * tooltip.Position.x +
+                                            centerTransform.up * tooltip.Position.y;
+                    Vector3 screenPosition = worldCamera.WorldToScreenPoint(worldPosition);
+                    Camera uiCamera = canvas.renderMode == RenderMode.ScreenSpaceOverlay
+                        ? null
+                        : canvas.worldCamera != null ? canvas.worldCamera : worldCamera;
+                    if (screenPosition.z > 0f &&
+                        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                            canvasRect,
+                            screenPosition,
+                            uiCamera,
+                            out Vector2 targetCanvasPosition))
+                    {
+                        canvasLocalPosition = targetCanvasPosition;
+                    }
+                    else if (logFailure)
+                    {
+                        Debug.LogWarning($"[EventPlayManager] Tooltip 기준 오브젝트 '{tooltip.CenterObject}'를 화면 좌표로 변환할 수 없어 Position을 절대 좌표로 사용합니다.");
+                    }
+                }
+                else if (logFailure)
+                {
+                    Debug.LogWarning($"[EventPlayManager] Tooltip 기준 오브젝트 '{tooltip.CenterObject}' 또는 표시 카메라를 찾을 수 없어 Position을 절대 좌표로 사용합니다.");
+                }
+            }
+
+            contentRect.position = canvasRect.TransformPoint(canvasLocalPosition);
+        }
+
+        private Camera GetTooltipProjectionCamera(Canvas canvas, GameObject centerObject)
+        {
+            int cameraCount = Camera.allCamerasCount;
+            if (cameraCount <= 0) return null;
+            if (tooltipCameraBuffer.Length < cameraCount)
+                tooltipCameraBuffer = new Camera[cameraCount];
+
+            int foundCount = Camera.GetAllCameras(tooltipCameraBuffer);
+            Camera bestCamera = null;
+            for (int i = 0; i < foundCount; i++)
+            {
+                Camera candidate = tooltipCameraBuffer[i];
+                if (candidate == null || !candidate.isActiveAndEnabled ||
+                    candidate.cameraType != CameraType.Game || candidate.targetTexture != null)
+                    continue;
+                if (canvas != null && candidate.targetDisplay != canvas.targetDisplay)
+                    continue;
+                if (centerObject != null &&
+                    (candidate.cullingMask & (1 << centerObject.layer)) == 0)
+                    continue;
+                if (bestCamera == null || candidate.depth > bestCamera.depth)
+                    bestCamera = candidate;
+            }
+
+            return bestCamera;
+        }
+
+        private void ClearTooltipTracking(GameObject tooltipObject = null)
+        {
+            if (tooltipObject != null && activeTooltipObject != tooltipObject) return;
+            activeTooltipObject = null;
+            activeTooltipData = null;
+            activeTooltipCenterObject = null;
+        }
+
+        private static RectTransform FindTooltipContentRect(GameObject tooltipObject, RectTransform canvasRect)
+        {
+            if (tooltipObject == null) return null;
+
+            Text text = tooltipObject.GetComponentInChildren<Text>(true);
+            Transform current = text != null ? text.transform.parent : null;
+            while (current != null && current != canvasRect)
+            {
+                Image image = current.GetComponent<Image>();
+                if (image != null) return image.rectTransform;
+                current = current.parent;
+            }
+
+            if (canvasRect != null)
+            {
+                for (int i = 0; i < canvasRect.childCount; i++)
+                {
+                    RectTransform childRect = canvasRect.GetChild(i) as RectTransform;
+                    if (childRect != null) return childRect;
+                }
+            }
+
+            return null;
         }
 
         private IEnumerator CameraMoveRoutine(CameraMovementData movement, float stepStartTime, bool useMain)

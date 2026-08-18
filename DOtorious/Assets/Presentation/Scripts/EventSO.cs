@@ -60,6 +60,9 @@ namespace JYW.Game.EventPlay
             [SerializeField, HideInInspector] public SceneDatas SceneUnPause;
             [SerializeField, HideInInspector] public CameraMovementData CameraMovement;
             [SerializeField, HideInInspector] public CameraAimData CameraAim;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public TooltipData Tooltip;
         }
 
         // ??????????????????????????????????????????
@@ -112,6 +115,9 @@ namespace JYW.Game.EventPlay
             [SerializeField, HideInInspector] public bool IsSceneUnPause = false;
             [SerializeField, HideInInspector] public bool IsCameraMove = false;
             [SerializeField, HideInInspector] public bool IsCameraAiming = false;
+
+            // 새 플래그는 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsTooltip = false;
         }
 
         // ??????????????????????????????????????????
@@ -235,6 +241,15 @@ namespace JYW.Game.EventPlay
         public enum ValueType { Int, Float, Bool, String, GameObject }
         public enum CheckType { Value, Odd, Even }
 
+        [Flags]
+        public enum ConditionChecks
+        {
+            None = 0,
+            CheckValue = 1 << 0,
+            TimeCount = 1 << 1,
+            CollisionAB = 1 << 2
+        }
+
         [System.Serializable]
         public class SetValueSubData
         {
@@ -252,7 +267,14 @@ namespace JYW.Game.EventPlay
         [System.Serializable]
         public class ConditionGroupData
         {
+            [SerializeField] public ConditionChecks Checks = ConditionChecks.CheckValue;
+            [Min(0f), Tooltip("게임 시작 후 이 시간이 지나면 Time Count 조건이 참이 됩니다.")]
+            [SerializeField] public float TimeCountSeconds = 0f;
             public ConditionSubData[] Conditions = Array.Empty<ConditionSubData>();
+            [Tooltip("충돌을 확인할 씬 오브젝트 A의 이름 또는 Root/Child 경로입니다.")]
+            [SerializeField] public string CollisionObjectA = "";
+            [Tooltip("충돌을 확인할 씬 오브젝트 B의 이름 또는 Root/Child 경로입니다.")]
+            [SerializeField] public string CollisionObjectB = "";
         }
 
         [System.Serializable]
@@ -476,5 +498,16 @@ namespace JYW.Game.EventPlay
 
         [System.Serializable]
         public class RenameData { public string ObjectName = ""; public string NewName = ""; }
+
+        [System.Serializable]
+        public class TooltipData
+        {
+            [TextArea] public string Content = "";
+            [Min(0f)] public float Duration = 0f;
+            public bool isBlocked = false;
+            public bool IsRelative = false;
+            public string CenterObject = "";
+            public Vector2 Position = Vector2.zero;
+        }
     }
 }

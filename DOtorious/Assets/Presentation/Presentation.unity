@@ -170,6 +170,8 @@ MonoBehaviour:
     type: 3}
   memoPrefab: {fileID: 7002526125472452948, guid: 9447052421f5fa34db48941fdea773ca,
     type: 3}
+  tooltipPrefab: {fileID: 7002526125472452948, guid: f95d06c07f91466d9a6407277d3eee04,
+    type: 3}
   eventCamera: {fileID: 3880962040686794066, guid: 4401339c56720e24d816b7fe9f2ea2bb,
     type: 3}
   choiceCanvasPrefab: {fileID: 9127147122880995110, guid: d8140f2b7552adb48890b2a1fe9357a4,

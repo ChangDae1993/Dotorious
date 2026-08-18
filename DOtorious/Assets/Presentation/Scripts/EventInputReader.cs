@@ -11,6 +11,18 @@ namespace JYW.Game.EventPlay
         private static readonly Type KeyboardType = Type.GetType("UnityEngine.InputSystem.Keyboard, Unity.InputSystem");
         private static readonly PropertyInfo CurrentKeyboardProperty = KeyboardType?.GetProperty("current", BindingFlags.Public | BindingFlags.Static);
         private static readonly Dictionary<KeyCode, PropertyInfo> KeyProperties = new Dictionary<KeyCode, PropertyInfo>();
+        private static readonly PropertyInfo AnyKeyProperty = KeyboardType?.GetProperty("anyKey", BindingFlags.Public | BindingFlags.Instance);
+
+        private static readonly Type MouseType = Type.GetType("UnityEngine.InputSystem.Mouse, Unity.InputSystem");
+        private static readonly PropertyInfo CurrentMouseProperty = MouseType?.GetProperty("current", BindingFlags.Public | BindingFlags.Static);
+        private static readonly PropertyInfo[] MouseButtonProperties =
+        {
+            MouseType?.GetProperty("leftButton", BindingFlags.Public | BindingFlags.Instance),
+            MouseType?.GetProperty("rightButton", BindingFlags.Public | BindingFlags.Instance),
+            MouseType?.GetProperty("middleButton", BindingFlags.Public | BindingFlags.Instance),
+            MouseType?.GetProperty("backButton", BindingFlags.Public | BindingFlags.Instance),
+            MouseType?.GetProperty("forwardButton", BindingFlags.Public | BindingFlags.Instance)
+        };
 #endif
 
         public static bool TryIsPressed(KeyCode keyCode, out bool pressed)
@@ -49,7 +61,67 @@ namespace JYW.Game.EventPlay
 #endif
         }
 
+        public static bool TryWasAnyKeyboardOrMousePressedThisFrame(out bool pressed)
+        {
+#if ENABLE_LEGACY_INPUT_MANAGER
+            pressed = Input.anyKeyDown;
+            return true;
+#elif ENABLE_INPUT_SYSTEM
+            pressed = false;
+            bool supported = false;
+
+            object keyboard = CurrentKeyboardProperty?.GetValue(null);
+            object anyKey = keyboard != null ? AnyKeyProperty?.GetValue(keyboard) : null;
+            if (TryReadInputSystemButton(anyKey, out bool keyboardPressed))
+            {
+                supported = true;
+                if (keyboardPressed)
+                {
+                    pressed = true;
+                    return true;
+                }
+            }
+
+            object mouse = CurrentMouseProperty?.GetValue(null);
+            if (mouse != null)
+            {
+                for (int i = 0; i < MouseButtonProperties.Length; i++)
+                {
+                    PropertyInfo buttonProperty = MouseButtonProperties[i];
+                    object button = buttonProperty?.GetValue(mouse);
+                    if (!TryReadInputSystemButton(button, out bool mousePressed)) continue;
+
+                    supported = true;
+                    if (mousePressed)
+                    {
+                        pressed = true;
+                        return true;
+                    }
+                }
+            }
+
+            return supported;
+#else
+            pressed = false;
+            return false;
+#endif
+        }
+
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+        private static bool TryReadInputSystemButton(object buttonControl, out bool pressed)
+        {
+            pressed = false;
+            if (buttonControl == null) return false;
+
+            PropertyInfo pressedThisFrameProperty = buttonControl.GetType().GetProperty(
+                "wasPressedThisFrame",
+                BindingFlags.Public | BindingFlags.Instance);
+            if (pressedThisFrameProperty?.PropertyType != typeof(bool)) return false;
+
+            pressed = (bool)pressedThisFrameProperty.GetValue(buttonControl);
+            return true;
+        }
+
         private static bool TryReadInputSystemKey(KeyCode keyCode, string statePropertyName, out bool value)
         {
             value = false;

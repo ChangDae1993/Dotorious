@@ -8,4 +8,10 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Presentation/Presentation.unity
     guid: f40f6eb4eff654544a6074c65687655d
+  - enabled: 1
+    path: Assets/Scenes/Chapter1.unity
+    guid: 1d1cf1dafa4eb9b48b863eec2d110bea
+  - enabled: 1
+    path: Assets/Scenes/Chapter2.unity
+    guid: 4578f0e643c988b47bd128c0b459d645
   m_configObjects: {}
