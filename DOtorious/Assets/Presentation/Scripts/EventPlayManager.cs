@@ -17,7 +17,6 @@ namespace JYW.Game.EventPlay
         [SerializeField] private GameObject softSpeechPrefab;
         [SerializeField] private GameObject hardSpeechPrefab;
         [SerializeField] private GameObject memoPrefab;
-        [SerializeField] private GameObject tooltipPrefab;
         [SerializeField] private GameObject eventCamera;
         [SerializeField] private GameObject choiceCanvasPrefab;
         [SerializeField] private GameObject choiceContentsPrefab;
@@ -26,6 +25,12 @@ namespace JYW.Game.EventPlay
         [HideInInspector] public bool isLockMove = false;
 
         [HideInInspector] public List<GameObject> cachedObjects = new List<GameObject>();
+
+        // 새 프리팹 참조는 기존 직렬화 필드 뒤에만 추가합니다.
+        [SerializeField] private GameObject tooltipPrefab;
+        [SerializeField] private GameObject blackLabelPrefab;
+        [SerializeField] private GameObject portraitSpeechPrefab;
+        [SerializeField] private GameObject screenFlashPrefab;
 
         private GameObject fadeCanvas = null;
         private CanvasGroup fadeCanvasGroup = null;
@@ -37,6 +42,9 @@ namespace JYW.Game.EventPlay
         private readonly HashSet<(EventSO, GameObject)> runningEventPairs = new HashSet<(EventSO, GameObject)>();
 
         private AudioSource eventAudioSource;
+
+        private static readonly int BaseColorPropertyId = Shader.PropertyToID("_BaseColor");
+        private static readonly int ColorPropertyId = Shader.PropertyToID("_Color");
 
         private readonly Dictionary<string, bool> boolGlobals = new Dictionary<string, bool>();
         private readonly Dictionary<string, float> floatGlobals = new Dictionary<string, float>();
@@ -83,8 +91,99 @@ namespace JYW.Game.EventPlay
             public GameObject ObjectB;
         }
 
+        private sealed class CameraShakeRuntimeState
+        {
+            public Transform Target;
+            public Vector3 BasePositionAtApply;
+            public Quaternion BaseRotationAtApply = Quaternion.identity;
+            public Vector3 AppliedPosition;
+            public Quaternion AppliedRotation = Quaternion.identity;
+            public bool HasAppliedOffset;
+            public bool UsesEventCamera;
+            public GameObject EventCameraObject;
+            public Camera EventCameraComponent;
+            public bool Cleaned;
+        }
+
+        private sealed class CameraLensRuntimeState
+        {
+            public Camera Target;
+            public bool UsesOrthographicSize;
+            public float TargetValue;
+            public bool UsesEventCamera;
+            public GameObject EventCameraObject;
+            public bool Cleaned;
+        }
+
+        private sealed class MainCameraDepthRuntimeState
+        {
+            public Camera Target;
+            public bool Acquired;
+            public bool Released;
+        }
+
+        private sealed class MainCameraDepthUsage
+        {
+            public int Count;
+            public float PreviousDepth;
+        }
+
+        private sealed class EventCameraUsageRuntimeState
+        {
+            public GameObject CameraObject;
+            public Camera CameraComponent;
+            public bool Acquired;
+            public bool Released;
+        }
+
+        private sealed class RendererFadeTarget
+        {
+            public Renderer Renderer;
+            public int MaterialIndex;
+            public int ColorPropertyId;
+            public Color StartColor;
+            public MaterialPropertyBlock PropertyBlock;
+        }
+
+        private sealed class VisualFadeRuntimeState
+        {
+            public readonly Dictionary<CanvasGroup, float> CanvasGroups =
+                new Dictionary<CanvasGroup, float>();
+            public readonly Dictionary<Graphic, Color> Graphics =
+                new Dictionary<Graphic, Color>();
+            public readonly Dictionary<SpriteRenderer, Color> Sprites =
+                new Dictionary<SpriteRenderer, Color>();
+            public readonly List<RendererFadeTarget> Renderers =
+                new List<RendererFadeTarget>();
+            public float TargetAlpha;
+            public bool Cleaned;
+        }
+
+        private sealed class LightTweenStart
+        {
+            public Color Color;
+            public float Intensity;
+            public float Range;
+        }
+
+        private sealed class LightTweenRuntimeState
+        {
+            public readonly Dictionary<Light, LightTweenStart> Lights =
+                new Dictionary<Light, LightTweenStart>();
+            public bool AffectColor;
+            public bool AffectIntensity;
+            public bool AffectRange;
+            public Color TargetColor;
+            public float TargetIntensity;
+            public float TargetRange;
+            public bool Cleaned;
+        }
+
         private readonly Dictionary<EventSO.ConditionGroupData, CollisionBinding> collisionBindings =
             new Dictionary<EventSO.ConditionGroupData, CollisionBinding>();
+        private readonly HashSet<KeyCode> unsupportedConditionKeys = new HashSet<KeyCode>();
+        private readonly Dictionary<Camera, MainCameraDepthUsage> mainCameraDepthUsages =
+            new Dictionary<Camera, MainCameraDepthUsage>();
 
         private sealed class EventContext
         {
@@ -106,6 +205,12 @@ namespace JYW.Game.EventPlay
                     return;
                 }
                 onCancel.Add(action);
+            }
+
+            public void RemoveOnCancel(System.Action action)
+            {
+                if (action == null) return;
+                onCancel.Remove(action);
             }
 
             public void RegisterCoroutine(Coroutine c)
@@ -473,6 +578,140 @@ namespace JYW.Game.EventPlay
                     selectedChecksPass = false;
             }
 
+            if ((checks & EventSO.ConditionChecks.ObjectState) != 0)
+            {
+                string targetName = condGroup.ObjectStateTarget?.Trim() ?? string.Empty;
+                GameObject target = string.IsNullOrEmpty(targetName) ? null : ResolveByName(targetName);
+                bool statePass;
+                switch (condGroup.ObjectState)
+                {
+                    case EventSO.ObjectStateCheck.Missing:
+                        statePass = target == null;
+                        break;
+                    case EventSO.ObjectStateCheck.Active:
+                        statePass = target != null && target.activeInHierarchy;
+                        break;
+                    case EventSO.ObjectStateCheck.Inactive:
+                        statePass = target != null && !target.activeInHierarchy;
+                        break;
+                    default:
+                        statePass = target != null;
+                        break;
+                }
+                if (!statePass) selectedChecksPass = false;
+            }
+
+            if ((checks & EventSO.ConditionChecks.Distance) != 0)
+            {
+                string locatorA = condGroup.DistanceObjectA?.Trim() ?? string.Empty;
+                string locatorB = condGroup.DistanceObjectB?.Trim() ?? string.Empty;
+                GameObject objectA = string.IsNullOrEmpty(locatorA) ? null : ResolveByName(locatorA);
+                GameObject objectB = string.IsNullOrEmpty(locatorB) ? null : ResolveByName(locatorB);
+                if (objectA == null || objectB == null || objectA == objectB)
+                {
+                    selectedChecksPass = false;
+                }
+                else
+                {
+                    float distance = condGroup.DistanceUse2D
+                        ? Vector2.Distance(
+                            new Vector2(objectA.transform.position.x, objectA.transform.position.y),
+                            new Vector2(objectB.transform.position.x, objectB.transform.position.y))
+                        : Vector3.Distance(objectA.transform.position, objectB.transform.position);
+                    float threshold = Mathf.Max(0f, condGroup.DistanceThreshold);
+                    bool distancePass = condGroup.DistanceComparison == EventSO.DistanceCheck.AtLeast
+                        ? distance >= threshold
+                        : distance <= threshold;
+                    if (!distancePass) selectedChecksPass = false;
+                }
+            }
+
+            if ((checks & EventSO.ConditionChecks.InputKey) != 0)
+            {
+                bool readable;
+                bool inputPass;
+                if (condGroup.InputKeyState == EventSO.InputKeyCheck.Held)
+                    readable = EventInputReader.TryIsPressed(condGroup.InputKeyCode, out inputPass);
+                else
+                    readable = EventInputReader.TryWasPressedThisFrame(condGroup.InputKeyCode, out inputPass);
+
+                if (!readable)
+                {
+                    if (unsupportedConditionKeys.Add(condGroup.InputKeyCode))
+                        Debug.LogWarning($"[EventPlayManager] 현재 입력 설정에서 Condition 키 '{condGroup.InputKeyCode}'를 읽을 수 없습니다.");
+                    selectedChecksPass = false;
+                }
+                else if (!inputPass)
+                {
+                    selectedChecksPass = false;
+                }
+            }
+
+            if ((checks & EventSO.ConditionChecks.AnimatorState) != 0)
+            {
+                string animatorLocator = condGroup.AnimatorObject?.Trim() ?? string.Empty;
+                string stateName = condGroup.AnimatorStateName?.Trim() ?? string.Empty;
+                GameObject animatorObject = string.IsNullOrEmpty(animatorLocator)
+                    ? caller
+                    : ResolveByName(animatorLocator);
+                Animator animator = animatorObject != null
+                    ? animatorObject.GetComponent<Animator>() ?? animatorObject.GetComponentInChildren<Animator>(true)
+                    : null;
+                int layer = condGroup.AnimatorLayer;
+                bool animatorPass = animator != null &&
+                                    layer >= 0 &&
+                                    layer < animator.layerCount &&
+                                    !string.IsNullOrEmpty(stateName);
+                if (animatorPass)
+                {
+                    AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(layer);
+                    animatorPass = stateInfo.IsName(stateName);
+                    if (animatorPass && condGroup.AnimatorState == EventSO.AnimatorStateCheck.Completed)
+                    {
+                        float completionTime = Mathf.Max(0f, condGroup.AnimatorCompletionTime);
+                        animatorPass = stateInfo.normalizedTime >= completionTime &&
+                                       !animator.IsInTransition(layer);
+                    }
+                }
+                if (!animatorPass) selectedChecksPass = false;
+            }
+
+            if ((checks & EventSO.ConditionChecks.SceneState) != 0)
+            {
+                string sceneName = condGroup.SceneName?.Trim() ?? string.Empty;
+                Scene scene = string.IsNullOrEmpty(sceneName)
+                    ? default
+                    : SceneManager.GetSceneByName(sceneName);
+                bool loaded = scene.IsValid() && scene.isLoaded;
+                bool scenePass;
+                switch (condGroup.SceneState)
+                {
+                    case EventSO.SceneStateCheck.Unloaded:
+                        scenePass = !loaded;
+                        break;
+                    case EventSO.SceneStateCheck.Active:
+                        Scene activeScene = SceneManager.GetActiveScene();
+                        scenePass = loaded && activeScene.IsValid() && activeScene.handle == scene.handle;
+                        break;
+                    default:
+                        scenePass = loaded;
+                        break;
+                }
+                if (!scenePass) selectedChecksPass = false;
+            }
+
+            if ((checks & EventSO.ConditionChecks.CameraView) != 0)
+            {
+                string targetName = condGroup.CameraViewTarget?.Trim() ?? string.Empty;
+                GameObject target = string.IsNullOrEmpty(targetName) ? null : ResolveByName(targetName);
+                bool cameraReady = TryGetObjectCameraVisibility(target, out bool visible);
+                bool cameraViewPass = target != null && cameraReady &&
+                                      (condGroup.CameraViewState == EventSO.CameraViewCheck.NotVisible
+                                          ? !visible
+                                          : visible);
+                if (!cameraViewPass) selectedChecksPass = false;
+            }
+
             if ((checks & EventSO.ConditionChecks.CheckValue) == 0)
                 return selectedChecksPass;
 
@@ -483,33 +722,45 @@ namespace JYW.Game.EventPlay
             for (int ci = 0; ci < condGroup.Conditions.Length; ci++)
             {
                 var info = condGroup.Conditions[ci];
-                if (info == null) continue;
+                if (info == null) { allMatch = false; break; }
 
                 string key = info.GlobalNames ?? string.Empty;
                 bool pass = false;
                 bool usePlayerPrefs = info.isPlayerPrefData;
 
-                if (string.IsNullOrEmpty(key))
+                if (info.checkType == EventSO.CheckType.Odd || info.checkType == EventSO.CheckType.Even)
                 {
-                    switch (info.valueType)
-                    {
-                        case EventSO.ValueType.Int: pass = (0 == info.ExpectedInt); break;
-                        case EventSO.ValueType.Float: pass = (0f == info.ExpectedFloat); break;
-                        case EventSO.ValueType.Bool: pass = (false == info.ExpectedBool); break;
-                        case EventSO.ValueType.String: pass = (string.Empty == (info.ExpectedString ?? "")); break;
-                        case EventSO.ValueType.GameObject: pass = (info.ExpectedGameObject == null); break;
-                    }
+                    int current = usePlayerPrefs
+                        ? (string.IsNullOrEmpty(key) ? 0 : PlayerPrefs.GetInt(key, 0))
+                        : (intGlobals.TryGetValue(key, out var iv) ? iv : 0);
+
+                    pass = (info.checkType == EventSO.CheckType.Odd) ? (current % 2 != 0) : (current % 2 == 0);
                     if (!pass) { allMatch = false; break; }
                     continue;
                 }
 
-                if (info.checkType == EventSO.CheckType.Odd || info.checkType == EventSO.CheckType.Even)
+                if (string.IsNullOrEmpty(key))
                 {
-                    int current = usePlayerPrefs
-                        ? PlayerPrefs.GetInt(key, 0)
-                        : (intGlobals.TryGetValue(key, out var iv) ? iv : 0);
-
-                    pass = (info.checkType == EventSO.CheckType.Odd) ? (current % 2 != 0) : (current % 2 == 0);
+                    switch (info.valueType)
+                    {
+                        case EventSO.ValueType.Int:
+                            pass = EvaluateNumericComparison(0, info.ExpectedInt, info.checkType);
+                            break;
+                        case EventSO.ValueType.Float:
+                            pass = EvaluateNumericComparison(0f, info.ExpectedFloat, info.checkType);
+                            break;
+                        case EventSO.ValueType.Bool:
+                            pass = EvaluateEqualityComparison(!info.ExpectedBool, info.checkType);
+                            break;
+                        case EventSO.ValueType.String:
+                            pass = EvaluateEqualityComparison(
+                                string.IsNullOrEmpty(info.ExpectedString),
+                                info.checkType);
+                            break;
+                        case EventSO.ValueType.GameObject:
+                            pass = EvaluateEqualityComparison(info.ExpectedGameObject == null, info.checkType);
+                            break;
+                    }
                     if (!pass) { allMatch = false; break; }
                     continue;
                 }
@@ -519,31 +770,33 @@ namespace JYW.Game.EventPlay
                     case EventSO.ValueType.Int:
                         {
                             int current = usePlayerPrefs ? PlayerPrefs.GetInt(key, 0) : (intGlobals.TryGetValue(key, out var iv) ? iv : 0);
-                            pass = (current == info.ExpectedInt);
+                            pass = EvaluateNumericComparison(current, info.ExpectedInt, info.checkType);
                             break;
                         }
                     case EventSO.ValueType.Float:
                         {
                             float current = usePlayerPrefs ? PlayerPrefs.GetFloat(key, 0f) : (floatGlobals.TryGetValue(key, out var fv) ? fv : 0f);
-                            pass = (current == info.ExpectedFloat);
+                            pass = EvaluateNumericComparison(current, info.ExpectedFloat, info.checkType);
                             break;
                         }
                     case EventSO.ValueType.Bool:
                         {
                             bool current = usePlayerPrefs ? (PlayerPrefs.GetInt(key, 0) != 0) : (boolGlobals.TryGetValue(key, out var bv) && bv);
-                            pass = (current == info.ExpectedBool);
+                            pass = EvaluateEqualityComparison(current == info.ExpectedBool, info.checkType);
                             break;
                         }
                     case EventSO.ValueType.String:
                         {
                             string current = usePlayerPrefs ? PlayerPrefs.GetString(key, string.Empty) : (stringGlobals.TryGetValue(key, out var sv) ? sv : string.Empty);
-                            pass = string.Equals(current ?? string.Empty, info.ExpectedString ?? string.Empty, StringComparison.Ordinal);
+                            bool equals = string.Equals(current ?? string.Empty, info.ExpectedString ?? string.Empty, StringComparison.Ordinal);
+                            pass = EvaluateEqualityComparison(equals, info.checkType);
                             break;
                         }
                     case EventSO.ValueType.GameObject:
                         {
-                            pass = gameObjectGlobals.TryGetValue(key, out var current) &&
-                                   current == info.ExpectedGameObject;
+                            bool equals = gameObjectGlobals.TryGetValue(key, out var current) &&
+                                          current == info.ExpectedGameObject;
+                            pass = EvaluateEqualityComparison(equals, info.checkType);
                             break;
                         }
                 }
@@ -552,6 +805,38 @@ namespace JYW.Game.EventPlay
             }
 
             return allMatch && selectedChecksPass;
+        }
+
+        private static bool EvaluateNumericComparison(int current, int expected, EventSO.CheckType checkType)
+        {
+            switch (checkType)
+            {
+                case EventSO.CheckType.NotEqual: return current != expected;
+                case EventSO.CheckType.Greater: return current > expected;
+                case EventSO.CheckType.GreaterOrEqual: return current >= expected;
+                case EventSO.CheckType.Less: return current < expected;
+                case EventSO.CheckType.LessOrEqual: return current <= expected;
+                default: return current == expected;
+            }
+        }
+
+        private static bool EvaluateNumericComparison(float current, float expected, EventSO.CheckType checkType)
+        {
+            switch (checkType)
+            {
+                case EventSO.CheckType.NotEqual: return current != expected;
+                case EventSO.CheckType.Greater: return current > expected;
+                case EventSO.CheckType.GreaterOrEqual: return current >= expected;
+                case EventSO.CheckType.Less: return current < expected;
+                case EventSO.CheckType.LessOrEqual: return current <= expected;
+                default: return current == expected;
+            }
+        }
+
+        private static bool EvaluateEqualityComparison(bool equals, EventSO.CheckType checkType)
+        {
+            if (checkType == EventSO.CheckType.NotEqual) return !equals;
+            return checkType == EventSO.CheckType.Value && equals;
         }
 
         private void ResolveCollisionObjects(
@@ -589,6 +874,82 @@ namespace JYW.Game.EventPlay
 
             objectA = binding.ObjectA;
             objectB = binding.ObjectB;
+        }
+
+        private bool TryGetObjectCameraVisibility(GameObject target, out bool visible)
+        {
+            visible = false;
+            if (target == null) return false;
+
+            Renderer[] renderers = target.GetComponentsInChildren<Renderer>(true);
+            Camera camera = GetHighestDepthGameCamera(target, renderers);
+            if (camera == null) return false;
+            if (!target.activeInHierarchy) return true;
+
+            if (renderers.Length > 0)
+            {
+                Plane[] planes = GeometryUtility.CalculateFrustumPlanes(camera);
+                for (int i = 0; i < renderers.Length; i++)
+                {
+                    Renderer renderer = renderers[i];
+                    if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy ||
+                        (camera.cullingMask & (1 << renderer.gameObject.layer)) == 0)
+                        continue;
+                    if (GeometryUtility.TestPlanesAABB(planes, renderer.bounds))
+                    {
+                        visible = true;
+                        break;
+                    }
+                }
+                return true;
+            }
+
+            if ((camera.cullingMask & (1 << target.layer)) == 0) return true;
+            Vector3 viewportPoint = camera.WorldToViewportPoint(target.transform.position);
+            visible = viewportPoint.z > 0f &&
+                      viewportPoint.x >= 0f && viewportPoint.x <= 1f &&
+                      viewportPoint.y >= 0f && viewportPoint.y <= 1f;
+            return true;
+        }
+
+        private Camera GetHighestDepthGameCamera(GameObject target, Renderer[] renderers)
+        {
+            int cameraCount = Camera.allCamerasCount;
+            if (cameraCount <= 0) return null;
+            if (tooltipCameraBuffer.Length < cameraCount)
+                tooltipCameraBuffer = new Camera[cameraCount];
+
+            int foundCount = Camera.GetAllCameras(tooltipCameraBuffer);
+            Camera bestCamera = null;
+            for (int i = 0; i < foundCount; i++)
+            {
+                Camera candidate = tooltipCameraBuffer[i];
+                if (candidate == null || !candidate.isActiveAndEnabled ||
+                    candidate.cameraType != CameraType.Game || candidate.targetTexture != null)
+                    continue;
+
+                bool seesTargetLayer = target != null &&
+                                       (candidate.cullingMask & (1 << target.layer)) != 0;
+                if (!seesTargetLayer && renderers != null)
+                {
+                    for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
+                    {
+                        Renderer renderer = renderers[rendererIndex];
+                        if (renderer != null &&
+                            (candidate.cullingMask & (1 << renderer.gameObject.layer)) != 0)
+                        {
+                            seesTargetLayer = true;
+                            break;
+                        }
+                    }
+                }
+                if (!seesTargetLayer) continue;
+
+                if (bestCamera == null || candidate.depth > bestCamera.depth)
+                    bestCamera = candidate;
+            }
+
+            return bestCamera;
         }
 
         internal bool IsAutoConditionReady(EventSO eventSO, GameObject caller)
@@ -668,6 +1029,39 @@ namespace JYW.Game.EventPlay
                     return false;
             }
 
+            if ((condition.Checks & EventSO.ConditionChecks.ObjectState) != 0 &&
+                string.IsNullOrWhiteSpace(condition.ObjectStateTarget))
+                return false;
+
+            if ((condition.Checks & EventSO.ConditionChecks.Distance) != 0)
+            {
+                if (string.IsNullOrWhiteSpace(condition.DistanceObjectA) ||
+                    string.IsNullOrWhiteSpace(condition.DistanceObjectB) ||
+                    string.Equals(
+                        condition.DistanceObjectA.Trim(),
+                        condition.DistanceObjectB.Trim(),
+                        StringComparison.Ordinal))
+                    return false;
+            }
+
+            if ((condition.Checks & EventSO.ConditionChecks.InputKey) != 0 &&
+                condition.InputKeyCode == KeyCode.None)
+                return false;
+
+            if ((condition.Checks & EventSO.ConditionChecks.AnimatorState) != 0 &&
+                (string.IsNullOrWhiteSpace(condition.AnimatorObject) ||
+                 string.IsNullOrWhiteSpace(condition.AnimatorStateName) ||
+                 condition.AnimatorLayer < 0))
+                return false;
+
+            if ((condition.Checks & EventSO.ConditionChecks.SceneState) != 0 &&
+                string.IsNullOrWhiteSpace(condition.SceneName))
+                return false;
+
+            if ((condition.Checks & EventSO.ConditionChecks.CameraView) != 0 &&
+                string.IsNullOrWhiteSpace(condition.CameraViewTarget))
+                return false;
+
             if ((condition.Checks & EventSO.ConditionChecks.CheckValue) == 0)
                 return true;
 
@@ -703,14 +1097,16 @@ namespace JYW.Game.EventPlay
                 activeRoutines++;
 
                 bool finished = false;
+                Action cancelHandler = null;
 
                 void MarkFinished() { finished = true; }
                 if (context != null)
                 {
                     if (onCancel != null)
-                        context.AddOnCancel(() => { try { onCancel(); } catch { } MarkFinished(); });
+                        cancelHandler = () => { try { onCancel(); } catch { } MarkFinished(); };
                     else
-                        context.AddOnCancel(MarkFinished);
+                        cancelHandler = MarkFinished;
+                    context.AddOnCancel(cancelHandler);
                 }
 
                 IEnumerator Wrapper()
@@ -721,6 +1117,8 @@ namespace JYW.Game.EventPlay
                     }
                     finally
                     {
+                        if (context != null && cancelHandler != null)
+                            context.RemoveOnCancel(cancelHandler);
                         if (routine is IDisposable disposable)
                         {
                             try { disposable.Dispose(); }
@@ -968,9 +1366,63 @@ namespace JYW.Game.EventPlay
                         GameObject target = null;
                         if (string.IsNullOrEmpty(objName)) target = caller;
                         else { target = ResolveByName(objName); if (target != null) AddToCacheIfNeeded(target); }
-                        if (target != null) { var colliders = target.GetComponentsInChildren<Collider>(true); foreach (var col in colliders) col.enabled = false; }
+                        if (target != null)
+                        {
+                            var colliders3D = target.GetComponentsInChildren<Collider>(true);
+                            foreach (var collider3D in colliders3D)
+                                if (collider3D != null) collider3D.enabled = false;
+                            var colliders2D = target.GetComponentsInChildren<Collider2D>(true);
+                            foreach (var collider2D in colliders2D)
+                                if (collider2D != null) collider2D.enabled = false;
+                        }
                     }
                 }
+
+                // Animator Event
+                if (comps.IsAnimatorEvent && comps.AnimatorEvent != null)
+                    StartCoroutine(RunRoutine(AnimatorEventRoutine(comps.AnimatorEvent, caller)));
+
+                // Visual Fade
+                if (comps.IsVisualFade && comps.VisualFade != null &&
+                    comps.VisualFade.Fades != null)
+                {
+                    VisualFadeEntryData[] fades = comps.VisualFade.Fades;
+                    for (int fadeIndex = 0; fadeIndex < fades.Length; fadeIndex++)
+                    {
+                        VisualFadeEntryData fade = fades[fadeIndex];
+                        if (fade == null) continue;
+                        var fadeState = new VisualFadeRuntimeState();
+                        Action onCancelFade = () => { try { CleanupVisualFade(fadeState, true); } catch { } };
+                        StartCoroutine(RunRoutine(
+                            VisualFadeRoutine(fade, caller, fadeState),
+                            onCancelFade));
+                    }
+                }
+
+                // Light Tween
+                if (comps.IsLightTween && comps.LightTween != null &&
+                    comps.LightTween.Lights != null)
+                {
+                    LightTweenEntryData[] lightTweens = comps.LightTween.Lights;
+                    for (int lightIndex = 0; lightIndex < lightTweens.Length; lightIndex++)
+                    {
+                        LightTweenEntryData lightTween = lightTweens[lightIndex];
+                        if (lightTween == null) continue;
+                        var lightState = new LightTweenRuntimeState();
+                        Action onCancelLightTween = () =>
+                        {
+                            try { CleanupLightTween(lightState, true); } catch { }
+                        };
+                        StartCoroutine(RunRoutine(
+                            LightTweenRoutine(lightTween, caller, lightState),
+                            onCancelLightTween));
+                    }
+                }
+
+                // Particle Event
+                if (comps.IsParticleEvent && comps.ParticleEvent != null)
+                    StartCoroutine(RunRoutine(
+                        ParticleEventRoutine(comps.ParticleEvent, caller)));
             }
 
             // ── Transforms 그룹 ──
@@ -1061,7 +1513,7 @@ namespace JYW.Game.EventPlay
                             if (!string.IsNullOrEmpty(rd.LookAtName)) { target = ResolveByName(rd.LookAtName); if (target != null) AddToCacheIfNeeded(target); }
                             if (target != null)
                             {
-                                Quaternion goalRot = Quaternion.LookRotation(target.transform.position - t.position);
+                                Quaternion goalRot = SafeLookRotation(target.transform.position - t.position, t.rotation);
                                 if (dur <= 0f) { try { t.rotation = goalRot; } catch { } }
                                 else { Action onCancel = () => { try { t.rotation = goalRot; } catch { } }; StartCoroutine(RunRoutine(RotateToRoutine(t, goalRot, dur), onCancel)); }
                             }
@@ -1104,6 +1556,66 @@ namespace JYW.Game.EventPlay
                         }
                     }
                 }
+
+                // Attach Object
+                if (transforms.IsAttachObject && transforms.AttachObject != null &&
+                    transforms.AttachObject.AttachObjects != null)
+                {
+                    AttachObjectEntryData[] attachObjects = transforms.AttachObject.AttachObjects;
+                    for (int attachIndex = 0; attachIndex < attachObjects.Length; attachIndex++)
+                    {
+                        AttachObjectEntryData attach = attachObjects[attachIndex];
+                        if (attach == null) continue;
+
+                        string objectName = attach.ObjectName?.Trim() ?? string.Empty;
+                        string parentName = attach.ParentName?.Trim() ?? string.Empty;
+                        GameObject target = string.IsNullOrEmpty(objectName)
+                            ? caller
+                            : ResolveByName(objectName);
+                        if (target == null)
+                        {
+                            Debug.LogWarning(
+                                string.IsNullOrEmpty(objectName)
+                                    ? "[EventPlayManager] Attach Object: 호출 오브젝트가 없습니다."
+                                    : $"[EventPlayManager] Attach Object: 오브젝트 '{objectName}'를 찾지 못했습니다.");
+                            continue;
+                        }
+
+                        GameObject parent = string.IsNullOrEmpty(parentName)
+                            ? null
+                            : ResolveByName(parentName);
+                        if (!string.IsNullOrEmpty(parentName) && parent == null)
+                        {
+                            Debug.LogWarning($"[EventPlayManager] Attach Object: 부모 '{parentName}'를 찾지 못했습니다.");
+                            continue;
+                        }
+                        if (parent == target ||
+                            (parent != null && parent.transform.IsChildOf(target.transform)))
+                        {
+                            Debug.LogWarning($"[EventPlayManager] Attach Object: '{target.name}' 자신이나 자식에게 부모로 연결할 수 없습니다.");
+                            continue;
+                        }
+
+                        try
+                        {
+                            target.transform.SetParent(
+                                parent != null ? parent.transform : null,
+                                attach.WorldPositionStays);
+                            if (attach.ApplyLocalTransform)
+                            {
+                                target.transform.localPosition = attach.LocalPosition;
+                                target.transform.localRotation = Quaternion.Euler(attach.LocalEulerAngles);
+                                target.transform.localScale = attach.LocalScale;
+                            }
+                            AddToCacheIfNeeded(target);
+                            if (parent != null) AddToCacheIfNeeded(parent);
+                        }
+                        catch (Exception exception)
+                        {
+                            Debug.LogWarning($"[EventPlayManager] Attach Object 적용 실패: {exception.Message}");
+                        }
+                    }
+                }
             }
 
             // ── Speeches 그룹 ──
@@ -1126,6 +1638,27 @@ namespace JYW.Game.EventPlay
                     Action onCancel = () => { try { var eventUI = uiObj.GetComponentInChildren<IEventUI>(true) ?? uiObj.GetComponent<IEventUI>(); if (eventUI != null) eventUI.SetText(string.Empty); } catch { } try { if (uiObj != null) uiObj.SetActive(false); } catch { } };
                     StartCoroutine(RunRoutine(HardSpeechRoutine(uiObj, speeches.HardSpeech.HardSpeechTexts, speeches.HardSpeech.HardSpeechKey, speeches.HardSpeech.IsTyping), onCancel));
                 }
+
+                // Portrait Speech
+                if (speeches.IsPortraitSpeech && speeches.PortraitSpeech != null)
+                {
+                    var uiObj = GetOrCreateSingletonUI(portraitSpeechPrefab);
+                    Action onCancelPortraitSpeech = () =>
+                    {
+                        try
+                        {
+                            var portraitCanvas = uiObj != null
+                                ? uiObj.GetComponentInChildren<PortraitSpeechCanvas>(true) ?? uiObj.GetComponent<PortraitSpeechCanvas>()
+                                : null;
+                            portraitCanvas?.Clear();
+                        }
+                        catch { }
+                        try { if (uiObj != null) uiObj.SetActive(false); } catch { }
+                    };
+                    StartCoroutine(RunRoutine(
+                        PortraitSpeechRoutine(uiObj, speeches.PortraitSpeech),
+                        onCancelPortraitSpeech));
+                }
             }
 
             // Tooltip (독립)
@@ -1146,6 +1679,40 @@ namespace JYW.Game.EventPlay
                     try { if (tooltipObject != null) tooltipObject.SetActive(false); } catch { }
                 };
                 StartCoroutine(RunRoutine(TooltipRoutine(tooltipObject, step.Tooltip), onCancelTooltip));
+            }
+
+            // Black Label (독립)
+            if (step.Flags.IsBlackLabel && step.BlackLabel != null)
+            {
+                var blackLabelObject = GetOrCreateSingletonUI(blackLabelPrefab);
+                Action onCancelBlackLabel = () =>
+                {
+                    try { if (blackLabelObject != null) blackLabelObject.SetActive(false); } catch { }
+                };
+                StartCoroutine(RunRoutine(
+                    BlackLabelRoutine(blackLabelObject, step.BlackLabel),
+                    onCancelBlackLabel));
+            }
+
+            // Screen Flash (독립)
+            if (step.Flags.IsScreenFlash && step.ScreenFlash != null)
+            {
+                var screenFlashObject = GetOrCreateSingletonUI(screenFlashPrefab);
+                Action onCancelScreenFlash = () =>
+                {
+                    try
+                    {
+                        var screenFlashCanvas = screenFlashObject != null
+                            ? screenFlashObject.GetComponentInChildren<ScreenFlashCanvas>(true) ?? screenFlashObject.GetComponent<ScreenFlashCanvas>()
+                            : null;
+                        screenFlashCanvas?.Clear();
+                    }
+                    catch { }
+                    try { if (screenFlashObject != null) screenFlashObject.SetActive(false); } catch { }
+                };
+                StartCoroutine(RunRoutine(
+                    ScreenFlashRoutine(screenFlashObject, step.ScreenFlash),
+                    onCancelScreenFlash));
             }
 
             if (step.Flags.IsJustText && step.JustText != null)
@@ -1203,6 +1770,11 @@ namespace JYW.Game.EventPlay
             if (step.Flags.IsWait && step.Wait != null && step.Wait.WaitTime > 0f)
                 StartCoroutine(RunRoutine(WaitRoutine(step.Wait.WaitTime)));
 
+            // Wait Until Condition (독립)
+            if (step.Flags.IsWaitUntilCondition && step.WaitUntilCondition != null)
+                StartCoroutine(RunRoutine(
+                    WaitUntilConditionRoutine(step.WaitUntilCondition, caller)));
+
             // ── Cameras 그룹 ──
             if (step.Flags.IsCameras && step.Cameras != null)
             {
@@ -1211,15 +1783,67 @@ namespace JYW.Game.EventPlay
                 // CameraMovement
                 if (cameras.IsCameraMove && cameras.CameraMovement != null)
                 {
-                    Action onCancelCam = () => { try { eventCameraUserCount = Math.Max(0, eventCameraUserCount - 1); DisableEventCameraIfUnused(); } catch { } };
-                    StartCoroutine(RunRoutine(CameraMoveRoutine(cameras.CameraMovement, stepStartTime, cameras.CameraMovement.IsCameraMoveUseMain), onCancelCam));
+                    bool useMainCamera = cameras.CameraMovement.IsCameraMoveUseMain;
+                    var mainCameraDepthState = useMainCamera
+                        ? new MainCameraDepthRuntimeState()
+                        : null;
+                    var eventCameraUsageState = useMainCamera
+                        ? null
+                        : new EventCameraUsageRuntimeState();
+                    Action onCancelCam = useMainCamera
+                        ? () => { try { ReleaseMainCameraDepth(mainCameraDepthState); } catch { } }
+                        : () => { try { ReleaseEventCameraUsage(eventCameraUsageState); } catch { } };
+                    StartCoroutine(RunRoutine(
+                        CameraMoveRoutine(
+                            cameras.CameraMovement,
+                            stepStartTime,
+                            cameras.CameraMovement.IsCameraMoveUseMain,
+                            mainCameraDepthState,
+                            eventCameraUsageState),
+                        onCancelCam));
                 }
 
                 // CameraAim
                 if (cameras.IsCameraAiming && cameras.CameraAim != null)
                 {
-                    Action onCancelCam = () => { try { eventCameraUserCount = Math.Max(0, eventCameraUserCount - 1); DisableEventCameraIfUnused(); } catch { } };
-                    StartCoroutine(RunRoutine(CameraLookAtRoutine(cameras.CameraAim, stepStartTime, cameras.CameraAim.IsCameraAimingUseMain), onCancelCam));
+                    bool useMainCamera = cameras.CameraAim.IsCameraAimingUseMain;
+                    var mainCameraDepthState = useMainCamera
+                        ? new MainCameraDepthRuntimeState()
+                        : null;
+                    var eventCameraUsageState = useMainCamera
+                        ? null
+                        : new EventCameraUsageRuntimeState();
+                    Action onCancelCam = useMainCamera
+                        ? () => { try { ReleaseMainCameraDepth(mainCameraDepthState); } catch { } }
+                        : () => { try { ReleaseEventCameraUsage(eventCameraUsageState); } catch { } };
+                    StartCoroutine(RunRoutine(
+                        CameraLookAtRoutine(
+                            cameras.CameraAim,
+                            stepStartTime,
+                            cameras.CameraAim.IsCameraAimingUseMain,
+                            mainCameraDepthState,
+                            eventCameraUsageState),
+                        onCancelCam));
+                }
+
+                // Camera Shake
+                if (cameras.IsCameraShake && cameras.CameraShake != null)
+                {
+                    var shakeState = new CameraShakeRuntimeState();
+                    Action onCancelShake = () => { try { CleanupCameraShake(shakeState); } catch { } };
+                    StartCoroutine(RunRoutine(
+                        CameraShakeRoutine(cameras.CameraShake, shakeState),
+                        onCancelShake));
+                }
+
+                // Camera Lens
+                if (cameras.IsCameraLens && cameras.CameraLens != null)
+                {
+                    var lensState = new CameraLensRuntimeState();
+                    Action onCancelLens = () => { try { CleanupCameraLens(lensState, true); } catch { } };
+                    StartCoroutine(RunRoutine(
+                        CameraLensRoutine(cameras.CameraLens, lensState),
+                        onCancelLens));
                 }
             }
 
@@ -1302,6 +1926,19 @@ namespace JYW.Game.EventPlay
             // Fade (독립)
             if (step.Flags.IsFadePlay && step.FadeInfo != null)
                 StartCoroutine(RunRoutine(FadeScheduleRoutine(step.FadeInfo, stepStartRealtime)));
+
+            // Time Scale (독립)
+            if (step.Flags.IsTimeScale && step.TimeScale != null)
+            {
+                float previousTimeScale = Time.timeScale;
+                Time.timeScale = Mathf.Clamp(step.TimeScale.TargetScale, 0f, 10f);
+                Action onCancelTimeScale = step.TimeScale.RestoreAfterDuration
+                    ? () => { try { Time.timeScale = previousTimeScale; } catch { } }
+                    : null;
+                StartCoroutine(RunRoutine(
+                    TimeScaleRoutine(step.TimeScale, previousTimeScale),
+                    onCancelTimeScale));
+            }
 
             // Cursor (독립)
             if (step.Flags.IsCursorVisible && step.Cursor != null)
@@ -1427,6 +2064,573 @@ namespace JYW.Game.EventPlay
 
         private IEnumerator WaitRoutine(float seconds) { if (seconds <= 0f) yield break; yield return new WaitForSecondsRealtime(seconds); }
 
+        private IEnumerator WaitUntilConditionRoutine(
+            WaitUntilConditionData waitData,
+            GameObject caller)
+        {
+            if (waitData == null || waitData.Condition == null)
+            {
+                Debug.LogWarning("[EventPlayManager] Wait Until Condition에 Condition 데이터가 없습니다.");
+                yield break;
+            }
+
+            float timeout = Mathf.Max(0f, waitData.Timeout);
+            float elapsed = 0f;
+            while (!EvaluateConditionGroup(waitData.Condition, caller))
+            {
+                if (timeout > 0f && elapsed >= timeout)
+                {
+                    Debug.LogWarning($"[EventPlayManager] Wait Until Condition이 {timeout:0.###}초 안에 충족되지 않아 다음 Phase로 진행합니다.");
+                    yield break;
+                }
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+
+        private IEnumerator TimeScaleRoutine(TimeScaleData timeScale, float previousTimeScale)
+        {
+            if (timeScale == null) yield break;
+
+            try
+            {
+                float duration = Mathf.Max(0f, timeScale.Duration);
+                float elapsed = 0f;
+                while (elapsed < duration)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+            }
+            finally
+            {
+                if (timeScale.RestoreAfterDuration)
+                    Time.timeScale = previousTimeScale;
+            }
+        }
+
+        private IEnumerator AnimatorEventRoutine(AnimatorEventData animatorEvent, GameObject caller)
+        {
+            if (animatorEvent == null) yield break;
+
+            string locator = animatorEvent.ObjectName?.Trim() ?? string.Empty;
+            GameObject target = string.IsNullOrEmpty(locator) ? caller : ResolveByName(locator);
+            if (target == null)
+            {
+                Debug.LogWarning(
+                    string.IsNullOrEmpty(locator)
+                        ? "[EventPlayManager] Animator Event: 호출 오브젝트가 없습니다."
+                        : $"[EventPlayManager] Animator Event: 오브젝트 '{locator}'를 찾지 못했습니다.");
+                yield break;
+            }
+
+            AddToCacheIfNeeded(target);
+            Animator animator = target.GetComponent<Animator>() ??
+                                target.GetComponentInChildren<Animator>(true);
+            if (animator == null)
+            {
+                Debug.LogWarning($"[EventPlayManager] Animator Event: '{target.name}'에 Animator가 없습니다.");
+                yield break;
+            }
+
+            string stateOrParameter = animatorEvent.StateOrParameter?.Trim() ?? string.Empty;
+            bool requiresName = animatorEvent.Command != AnimatorCommand.SetSpeed;
+            if (requiresName && string.IsNullOrEmpty(stateOrParameter))
+            {
+                Debug.LogWarning($"[EventPlayManager] Animator Event: {animatorEvent.Command}에 필요한 State/Parameter 이름이 비어 있습니다.");
+                yield break;
+            }
+
+            bool usesState = animatorEvent.Command == AnimatorCommand.PlayState ||
+                             animatorEvent.Command == AnimatorCommand.CrossFade;
+            if (usesState &&
+                (animatorEvent.Layer < -1 ||
+                 (animatorEvent.Layer >= 0 && animatorEvent.Layer >= animator.layerCount)))
+            {
+                Debug.LogWarning($"[EventPlayManager] Animator Event: Layer {animatorEvent.Layer}가 '{target.name}' Animator 범위를 벗어났습니다.");
+                yield break;
+            }
+
+            if (TryGetExpectedAnimatorParameterType(animatorEvent.Command, out AnimatorControllerParameterType expectedType))
+            {
+                if (!TryGetAnimatorParameterType(animator, stateOrParameter, out AnimatorControllerParameterType actualType))
+                {
+                    Debug.LogWarning($"[EventPlayManager] Animator Event: '{target.name}'에 Parameter '{stateOrParameter}'가 없습니다.");
+                    yield break;
+                }
+
+                if (actualType != expectedType)
+                {
+                    Debug.LogWarning($"[EventPlayManager] Animator Event: Parameter '{stateOrParameter}' 타입은 {actualType}이며 {expectedType} 명령과 맞지 않습니다.");
+                    yield break;
+                }
+            }
+
+            try
+            {
+                switch (animatorEvent.Command)
+                {
+                    case AnimatorCommand.PlayState:
+                        animator.Play(
+                            stateOrParameter,
+                            animatorEvent.Layer,
+                            Mathf.Clamp01(animatorEvent.NormalizedTime));
+                        break;
+                    case AnimatorCommand.CrossFade:
+                        animator.CrossFade(
+                            stateOrParameter,
+                            Mathf.Max(0f, animatorEvent.TransitionDuration),
+                            animatorEvent.Layer,
+                            Mathf.Clamp01(animatorEvent.NormalizedTime));
+                        break;
+                    case AnimatorCommand.SetTrigger:
+                        animator.SetTrigger(stateOrParameter);
+                        break;
+                    case AnimatorCommand.ResetTrigger:
+                        animator.ResetTrigger(stateOrParameter);
+                        break;
+                    case AnimatorCommand.SetBool:
+                        animator.SetBool(stateOrParameter, animatorEvent.BoolValue);
+                        break;
+                    case AnimatorCommand.SetInteger:
+                        animator.SetInteger(stateOrParameter, animatorEvent.IntValue);
+                        break;
+                    case AnimatorCommand.SetFloat:
+                        animator.SetFloat(stateOrParameter, animatorEvent.FloatValue);
+                        break;
+                    case AnimatorCommand.SetSpeed:
+                        animator.speed = animatorEvent.FloatValue;
+                        break;
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning($"[EventPlayManager] Animator Event 적용 실패: {exception.Message}");
+                yield break;
+            }
+
+            float duration = Mathf.Max(0f, animatorEvent.Duration);
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+
+        private static bool TryGetExpectedAnimatorParameterType(
+            AnimatorCommand command,
+            out AnimatorControllerParameterType parameterType)
+        {
+            switch (command)
+            {
+                case AnimatorCommand.SetTrigger:
+                case AnimatorCommand.ResetTrigger:
+                    parameterType = AnimatorControllerParameterType.Trigger;
+                    return true;
+                case AnimatorCommand.SetBool:
+                    parameterType = AnimatorControllerParameterType.Bool;
+                    return true;
+                case AnimatorCommand.SetInteger:
+                    parameterType = AnimatorControllerParameterType.Int;
+                    return true;
+                case AnimatorCommand.SetFloat:
+                    parameterType = AnimatorControllerParameterType.Float;
+                    return true;
+                default:
+                    parameterType = default;
+                    return false;
+            }
+        }
+
+        private static bool TryGetAnimatorParameterType(
+            Animator animator,
+            string parameterName,
+            out AnimatorControllerParameterType parameterType)
+        {
+            if (animator != null)
+            {
+                AnimatorControllerParameter[] parameters = animator.parameters;
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    AnimatorControllerParameter parameter = parameters[i];
+                    if (!string.Equals(parameter.name, parameterName, StringComparison.Ordinal)) continue;
+                    parameterType = parameter.type;
+                    return true;
+                }
+            }
+
+            parameterType = default;
+            return false;
+        }
+
+        private IEnumerator VisualFadeRoutine(
+            VisualFadeEntryData fade,
+            GameObject caller,
+            VisualFadeRuntimeState state)
+        {
+            if (fade == null || state == null) yield break;
+
+            string locator = fade.ObjectName?.Trim() ?? string.Empty;
+            GameObject target = string.IsNullOrEmpty(locator) ? caller : ResolveByName(locator);
+            if (target == null)
+            {
+                Debug.LogWarning(
+                    string.IsNullOrEmpty(locator)
+                        ? "[EventPlayManager] Visual Fade: 호출 오브젝트가 없습니다."
+                        : $"[EventPlayManager] Visual Fade: 오브젝트 '{locator}'를 찾지 못했습니다.");
+                yield break;
+            }
+
+            AddToCacheIfNeeded(target);
+            PrepareVisualFadeTargets(target, fade.IncludeChildren, state);
+            if (!HasVisualFadeTargets(state))
+            {
+                Debug.LogWarning($"[EventPlayManager] Visual Fade: '{target.name}'에서 CanvasGroup, UI Graphic, SpriteRenderer 또는 Alpha Color를 지원하는 Renderer를 찾지 못했습니다.");
+                yield break;
+            }
+
+            state.TargetAlpha = Mathf.Clamp01(fade.TargetAlpha);
+            float duration = Mathf.Max(0f, fade.Duration);
+            float elapsed = 0f;
+            try
+            {
+                while (elapsed < duration)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    float progress = Mathf.Clamp01(elapsed / duration);
+                    if (fade.EaseInOut)
+                        progress = Mathf.SmoothStep(0f, 1f, progress);
+                    ApplyVisualFade(state, progress);
+                    yield return null;
+                }
+            }
+            finally
+            {
+                CleanupVisualFade(state, true);
+            }
+        }
+
+        private static void PrepareVisualFadeTargets(
+            GameObject target,
+            bool includeChildren,
+            VisualFadeRuntimeState state)
+        {
+            CanvasGroup[] canvasGroups = includeChildren
+                ? target.GetComponentsInChildren<CanvasGroup>(true)
+                : target.GetComponents<CanvasGroup>();
+            var canvasGroupTransforms = new HashSet<Transform>();
+            for (int i = 0; i < canvasGroups.Length; i++)
+                if (canvasGroups[i] != null)
+                    canvasGroupTransforms.Add(canvasGroups[i].transform);
+
+            var selectedCanvasGroupTransforms = new HashSet<Transform>();
+            for (int i = 0; i < canvasGroups.Length; i++)
+            {
+                CanvasGroup canvasGroup = canvasGroups[i];
+                if (canvasGroup == null || selectedCanvasGroupTransforms.Contains(canvasGroup.transform))
+                    continue;
+
+                bool hasGroupAncestor = false;
+                Transform ancestor = canvasGroup.transform.parent;
+                while (ancestor != null)
+                {
+                    if (canvasGroupTransforms.Contains(ancestor))
+                    {
+                        hasGroupAncestor = true;
+                        break;
+                    }
+                    if (ancestor == target.transform) break;
+                    ancestor = ancestor.parent;
+                }
+                if (hasGroupAncestor) continue;
+
+                selectedCanvasGroupTransforms.Add(canvasGroup.transform);
+                state.CanvasGroups[canvasGroup] = canvasGroup.alpha;
+            }
+
+            Graphic[] graphics = includeChildren
+                ? target.GetComponentsInChildren<Graphic>(true)
+                : target.GetComponents<Graphic>();
+            for (int i = 0; i < graphics.Length; i++)
+            {
+                Graphic graphic = graphics[i];
+                if (graphic == null ||
+                    IsUnderSelectedCanvasGroup(graphic.transform, target.transform, selectedCanvasGroupTransforms))
+                    continue;
+                state.Graphics[graphic] = graphic.color;
+            }
+
+            SpriteRenderer[] sprites = includeChildren
+                ? target.GetComponentsInChildren<SpriteRenderer>(true)
+                : target.GetComponents<SpriteRenderer>();
+            for (int i = 0; i < sprites.Length; i++)
+            {
+                SpriteRenderer sprite = sprites[i];
+                if (sprite != null) state.Sprites[sprite] = sprite.color;
+            }
+
+            Renderer[] renderers = includeChildren
+                ? target.GetComponentsInChildren<Renderer>(true)
+                : target.GetComponents<Renderer>();
+            for (int rendererIndex = 0; rendererIndex < renderers.Length; rendererIndex++)
+            {
+                Renderer renderer = renderers[rendererIndex];
+                if (renderer == null || renderer is SpriteRenderer) continue;
+
+                Material[] materials = renderer.sharedMaterials;
+                for (int materialIndex = 0; materialIndex < materials.Length; materialIndex++)
+                {
+                    Material material = materials[materialIndex];
+                    if (material == null) continue;
+
+                    int propertyId;
+                    if (material.HasProperty(BaseColorPropertyId))
+                        propertyId = BaseColorPropertyId;
+                    else if (material.HasProperty(ColorPropertyId))
+                        propertyId = ColorPropertyId;
+                    else
+                        continue;
+
+                    var propertyBlock = new MaterialPropertyBlock();
+                    renderer.GetPropertyBlock(propertyBlock, materialIndex);
+                    Color startColor = propertyBlock.HasColor(propertyId)
+                        ? propertyBlock.GetColor(propertyId)
+                        : material.GetColor(propertyId);
+                    state.Renderers.Add(new RendererFadeTarget
+                    {
+                        Renderer = renderer,
+                        MaterialIndex = materialIndex,
+                        ColorPropertyId = propertyId,
+                        StartColor = startColor,
+                        PropertyBlock = propertyBlock
+                    });
+                }
+            }
+        }
+
+        private static bool IsUnderSelectedCanvasGroup(
+            Transform current,
+            Transform targetRoot,
+            HashSet<Transform> selectedCanvasGroupTransforms)
+        {
+            while (current != null)
+            {
+                if (selectedCanvasGroupTransforms.Contains(current)) return true;
+                if (current == targetRoot) break;
+                current = current.parent;
+            }
+            return false;
+        }
+
+        private static bool HasVisualFadeTargets(VisualFadeRuntimeState state)
+        {
+            return state != null &&
+                   (state.CanvasGroups.Count > 0 || state.Graphics.Count > 0 ||
+                    state.Sprites.Count > 0 || state.Renderers.Count > 0);
+        }
+
+        private static void ApplyVisualFade(VisualFadeRuntimeState state, float progress)
+        {
+            if (state == null) return;
+            float targetAlpha = state.TargetAlpha;
+
+            foreach (KeyValuePair<CanvasGroup, float> entry in state.CanvasGroups)
+                if (entry.Key != null)
+                    entry.Key.alpha = Mathf.Lerp(entry.Value, targetAlpha, progress);
+
+            foreach (KeyValuePair<Graphic, Color> entry in state.Graphics)
+            {
+                if (entry.Key == null) continue;
+                Color color = entry.Key.color;
+                color.a = Mathf.Lerp(entry.Value.a, targetAlpha, progress);
+                entry.Key.color = color;
+            }
+
+            foreach (KeyValuePair<SpriteRenderer, Color> entry in state.Sprites)
+            {
+                if (entry.Key == null) continue;
+                Color color = entry.Key.color;
+                color.a = Mathf.Lerp(entry.Value.a, targetAlpha, progress);
+                entry.Key.color = color;
+            }
+
+            for (int i = 0; i < state.Renderers.Count; i++)
+            {
+                RendererFadeTarget entry = state.Renderers[i];
+                if (entry == null || entry.Renderer == null || entry.PropertyBlock == null) continue;
+                entry.Renderer.GetPropertyBlock(entry.PropertyBlock, entry.MaterialIndex);
+                Color color = entry.PropertyBlock.HasColor(entry.ColorPropertyId)
+                    ? entry.PropertyBlock.GetColor(entry.ColorPropertyId)
+                    : entry.StartColor;
+                color.a = Mathf.Lerp(entry.StartColor.a, targetAlpha, progress);
+                entry.PropertyBlock.SetColor(entry.ColorPropertyId, color);
+                entry.Renderer.SetPropertyBlock(entry.PropertyBlock, entry.MaterialIndex);
+            }
+        }
+
+        private static void CleanupVisualFade(VisualFadeRuntimeState state, bool applyTarget)
+        {
+            if (state == null || state.Cleaned) return;
+            if (applyTarget) ApplyVisualFade(state, 1f);
+            state.Cleaned = true;
+        }
+
+        private IEnumerator LightTweenRoutine(
+            LightTweenEntryData lightTween,
+            GameObject caller,
+            LightTweenRuntimeState state)
+        {
+            if (lightTween == null || state == null) yield break;
+
+            string locator = lightTween.ObjectName?.Trim() ?? string.Empty;
+            GameObject target = string.IsNullOrEmpty(locator) ? caller : ResolveByName(locator);
+            if (target == null)
+            {
+                Debug.LogWarning(
+                    string.IsNullOrEmpty(locator)
+                        ? "[EventPlayManager] Light Tween: 호출 오브젝트가 없습니다."
+                        : $"[EventPlayManager] Light Tween: 오브젝트 '{locator}'를 찾지 못했습니다.");
+                yield break;
+            }
+
+            state.AffectColor = lightTween.AffectColor;
+            state.AffectIntensity = lightTween.AffectIntensity;
+            state.AffectRange = lightTween.AffectRange;
+            state.TargetColor = lightTween.TargetColor;
+            state.TargetIntensity = Mathf.Max(0f, lightTween.TargetIntensity);
+            state.TargetRange = Mathf.Max(0f, lightTween.TargetRange);
+
+            if (!state.AffectColor && !state.AffectIntensity && !state.AffectRange)
+            {
+                Debug.LogWarning("[EventPlayManager] Light Tween: 변경할 Color, Intensity, Range가 모두 꺼져 있습니다.");
+                yield break;
+            }
+
+            Light[] lights = lightTween.IncludeChildren
+                ? target.GetComponentsInChildren<Light>(true)
+                : target.GetComponents<Light>();
+            for (int i = 0; i < lights.Length; i++)
+            {
+                Light light = lights[i];
+                if (light == null || state.Lights.ContainsKey(light)) continue;
+                state.Lights.Add(light, new LightTweenStart
+                {
+                    Color = light.color,
+                    Intensity = light.intensity,
+                    Range = light.range
+                });
+            }
+
+            if (state.Lights.Count == 0)
+            {
+                Debug.LogWarning($"[EventPlayManager] Light Tween: '{target.name}'에서 Light를 찾지 못했습니다.");
+                yield break;
+            }
+
+            AddToCacheIfNeeded(target);
+            float duration = Mathf.Max(0f, lightTween.Duration);
+            float elapsed = 0f;
+            try
+            {
+                while (elapsed < duration)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    float progress = Mathf.Clamp01(elapsed / duration);
+                    if (lightTween.EaseInOut)
+                        progress = Mathf.SmoothStep(0f, 1f, progress);
+                    ApplyLightTween(state, progress);
+                    yield return null;
+                }
+            }
+            finally
+            {
+                CleanupLightTween(state, true);
+            }
+        }
+
+        private static void ApplyLightTween(LightTweenRuntimeState state, float progress)
+        {
+            if (state == null) return;
+            foreach (KeyValuePair<Light, LightTweenStart> entry in state.Lights)
+            {
+                Light light = entry.Key;
+                LightTweenStart start = entry.Value;
+                if (light == null || start == null) continue;
+                if (state.AffectColor)
+                    light.color = Color.Lerp(start.Color, state.TargetColor, progress);
+                if (state.AffectIntensity)
+                    light.intensity = Mathf.Lerp(start.Intensity, state.TargetIntensity, progress);
+                if (state.AffectRange)
+                    light.range = Mathf.Lerp(start.Range, state.TargetRange, progress);
+            }
+        }
+
+        private static void CleanupLightTween(LightTweenRuntimeState state, bool applyTarget)
+        {
+            if (state == null || state.Cleaned) return;
+            if (applyTarget) ApplyLightTween(state, 1f);
+            state.Cleaned = true;
+        }
+
+        private IEnumerator ParticleEventRoutine(ParticleEventData particleEvent, GameObject caller)
+        {
+            if (particleEvent == null) yield break;
+
+            string locator = particleEvent.ObjectName?.Trim() ?? string.Empty;
+            GameObject target = string.IsNullOrEmpty(locator) ? caller : ResolveByName(locator);
+            if (target == null)
+            {
+                Debug.LogWarning(
+                    string.IsNullOrEmpty(locator)
+                        ? "[EventPlayManager] Particle Event: 호출 오브젝트가 없습니다."
+                        : $"[EventPlayManager] Particle Event: 오브젝트 '{locator}'를 찾지 못했습니다.");
+                yield break;
+            }
+
+            ParticleSystem[] particleSystems = particleEvent.IncludeChildren
+                ? target.GetComponentsInChildren<ParticleSystem>(true)
+                : target.GetComponents<ParticleSystem>();
+            if (particleSystems.Length == 0)
+            {
+                Debug.LogWarning($"[EventPlayManager] Particle Event: '{target.name}'에서 ParticleSystem을 찾지 못했습니다.");
+                yield break;
+            }
+
+            AddToCacheIfNeeded(target);
+            for (int i = 0; i < particleSystems.Length; i++)
+            {
+                ParticleSystem particleSystem = particleSystems[i];
+                if (particleSystem == null) continue;
+                switch (particleEvent.Command)
+                {
+                    case ParticleCommand.Pause:
+                        particleSystem.Pause(false);
+                        break;
+                    case ParticleCommand.StopEmitting:
+                        particleSystem.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+                        break;
+                    case ParticleCommand.StopAndClear:
+                        particleSystem.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+                        break;
+                    case ParticleCommand.Clear:
+                        particleSystem.Clear(false);
+                        break;
+                    default:
+                        particleSystem.Play(false);
+                        break;
+                }
+            }
+
+            float duration = Mathf.Max(0f, particleEvent.Duration);
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+        }
+
         private IEnumerator HardSpeechRoutine(GameObject uiObj, IReadOnlyList<string> texts, KeyCode advanceKey, bool isTyping)
         {
             if (uiObj == null) yield break;
@@ -1474,6 +2678,166 @@ namespace JYW.Game.EventPlay
                 eventUI.SetText(string.Empty);
             }
             uiObj.SetActive(false);
+        }
+
+        private IEnumerator PortraitSpeechRoutine(
+            GameObject uiObj,
+            PortraitSpeechData portraitSpeech)
+        {
+            if (uiObj == null || portraitSpeech == null) yield break;
+
+            PortraitSpeechCanvas portraitCanvas =
+                uiObj.GetComponentInChildren<PortraitSpeechCanvas>(true) ??
+                uiObj.GetComponent<PortraitSpeechCanvas>();
+            if (portraitCanvas == null)
+            {
+                Debug.LogWarning("[EventPlayManager] Portrait Speech 프리팹에 PortraitSpeechCanvas가 없습니다.");
+                yield break;
+            }
+
+            portraitCanvas.Clear();
+            if (portraitSpeech.Lines == null || portraitSpeech.Lines.Length == 0)
+            {
+                Debug.LogWarning("[EventPlayManager] Portrait Speech에 표시할 Line이 없습니다.");
+                if (uiObj.activeSelf) uiObj.SetActive(false);
+                yield break;
+            }
+
+            KeyCode advanceKey = portraitSpeech.AdvanceKey;
+            if (portraitSpeech.AdvanceMode == PortraitAdvanceMode.Input)
+            {
+                if (advanceKey == KeyCode.None) advanceKey = KeyCode.E;
+                if (!EventInputReader.IsSupported(advanceKey))
+                {
+                    Debug.LogWarning($"[EventPlayManager] 현재 입력 설정에서 Portrait Speech 키 '{advanceKey}'를 읽을 수 없어 E 키로 진행합니다.");
+                    advanceKey = KeyCode.E;
+                }
+                if (!EventInputReader.IsSupported(advanceKey))
+                {
+                    Debug.LogError("[EventPlayManager] Portrait Speech 진행 키를 읽을 수 있는 입력 모듈이 없습니다.");
+                    if (uiObj.activeSelf) uiObj.SetActive(false);
+                    yield break;
+                }
+            }
+
+            if (!uiObj.activeSelf) uiObj.SetActive(true);
+            try
+            {
+                for (int lineIndex = 0; lineIndex < portraitSpeech.Lines.Length; lineIndex++)
+                {
+                    PortraitSpeechLineData line = portraitSpeech.Lines[lineIndex];
+                    if (line == null) continue;
+
+                    portraitCanvas.SetLine(line.Portrait, line.SpeakerName);
+                    string fullText = line.Text ?? string.Empty;
+
+                    if (portraitSpeech.AdvanceMode == PortraitAdvanceMode.Input)
+                    {
+                        if (portraitSpeech.IsTyping)
+                            yield return TypePortraitTextWithInput(portraitCanvas, fullText, advanceKey);
+                        else
+                            portraitCanvas.SetText(fullText);
+
+                        while (EventInputReader.TryIsPressed(advanceKey, out bool held) && held)
+                            yield return null;
+                        while (true)
+                        {
+                            if (EventInputReader.TryWasPressedThisFrame(advanceKey, out bool pressed) && pressed)
+                                break;
+                            yield return null;
+                        }
+                    }
+                    else
+                    {
+                        yield return ShowTimedPortraitText(
+                            portraitCanvas,
+                            fullText,
+                            Mathf.Max(0f, line.Duration),
+                            portraitSpeech.IsTyping);
+                    }
+                }
+            }
+            finally
+            {
+                portraitCanvas.Clear();
+                if (uiObj != null) uiObj.SetActive(false);
+            }
+        }
+
+        private IEnumerator TypePortraitTextWithInput(
+            PortraitSpeechCanvas portraitCanvas,
+            string fullText,
+            KeyCode advanceKey)
+        {
+            const float typingInterval = 0.05f;
+            while (EventInputReader.TryIsPressed(advanceKey, out bool held) && held)
+                yield return null;
+
+            portraitCanvas.SetText(string.Empty);
+            bool forcedShow = false;
+            for (int characterCount = 1; characterCount <= fullText.Length; characterCount++)
+            {
+                portraitCanvas.SetText(fullText.Substring(0, characterCount));
+                if (characterCount == fullText.Length) break;
+
+                float elapsed = 0f;
+                while (elapsed < typingInterval)
+                {
+                    if (EventInputReader.TryWasPressedThisFrame(advanceKey, out bool pressed) && pressed)
+                    {
+                        portraitCanvas.SetText(fullText);
+                        forcedShow = true;
+                        break;
+                    }
+                    elapsed += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+                if (forcedShow) break;
+            }
+
+            if (fullText.Length == 0)
+                portraitCanvas.SetText(string.Empty);
+        }
+
+        private IEnumerator ShowTimedPortraitText(
+            PortraitSpeechCanvas portraitCanvas,
+            string fullText,
+            float duration,
+            bool isTyping)
+        {
+            if (!isTyping || duration <= 0f || fullText.Length == 0)
+            {
+                portraitCanvas.SetText(fullText);
+                float plainElapsed = 0f;
+                while (plainElapsed < duration)
+                {
+                    plainElapsed += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+                yield break;
+            }
+
+            portraitCanvas.SetText(string.Empty);
+            float typingDuration = Mathf.Min(duration, fullText.Length * 0.05f);
+            float elapsed = 0f;
+            int shownCharacters = 0;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                int desiredCharacters = elapsed >= typingDuration
+                    ? fullText.Length
+                    : Mathf.Clamp(
+                        Mathf.FloorToInt(elapsed / typingDuration * fullText.Length),
+                        0,
+                        fullText.Length);
+                if (desiredCharacters != shownCharacters)
+                {
+                    shownCharacters = desiredCharacters;
+                    portraitCanvas.SetText(fullText.Substring(0, shownCharacters));
+                }
+                yield return null;
+            }
+            portraitCanvas.SetText(fullText);
         }
 
         private IEnumerator TooltipRoutine(GameObject tooltipObject, TooltipData tooltip)
@@ -1531,6 +2895,98 @@ namespace JYW.Game.EventPlay
             ClearTooltipTracking(tooltipObject);
             eventUI.SetText(string.Empty);
             tooltipObject.SetActive(false);
+        }
+
+        private IEnumerator BlackLabelRoutine(
+            GameObject blackLabelObject,
+            BlackLabelData blackLabel)
+        {
+            if (blackLabelObject == null || blackLabel == null) yield break;
+
+            if (!blackLabelObject.activeSelf) blackLabelObject.SetActive(true);
+
+            float duration = Mathf.Max(0f, blackLabel.Duration);
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            blackLabelObject.SetActive(false);
+        }
+
+        private IEnumerator ScreenFlashRoutine(
+            GameObject screenFlashObject,
+            ScreenFlashData screenFlash)
+        {
+            if (screenFlashObject == null || screenFlash == null) yield break;
+
+            ScreenFlashCanvas screenFlashCanvas =
+                screenFlashObject.GetComponentInChildren<ScreenFlashCanvas>(true) ??
+                screenFlashObject.GetComponent<ScreenFlashCanvas>();
+            if (screenFlashCanvas == null)
+            {
+                Debug.LogWarning("[EventPlayManager] Screen Flash 프리팹에 ScreenFlashCanvas가 없습니다.");
+                yield break;
+            }
+
+            screenFlashCanvas.Clear();
+            screenFlashCanvas.SetColor(screenFlash.FlashColor);
+            if (!screenFlashObject.activeSelf) screenFlashObject.SetActive(true);
+
+            float peakAlpha = Mathf.Clamp01(screenFlash.PeakAlpha);
+            try
+            {
+                yield return AnimateScreenFlashAlpha(
+                    screenFlashCanvas,
+                    0f,
+                    peakAlpha,
+                    Mathf.Max(0f, screenFlash.FadeInDuration));
+
+                float holdDuration = Mathf.Max(0f, screenFlash.Duration);
+                float holdElapsed = 0f;
+                while (holdElapsed < holdDuration)
+                {
+                    holdElapsed += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+
+                yield return AnimateScreenFlashAlpha(
+                    screenFlashCanvas,
+                    peakAlpha,
+                    0f,
+                    Mathf.Max(0f, screenFlash.FadeOutDuration));
+            }
+            finally
+            {
+                screenFlashCanvas.Clear();
+                if (screenFlashObject != null) screenFlashObject.SetActive(false);
+            }
+        }
+
+        private IEnumerator AnimateScreenFlashAlpha(
+            ScreenFlashCanvas screenFlashCanvas,
+            float from,
+            float to,
+            float duration)
+        {
+            if (screenFlashCanvas == null) yield break;
+            if (duration <= 0f)
+            {
+                screenFlashCanvas.SetAlpha(to);
+                yield break;
+            }
+
+            screenFlashCanvas.SetAlpha(from);
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                screenFlashCanvas.SetAlpha(Mathf.Lerp(from, to, Mathf.Clamp01(elapsed / duration)));
+                yield return null;
+            }
+            screenFlashCanvas.SetAlpha(to);
         }
 
         private void ApplyTooltipPosition(
@@ -1649,70 +3105,435 @@ namespace JYW.Game.EventPlay
             return null;
         }
 
-        private IEnumerator CameraMoveRoutine(CameraMovementData movement, float stepStartTime, bool useMain)
+        private IEnumerator CameraShakeRoutine(
+            CameraShakeData cameraShake,
+            CameraShakeRuntimeState state)
+        {
+            if (cameraShake == null || state == null) yield break;
+
+            Camera camera;
+            if (cameraShake.UseMainCamera)
+            {
+                camera = Camera.main;
+            }
+            else
+            {
+                GameObject eventCameraObject = GetOrCreateEventCamera();
+                camera = eventCameraObject != null ? eventCameraObject.GetComponent<Camera>() : null;
+                if (camera != null)
+                {
+                    bool wasUnused = eventCameraUserCount == 0;
+                    if (wasUnused)
+                    {
+                        eventCameraPrevDepth = camera.depth;
+                        eventCameraDepthStored = true;
+                        camera.depth = 20f;
+                        Camera mainCamera = Camera.main;
+                        if (mainCamera != null)
+                        {
+                            eventCameraObject.transform.position = mainCamera.transform.position;
+                            eventCameraObject.transform.rotation = mainCamera.transform.rotation;
+                        }
+                    }
+
+                    eventCameraUserCount++;
+                    eventCameraObject.SetActive(true);
+                    state.UsesEventCamera = true;
+                    state.EventCameraObject = eventCameraObject;
+                    state.EventCameraComponent = camera;
+                }
+            }
+
+            if (camera == null)
+            {
+                Debug.LogWarning(
+                    cameraShake.UseMainCamera
+                        ? "[EventPlayManager] Camera Shake: Main Camera를 찾지 못했습니다."
+                        : "[EventPlayManager] Camera Shake: EventCamera를 준비하지 못했습니다.");
+                yield break;
+            }
+
+            state.Target = camera.transform;
+            float duration = Mathf.Max(0f, cameraShake.Duration);
+            float frequency = Mathf.Max(0f, cameraShake.Frequency);
+            float seed = Time.realtimeSinceStartup * 0.731f + 11.17f;
+            float elapsed = 0f;
+            try
+            {
+                while (elapsed < duration)
+                {
+                    RemoveAppliedCameraShake(state);
+
+                    float progress = duration <= 0f ? 1f : Mathf.Clamp01(elapsed / duration);
+                    float strength = cameraShake.FadeOut ? 1f - progress : 1f;
+                    float noiseTime = Time.realtimeSinceStartup * frequency;
+                    Vector3 positionNoise = new Vector3(
+                        SignedPerlin(seed + 1.17f, noiseTime),
+                        SignedPerlin(seed + 3.41f, noiseTime),
+                        SignedPerlin(seed + 5.93f, noiseTime));
+                    Vector3 rotationNoise = new Vector3(
+                        SignedPerlin(seed + 7.13f, noiseTime),
+                        SignedPerlin(seed + 9.67f, noiseTime),
+                        SignedPerlin(seed + 12.31f, noiseTime));
+
+                    state.AppliedPosition = Vector3.Scale(positionNoise, cameraShake.PositionStrength) * strength;
+                    state.AppliedRotation = Quaternion.Euler(
+                        Vector3.Scale(rotationNoise, cameraShake.RotationStrength) * strength);
+                    state.BasePositionAtApply = state.Target.localPosition;
+                    state.BaseRotationAtApply = state.Target.localRotation;
+                    state.Target.localPosition = state.BasePositionAtApply + state.AppliedPosition;
+                    state.Target.localRotation = state.BaseRotationAtApply * state.AppliedRotation;
+                    state.HasAppliedOffset = true;
+
+                    elapsed += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+            }
+            finally
+            {
+                CleanupCameraShake(state);
+            }
+        }
+
+        private static float SignedPerlin(float seed, float time)
+        {
+            return Mathf.PerlinNoise(seed, time) * 2f - 1f;
+        }
+
+        private static void RemoveAppliedCameraShake(CameraShakeRuntimeState state)
+        {
+            if (state == null || !state.HasAppliedOffset) return;
+            if (state.Target != null)
+            {
+                Vector3 expectedPosition = state.BasePositionAtApply + state.AppliedPosition;
+                Quaternion expectedRotation = state.BaseRotationAtApply * state.AppliedRotation;
+
+                // 같은 프레임의 Move/Aim 또는 게임 카메라 스크립트가 이미 새 값을 썼다면
+                // 그 값을 이전 Shake 오프셋으로 다시 보정하지 않는다.
+                if ((state.Target.localPosition - expectedPosition).sqrMagnitude <= 0.00000001f)
+                    state.Target.localPosition = state.BasePositionAtApply;
+                if (Quaternion.Angle(state.Target.localRotation, expectedRotation) <= 0.001f)
+                    state.Target.localRotation = state.BaseRotationAtApply;
+            }
+
+            state.AppliedPosition = Vector3.zero;
+            state.AppliedRotation = Quaternion.identity;
+            state.HasAppliedOffset = false;
+        }
+
+        private void CleanupCameraShake(CameraShakeRuntimeState state)
+        {
+            if (state == null || state.Cleaned) return;
+            RemoveAppliedCameraShake(state);
+
+            if (state.UsesEventCamera)
+            {
+                eventCameraUserCount = Mathf.Max(0, eventCameraUserCount - 1);
+                if (eventCameraUserCount == 0)
+                {
+                    if (eventCameraDepthStored && state.EventCameraComponent != null)
+                        state.EventCameraComponent.depth = eventCameraPrevDepth;
+                    eventCameraDepthStored = false;
+                    if (state.EventCameraObject != null && state.EventCameraObject.activeSelf)
+                        state.EventCameraObject.SetActive(false);
+                }
+            }
+
+            state.Cleaned = true;
+        }
+
+        private IEnumerator CameraLensRoutine(
+            CameraLensData cameraLens,
+            CameraLensRuntimeState state)
+        {
+            if (cameraLens == null || state == null) yield break;
+
+            Camera camera = null;
+            if (cameraLens.UseMainCamera)
+            {
+                camera = Camera.main;
+            }
+            else
+            {
+                GameObject eventCameraObject = GetOrCreateEventCamera();
+                camera = eventCameraObject != null ? eventCameraObject.GetComponent<Camera>() : null;
+                if (camera != null)
+                {
+                    if (eventCameraUserCount == 0)
+                    {
+                        eventCameraPrevDepth = camera.depth;
+                        eventCameraDepthStored = true;
+                        camera.depth = 20f;
+
+                        Camera mainCamera = Camera.main;
+                        if (mainCamera != null)
+                        {
+                            eventCameraObject.transform.position = mainCamera.transform.position;
+                            eventCameraObject.transform.rotation = mainCamera.transform.rotation;
+                        }
+                    }
+
+                    eventCameraUserCount++;
+                    eventCameraObject.SetActive(true);
+                    state.UsesEventCamera = true;
+                    state.EventCameraObject = eventCameraObject;
+                }
+            }
+
+            if (camera == null)
+            {
+                Debug.LogWarning(
+                    cameraLens.UseMainCamera
+                        ? "[EventPlayManager] Camera Lens: Main Camera를 찾지 못했습니다."
+                        : "[EventPlayManager] Camera Lens: EventCamera를 준비하지 못했습니다.");
+                yield break;
+            }
+
+            state.Target = camera;
+            state.UsesOrthographicSize = camera.orthographic;
+            state.TargetValue = state.UsesOrthographicSize
+                ? Mathf.Max(0.0001f, cameraLens.TargetOrthographicSize)
+                : Mathf.Clamp(cameraLens.TargetFieldOfView, 1f, 179f);
+
+            float startValue = state.UsesOrthographicSize
+                ? camera.orthographicSize
+                : camera.fieldOfView;
+            float duration = Mathf.Max(0f, cameraLens.Duration);
+            float elapsed = 0f;
+            try
+            {
+                while (elapsed < duration)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    float progress = Mathf.Clamp01(elapsed / duration);
+                    if (cameraLens.EaseInOut)
+                        progress = Mathf.SmoothStep(0f, 1f, progress);
+                    ApplyCameraLensValue(state, Mathf.Lerp(startValue, state.TargetValue, progress));
+                    yield return null;
+                }
+            }
+            finally
+            {
+                CleanupCameraLens(state, true);
+            }
+        }
+
+        private static void ApplyCameraLensValue(CameraLensRuntimeState state, float value)
+        {
+            if (state == null || state.Target == null) return;
+            if (state.UsesOrthographicSize)
+                state.Target.orthographicSize = Mathf.Max(0.0001f, value);
+            else
+                state.Target.fieldOfView = Mathf.Clamp(value, 1f, 179f);
+        }
+
+        private void CleanupCameraLens(CameraLensRuntimeState state, bool applyTarget)
+        {
+            if (state == null || state.Cleaned) return;
+
+            if (applyTarget)
+                ApplyCameraLensValue(state, state.TargetValue);
+
+            if (state.UsesEventCamera)
+            {
+                eventCameraUserCount = Mathf.Max(0, eventCameraUserCount - 1);
+                if (eventCameraUserCount == 0)
+                {
+                    if (eventCameraDepthStored && state.Target != null)
+                        state.Target.depth = eventCameraPrevDepth;
+                    eventCameraDepthStored = false;
+                    if (state.EventCameraObject != null && state.EventCameraObject.activeSelf)
+                        state.EventCameraObject.SetActive(false);
+                }
+            }
+
+            state.Cleaned = true;
+        }
+
+        private void AcquireMainCameraDepth(Camera camera, MainCameraDepthRuntimeState state)
+        {
+            if (camera == null || state == null || state.Acquired || state.Released) return;
+
+            MainCameraDepthUsage usage;
+            if (!mainCameraDepthUsages.TryGetValue(camera, out usage))
+            {
+                usage = new MainCameraDepthUsage
+                {
+                    Count = 0,
+                    PreviousDepth = camera.depth
+                };
+                mainCameraDepthUsages.Add(camera, usage);
+            }
+
+            usage.Count++;
+            camera.depth = 20f;
+            state.Target = camera;
+            state.Acquired = true;
+        }
+
+        private void ReleaseMainCameraDepth(MainCameraDepthRuntimeState state)
+        {
+            if (state == null || state.Released) return;
+            state.Released = true;
+            if (!state.Acquired || ReferenceEquals(state.Target, null)) return;
+
+            Camera target = state.Target;
+            MainCameraDepthUsage usage;
+            if (!mainCameraDepthUsages.TryGetValue(target, out usage)) return;
+
+            usage.Count = Mathf.Max(0, usage.Count - 1);
+            if (usage.Count > 0) return;
+
+            if (target != null)
+                target.depth = usage.PreviousDepth;
+            mainCameraDepthUsages.Remove(target);
+        }
+
+        private void AcquireEventCameraUsage(
+            GameObject cameraObject,
+            Camera camera,
+            EventCameraUsageRuntimeState state)
+        {
+            if (cameraObject == null || camera == null || state == null || state.Acquired || state.Released)
+                return;
+
+            if (eventCameraUserCount == 0)
+            {
+                eventCameraPrevDepth = camera.depth;
+                eventCameraDepthStored = true;
+                camera.depth = 20f;
+            }
+
+            eventCameraUserCount++;
+            cameraObject.SetActive(true);
+            state.CameraObject = cameraObject;
+            state.CameraComponent = camera;
+            state.Acquired = true;
+        }
+
+        private void ReleaseEventCameraUsage(EventCameraUsageRuntimeState state)
+        {
+            if (state == null || state.Released) return;
+            state.Released = true;
+            if (!state.Acquired) return;
+
+            eventCameraUserCount = Mathf.Max(0, eventCameraUserCount - 1);
+            if (eventCameraUserCount > 0) return;
+
+            if (eventCameraDepthStored && state.CameraComponent != null)
+                state.CameraComponent.depth = eventCameraPrevDepth;
+            eventCameraDepthStored = false;
+            if (state.CameraObject != null && state.CameraObject.activeSelf)
+                state.CameraObject.SetActive(false);
+        }
+
+        private static Quaternion SafeLookRotation(Vector3 direction, Quaternion fallback)
+        {
+            return direction.sqrMagnitude > 0.000001f
+                ? Quaternion.LookRotation(direction)
+                : fallback;
+        }
+
+        private IEnumerator CameraMoveRoutine(
+            CameraMovementData movement,
+            float stepStartTime,
+            bool useMain,
+            MainCameraDepthRuntimeState mainCameraDepthState,
+            EventCameraUsageRuntimeState eventCameraUsageState)
         {
             if (movement == null) yield break;
             Vector3 LocalToWorld(Transform center, Vector3 local) { return center.position + center.right * local.x + center.up * local.y + center.forward * local.z; }
             if (useMain)
             {
                 Camera camComp = Camera.main; if (camComp == null) yield break;
-                float prevDepth = camComp.depth; Transform camTransform = camComp.transform; camComp.depth = 20f;
-                while (Time.time - stepStartTime < movement.StartTime) yield return null;
-                Vector3 startWorld, goalWorld;
-                if (movement.IsRelative && !string.IsNullOrEmpty(movement.CenterObject)) { var centerGO = ResolveByName(movement.CenterObject); if (centerGO != null) { var centerT = centerGO.transform; startWorld = LocalToWorld(centerT, movement.StartPosition); goalWorld = LocalToWorld(centerT, movement.EndPosition); } else { startWorld = movement.StartPosition; goalWorld = movement.EndPosition; } }
-                else { startWorld = movement.StartPosition; goalWorld = movement.EndPosition; }
-                float duration = Mathf.Max(0.0001f, movement.EndTime - movement.StartTime);
-                camTransform.position = startWorld; float localStart = Time.time;
-                while (true) { float k = Mathf.Clamp01((Time.time - localStart) / duration); camTransform.position = Vector3.Lerp(startWorld, goalWorld, k); if (k >= 1f) break; yield return null; }
-                camComp.depth = prevDepth; yield break;
+                Transform camTransform = camComp.transform;
+                AcquireMainCameraDepth(camComp, mainCameraDepthState);
+                try
+                {
+                    while (Time.time - stepStartTime < movement.StartTime) yield return null;
+                    Vector3 startWorld, goalWorld;
+                    if (movement.IsRelative && !string.IsNullOrEmpty(movement.CenterObject)) { var centerGO = ResolveByName(movement.CenterObject); if (centerGO != null) { var centerT = centerGO.transform; startWorld = LocalToWorld(centerT, movement.StartPosition); goalWorld = LocalToWorld(centerT, movement.EndPosition); } else { startWorld = movement.StartPosition; goalWorld = movement.EndPosition; } }
+                    else { startWorld = movement.StartPosition; goalWorld = movement.EndPosition; }
+                    float duration = Mathf.Max(0.0001f, movement.EndTime - movement.StartTime);
+                    camTransform.position = startWorld; float localStart = Time.time;
+                    while (true) { float k = Mathf.Clamp01((Time.time - localStart) / duration); camTransform.position = Vector3.Lerp(startWorld, goalWorld, k); if (k >= 1f) break; yield return null; }
+                }
+                finally
+                {
+                    ReleaseMainCameraDepth(mainCameraDepthState);
+                }
+                yield break;
             }
             var camGO = GetOrCreateEventCamera(); if (camGO == null) yield break;
             Camera cam = camGO.GetComponent<Camera>(); if (cam == null) yield break;
             Transform camT = cam.transform;
-            if (eventCameraUserCount == 0) { eventCameraPrevDepth = cam.depth; eventCameraDepthStored = true; cam.depth = 20; }
             Camera mainCamera = Camera.main;
-            if (mainCamera == null) { eventCameraUserCount = Mathf.Max(0, eventCameraUserCount - 1); yield break; }
-            eventCameraUserCount++; camGO.transform.position = mainCamera.transform.position; camGO.transform.rotation = mainCamera.transform.rotation; camGO.SetActive(true);
-            while (Time.time - stepStartTime < movement.StartTime) yield return null;
-            Vector3 s, g;
-            if (movement.IsRelative && !string.IsNullOrEmpty(movement.CenterObject)) { var centerGO = ResolveByName(movement.CenterObject); if (centerGO != null) { var centerT = centerGO.transform; s = LocalToWorld(centerT, movement.StartPosition); g = LocalToWorld(centerT, movement.EndPosition); } else { s = movement.StartPosition; g = movement.EndPosition; } }
-            else { s = movement.StartPosition; g = movement.EndPosition; }
-            float dur = Mathf.Max(0.0001f, movement.EndTime - movement.StartTime);
-            camT.position = s; float localStart2 = Time.time;
-            while (true) { float k = Mathf.Clamp01((Time.time - localStart2) / dur); camT.position = Vector3.Lerp(s, g, k); if (k >= 1f) break; yield return null; }
-            eventCameraUserCount = Mathf.Max(0, eventCameraUserCount - 1);
-            if (eventCameraUserCount == 0) { if (eventCameraDepthStored) cam.depth = eventCameraPrevDepth; camGO.SetActive(false); eventCameraDepthStored = false; }
+            if (mainCamera == null) yield break;
+            camGO.transform.position = mainCamera.transform.position;
+            camGO.transform.rotation = mainCamera.transform.rotation;
+            AcquireEventCameraUsage(camGO, cam, eventCameraUsageState);
+            try
+            {
+                while (Time.time - stepStartTime < movement.StartTime) yield return null;
+                Vector3 s, g;
+                if (movement.IsRelative && !string.IsNullOrEmpty(movement.CenterObject)) { var centerGO = ResolveByName(movement.CenterObject); if (centerGO != null) { var centerT = centerGO.transform; s = LocalToWorld(centerT, movement.StartPosition); g = LocalToWorld(centerT, movement.EndPosition); } else { s = movement.StartPosition; g = movement.EndPosition; } }
+                else { s = movement.StartPosition; g = movement.EndPosition; }
+                float dur = Mathf.Max(0.0001f, movement.EndTime - movement.StartTime);
+                camT.position = s; float localStart2 = Time.time;
+                while (true) { float k = Mathf.Clamp01((Time.time - localStart2) / dur); camT.position = Vector3.Lerp(s, g, k); if (k >= 1f) break; yield return null; }
+            }
+            finally
+            {
+                ReleaseEventCameraUsage(eventCameraUsageState);
+            }
         }
 
-        private IEnumerator CameraLookAtRoutine(CameraAimData aim, float stepStartTime, bool useMain)
+        private IEnumerator CameraLookAtRoutine(
+            CameraAimData aim,
+            float stepStartTime,
+            bool useMain,
+            MainCameraDepthRuntimeState mainCameraDepthState,
+            EventCameraUsageRuntimeState eventCameraUsageState)
         {
             if (aim == null) yield break;
             Vector3 GetTargetWorldPosWithLocalOffset(Transform target, Vector3 localOffset) { if (target == null) return Vector3.zero; return target.position + target.right * localOffset.x + target.up * localOffset.y + target.forward * localOffset.z; }
             if (useMain)
             {
                 Camera camComp = Camera.main; if (camComp == null) yield break;
-                float prevDepth = camComp.depth; Transform camTransform = camComp.transform; camComp.depth = 20f;
-                while (Time.time - stepStartTime < aim.StartTime) yield return null;
-                float endTime = Mathf.Max(aim.EndTime, aim.StartTime + 0.0001f);
-                GameObject target = ResolveByName(aim.aimedTargetName); Transform targetT = target != null ? target.transform : null;
-                if (targetT != null) { Vector3 aimPos = GetTargetWorldPosWithLocalOffset(targetT, aim.TargetLocalOffset); Vector3 dir0 = aimPos - camTransform.position; Quaternion goal = Quaternion.LookRotation(dir0); float initDur = Mathf.Max(0f, aim.InitDuration); if (initDur <= 0f) { camTransform.rotation = goal; } else { Quaternion startRot = camTransform.rotation; float elapsed = 0f; while (elapsed < initDur) { aimPos = GetTargetWorldPosWithLocalOffset(targetT, aim.TargetLocalOffset); dir0 = aimPos - camTransform.position; goal = Quaternion.LookRotation(dir0); elapsed += Time.deltaTime; float k = Mathf.Clamp01(elapsed / initDur); camTransform.rotation = Quaternion.Slerp(startRot, goal, k); yield return null; } camTransform.rotation = goal; } }
-                while (Time.time - stepStartTime < endTime) { if (targetT != null) { Vector3 aimPos = GetTargetWorldPosWithLocalOffset(targetT, aim.TargetLocalOffset); Vector3 dir = aimPos - camTransform.position; camTransform.rotation = Quaternion.LookRotation(dir); } yield return null; }
-                camComp.depth = prevDepth; yield break;
+                Transform camTransform = camComp.transform;
+                AcquireMainCameraDepth(camComp, mainCameraDepthState);
+                try
+                {
+                    while (Time.time - stepStartTime < aim.StartTime) yield return null;
+                    float endTime = Mathf.Max(aim.EndTime, aim.StartTime + 0.0001f);
+                    GameObject target = ResolveByName(aim.aimedTargetName); Transform targetT = target != null ? target.transform : null;
+                    if (targetT != null) { Vector3 aimPos = GetTargetWorldPosWithLocalOffset(targetT, aim.TargetLocalOffset); Vector3 dir0 = aimPos - camTransform.position; Quaternion goal = SafeLookRotation(dir0, camTransform.rotation); float initDur = Mathf.Max(0f, aim.InitDuration); if (initDur <= 0f) { camTransform.rotation = goal; } else { Quaternion startRot = camTransform.rotation; float elapsed = 0f; while (elapsed < initDur) { aimPos = GetTargetWorldPosWithLocalOffset(targetT, aim.TargetLocalOffset); dir0 = aimPos - camTransform.position; goal = SafeLookRotation(dir0, goal); elapsed += Time.deltaTime; float k = Mathf.Clamp01(elapsed / initDur); camTransform.rotation = Quaternion.Slerp(startRot, goal, k); yield return null; } camTransform.rotation = goal; } }
+                    while (Time.time - stepStartTime < endTime) { if (targetT != null) { Vector3 aimPos = GetTargetWorldPosWithLocalOffset(targetT, aim.TargetLocalOffset); Vector3 dir = aimPos - camTransform.position; camTransform.rotation = SafeLookRotation(dir, camTransform.rotation); } yield return null; }
+                }
+                finally
+                {
+                    ReleaseMainCameraDepth(mainCameraDepthState);
+                }
+                yield break;
             }
             var camGO2 = GetOrCreateEventCamera(); if (camGO2 == null) yield break;
             Camera camComp2 = camGO2.GetComponent<Camera>(); if (camComp2 == null) yield break;
             Transform camTransform2 = camComp2.transform;
-            if (eventCameraUserCount == 0) { eventCameraPrevDepth = camComp2.depth; eventCameraDepthStored = true; camComp2.depth = 20; }
             Camera aimMainCamera = Camera.main;
             if (aimMainCamera != null) { camTransform2.position = aimMainCamera.transform.position; camTransform2.rotation = aimMainCamera.transform.rotation; }
-            eventCameraUserCount++; camGO2.SetActive(true);
-            while (Time.time - stepStartTime < aim.StartTime) yield return null;
-            float endT = Mathf.Max(aim.EndTime, aim.StartTime + 0.0001f);
-            GameObject tgt = ResolveByName(aim.aimedTargetName); Transform tgtT = tgt != null ? tgt.transform : null;
-            if (tgtT != null) { Vector3 aimPos = GetTargetWorldPosWithLocalOffset(tgtT, aim.TargetLocalOffset); Vector3 dir0 = aimPos - camTransform2.position; Quaternion goal = Quaternion.LookRotation(dir0); float initDur = Mathf.Max(0f, aim.InitDuration); if (initDur <= 0f) { camTransform2.rotation = goal; } else { Quaternion startRot = camTransform2.rotation; float elapsed = 0f; while (elapsed < initDur) { aimPos = GetTargetWorldPosWithLocalOffset(tgtT, aim.TargetLocalOffset); dir0 = aimPos - camTransform2.position; goal = Quaternion.LookRotation(dir0); elapsed += Time.deltaTime; float k = Mathf.Clamp01(elapsed / initDur); camTransform2.rotation = Quaternion.Slerp(startRot, goal, k); yield return null; } camTransform2.rotation = goal; } }
-            while (Time.time - stepStartTime < endT) { if (tgtT != null) { Vector3 aimPos = GetTargetWorldPosWithLocalOffset(tgtT, aim.TargetLocalOffset); Vector3 dir = aimPos - camTransform2.position; camTransform2.rotation = Quaternion.LookRotation(dir); } yield return null; }
-            eventCameraUserCount = Mathf.Max(0, eventCameraUserCount - 1);
-            if (eventCameraUserCount == 0) { if (eventCameraDepthStored) camComp2.depth = eventCameraPrevDepth; camGO2.SetActive(false); eventCameraDepthStored = false; }
+            AcquireEventCameraUsage(camGO2, camComp2, eventCameraUsageState);
+            try
+            {
+                while (Time.time - stepStartTime < aim.StartTime) yield return null;
+                float endT = Mathf.Max(aim.EndTime, aim.StartTime + 0.0001f);
+                GameObject tgt = ResolveByName(aim.aimedTargetName); Transform tgtT = tgt != null ? tgt.transform : null;
+                if (tgtT != null) { Vector3 aimPos = GetTargetWorldPosWithLocalOffset(tgtT, aim.TargetLocalOffset); Vector3 dir0 = aimPos - camTransform2.position; Quaternion goal = SafeLookRotation(dir0, camTransform2.rotation); float initDur = Mathf.Max(0f, aim.InitDuration); if (initDur <= 0f) { camTransform2.rotation = goal; } else { Quaternion startRot = camTransform2.rotation; float elapsed = 0f; while (elapsed < initDur) { aimPos = GetTargetWorldPosWithLocalOffset(tgtT, aim.TargetLocalOffset); dir0 = aimPos - camTransform2.position; goal = SafeLookRotation(dir0, goal); elapsed += Time.deltaTime; float k = Mathf.Clamp01(elapsed / initDur); camTransform2.rotation = Quaternion.Slerp(startRot, goal, k); yield return null; } camTransform2.rotation = goal; } }
+                while (Time.time - stepStartTime < endT) { if (tgtT != null) { Vector3 aimPos = GetTargetWorldPosWithLocalOffset(tgtT, aim.TargetLocalOffset); Vector3 dir = aimPos - camTransform2.position; camTransform2.rotation = SafeLookRotation(dir, camTransform2.rotation); } yield return null; }
+            }
+            finally
+            {
+                ReleaseEventCameraUsage(eventCameraUsageState);
+            }
         }
 
         private IEnumerator FadeScheduleRoutine(FadeInfo fadeInfo, float eventStartRealtime)
@@ -1921,8 +3742,42 @@ namespace JYW.Game.EventPlay
             if (sd.time > 0f) yield return new WaitForSeconds(sd.time);
             if (sd.audioClip == null) { eventAudioSource?.Stop(); yield break; }
             if (eventAudioSource == null) { eventAudioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>(); eventAudioSource.playOnAwake = false; eventAudioSource.spatialBlend = 0f; eventAudioSource.dopplerLevel = 0f; }
-            if (sd.isLoop) { if (eventAudioSource.clip != sd.audioClip || !eventAudioSource.isPlaying) { eventAudioSource.clip = sd.audioClip; eventAudioSource.loop = true; eventAudioSource.volume = Mathf.Clamp01(sd.volume); eventAudioSource.Play(); } }
-            else { if (eventAudioSource.loop) { eventAudioSource.Stop(); eventAudioSource.loop = false; } eventAudioSource.PlayOneShot(sd.audioClip, Mathf.Clamp01(sd.volume)); }
+            if (sd.isLoop)
+            {
+                if (eventAudioSource.clip != sd.audioClip || !eventAudioSource.isPlaying)
+                {
+                    eventAudioSource.clip = sd.audioClip;
+                    eventAudioSource.loop = true;
+                    eventAudioSource.volume = Mathf.Clamp01(sd.volume);
+                    eventAudioSource.Play();
+                }
+                if (sd.WaitForCompletion)
+                    Debug.LogWarning("[EventPlayManager] Loop Sound는 완료 시점이 없어 Wait For Completion을 적용하지 않습니다.");
+            }
+            else
+            {
+                if (eventAudioSource.loop)
+                {
+                    eventAudioSource.Stop();
+                    eventAudioSource.loop = false;
+                }
+                eventAudioSource.PlayOneShot(sd.audioClip, Mathf.Clamp01(sd.volume));
+
+                if (sd.WaitForCompletion)
+                {
+                    float absolutePitch = Mathf.Abs(eventAudioSource.pitch);
+                    if (absolutePitch <= 0.0001f)
+                    {
+                        Debug.LogWarning("[EventPlayManager] Sound AudioSource의 Pitch가 0이라 완료 시간을 기다리지 않습니다.");
+                    }
+                    else
+                    {
+                        double endDspTime = AudioSettings.dspTime + sd.audioClip.length / absolutePitch;
+                        while (AudioSettings.dspTime < endDspTime)
+                            yield return null;
+                    }
+                }
+            }
             yield break;
         }
 

@@ -30,6 +30,8 @@ namespace JYW.Game.EventPlay
 #if ENABLE_LEGACY_INPUT_MANAGER
             pressed = Input.GetKey(keyCode); return true;
 #elif ENABLE_INPUT_SYSTEM
+            if (GetInputSystemMouseButtonIndex(keyCode) >= 0)
+                return TryReadInputSystemMouseButton(keyCode, "isPressed", out pressed);
             return TryReadInputSystemKey(keyCode, "isPressed", out pressed);
 #else
             pressed = false; return false;
@@ -41,6 +43,8 @@ namespace JYW.Game.EventPlay
 #if ENABLE_LEGACY_INPUT_MANAGER
             pressed = Input.GetKeyDown(keyCode); return true;
 #elif ENABLE_INPUT_SYSTEM
+            if (GetInputSystemMouseButtonIndex(keyCode) >= 0)
+                return TryReadInputSystemMouseButton(keyCode, "wasPressedThisFrame", out pressed);
             return TryReadInputSystemKey(keyCode, "wasPressedThisFrame", out pressed);
 #else
             pressed = false; return false;
@@ -52,7 +56,12 @@ namespace JYW.Game.EventPlay
 #if ENABLE_LEGACY_INPUT_MANAGER
             return keyCode != KeyCode.None;
 #elif ENABLE_INPUT_SYSTEM
-            if (KeyboardType == null || keyCode == KeyCode.None) return false;
+            if (keyCode == KeyCode.None) return false;
+            int mouseButtonIndex = GetInputSystemMouseButtonIndex(keyCode);
+            if (mouseButtonIndex >= 0)
+                return MouseType != null && mouseButtonIndex < MouseButtonProperties.Length &&
+                       MouseButtonProperties[mouseButtonIndex] != null;
+            if (KeyboardType == null) return false;
             string propertyName = GetInputSystemPropertyName(keyCode);
             return !string.IsNullOrEmpty(propertyName) &&
                    KeyboardType.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance) != null;
@@ -108,6 +117,39 @@ namespace JYW.Game.EventPlay
         }
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
+        private static int GetInputSystemMouseButtonIndex(KeyCode keyCode)
+        {
+            switch (keyCode)
+            {
+                case KeyCode.Mouse0: return 0;
+                case KeyCode.Mouse1: return 1;
+                case KeyCode.Mouse2: return 2;
+                case KeyCode.Mouse3: return 3;
+                case KeyCode.Mouse4: return 4;
+                default: return -1;
+            }
+        }
+
+        private static bool TryReadInputSystemMouseButton(
+            KeyCode keyCode,
+            string statePropertyName,
+            out bool value)
+        {
+            value = false;
+            int index = GetInputSystemMouseButtonIndex(keyCode);
+            if (index < 0 || index >= MouseButtonProperties.Length) return false;
+
+            object mouse = CurrentMouseProperty?.GetValue(null);
+            object button = mouse != null ? MouseButtonProperties[index]?.GetValue(mouse) : null;
+            PropertyInfo stateProperty = button?.GetType().GetProperty(
+                statePropertyName,
+                BindingFlags.Public | BindingFlags.Instance);
+            if (stateProperty?.PropertyType != typeof(bool)) return false;
+
+            value = (bool)stateProperty.GetValue(button);
+            return true;
+        }
+
         private static bool TryReadInputSystemButton(object buttonControl, out bool pressed)
         {
             pressed = false;

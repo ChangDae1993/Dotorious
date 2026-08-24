@@ -18,6 +18,12 @@ MonoImporter:
       type: 3}
   - choiceContentsPrefab: {fileID: 8458442413539215267, guid: 6bbda07d145aadc48bf53be54baa87e0,
       type: 3}
+  - blackLabelPrefab: {fileID: 6500000000000000001, guid: 6f51efe14b0344adbdcf851e98a43354,
+      type: 3}
+  - portraitSpeechPrefab: {fileID: 1000, guid: 1db1c052f1234abb859c16ea6e733115,
+      type: 3}
+  - screenFlashPrefab: {fileID: 6000, guid: a4a3efac602d45659a865cef9dded39e,
+      type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

@@ -170,8 +170,6 @@ MonoBehaviour:
     type: 3}
   memoPrefab: {fileID: 7002526125472452948, guid: 9447052421f5fa34db48941fdea773ca,
     type: 3}
-  tooltipPrefab: {fileID: 7002526125472452948, guid: f95d06c07f91466d9a6407277d3eee04,
-    type: 3}
   eventCamera: {fileID: 3880962040686794066, guid: 4401339c56720e24d816b7fe9f2ea2bb,
     type: 3}
   choiceCanvasPrefab: {fileID: 9127147122880995110, guid: d8140f2b7552adb48890b2a1fe9357a4,
@@ -181,6 +179,14 @@ MonoBehaviour:
   isLockCamera: 0
   isLockMove: 0
   cachedObjects: []
+  tooltipPrefab: {fileID: 7002526125472452948, guid: f95d06c07f91466d9a6407277d3eee04,
+    type: 3}
+  blackLabelPrefab: {fileID: 6500000000000000001, guid: 6f51efe14b0344adbdcf851e98a43354,
+    type: 3}
+  portraitSpeechPrefab: {fileID: 1000, guid: 1db1c052f1234abb859c16ea6e733115,
+    type: 3}
+  screenFlashPrefab: {fileID: 6000, guid: a4a3efac602d45659a865cef9dded39e,
+    type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

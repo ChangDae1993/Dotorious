@@ -30,10 +30,13 @@ namespace JYW.Game.EventPlay.Editor
             "softSpeechPrefab",
             "hardSpeechPrefab",
             "memoPrefab",
-            "tooltipPrefab",
             "eventCamera",
             "choiceCanvasPrefab",
-            "choiceContentsPrefab"
+            "choiceContentsPrefab",
+            "tooltipPrefab",
+            "blackLabelPrefab",
+            "portraitSpeechPrefab",
+            "screenFlashPrefab"
         };
 
         private static readonly string[] ManagerPrefabGuids =
@@ -41,10 +44,13 @@ namespace JYW.Game.EventPlay.Editor
             "00c366de392e1424e871abf62b1dc3b0",
             "b6a66dd42ecd8f74587a206befa695f0",
             MemoPrefabGuid,
-            "f95d06c07f91466d9a6407277d3eee04",
             "4401339c56720e24d816b7fe9f2ea2bb",
             "d8140f2b7552adb48890b2a1fe9357a4",
-            "6bbda07d145aadc48bf53be54baa87e0"
+            "6bbda07d145aadc48bf53be54baa87e0",
+            "f95d06c07f91466d9a6407277d3eee04",
+            "6f51efe14b0344adbdcf851e98a43354",
+            "1db1c052f1234abb859c16ea6e733115",
+            "a4a3efac602d45659a865cef9dded39e"
         };
 
         private static bool isRunning;

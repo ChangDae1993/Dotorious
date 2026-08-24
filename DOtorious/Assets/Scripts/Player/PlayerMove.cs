@@ -1,105 +1,139 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections;
 
 public class PlayerMove : MonoBehaviour
 {
     public int key = 0;
 
-    //ÀÏ¹İ ÀÌµ¿ ¼Óµµ
+    // ì´ë™ ì†ë„
     public float walkSpeed;
 
-    //´ë½¬ ¼Óµµ
+    // ëŒ€ì‹œ ì†ë„
     public float dashSpeed;
 
 
-    //Á¡ÇÁ·Â
+    // ì í”„ í˜
     public float jumpForce;
     public float doublejumpForce;
 
-    //ÀÌÁß Á¡ÇÁ°¡ °¡´ÉÇÏµµ·Ï ÇÏ´Â bool°ª
+    // ë”ë¸” ì í”„ë¥¼ í—ˆìš©í•˜ëŠ”ì§€
     public bool doublejump;
     public int jumpCnt;
 
     [SerializeField] private Rigidbody2D rigid;
+    private float inputX;
+    private bool jumpInput;
+    private bool dashInput;
 
+    [Header("Grounding")]
+    [SerializeField] private float groundNormalThreshold = 0.45f;
 
-    // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
         rigid = GetComponent<Rigidbody2D>();
 
+        if (rigid == null)
+        {
+            return;
+        }
+
+        // ê¸°ì¡´ í”„ë¦¬íŒ¹ ì¤‘ ì¼ë¶€ëŠ” Rigidbody2D ì‹œë®¬ë ˆì´ì…˜ì´ êº¼ì ¸ ìˆê±°ë‚˜ íšŒì „ì´ í—ˆìš©ë¼ ìˆì„ ìˆ˜ ìˆì–´
+        // ì´ë™í•  ë•Œ ë„˜ì–´ì§€ì§€ ì•Šë„ë¡ ë¬¼ë¦¬ ë™ì‘ì„ ê°•ì œ ì •ë¦¬í•œë‹¤.
+        rigid.simulated = true;
+        rigid.constraints = RigidbodyConstraints2D.FreezeRotation;
         doublejump = false;
         jumpCnt = 0;
     }
 
-    // Update is called once per frame
     void Update()
     {
-        PlayerWalkMove(walkSpeed);
-        PlayerDash(dashSpeed);
-        PlayerJump(jumpForce, doublejumpForce);
+        inputX = Input.GetAxisRaw("Horizontal");
+        jumpInput = Input.GetKeyDown(KeyCode.Space);
+        dashInput = Input.GetKeyDown(KeyCode.LeftShift);
     }
 
-    public void PlayerWalkMove(float speed)
+    void FixedUpdate()
     {
-        if (Input.GetAxisRaw("Horizontal") < 0f)
+        if (rigid == null)
+        {
+            return;
+        }
+
+        PlayerWalkMove(inputX, walkSpeed);
+        if (dashInput)
+        {
+            PlayerDash(dashSpeed);
+            dashInput = false;
+        }
+
+        if (jumpInput)
+        {
+            PlayerJump(jumpForce, doublejumpForce);
+            jumpInput = false;
+        }
+    }
+
+    public void PlayerWalkMove(float horizontal, float speed)
+    {
+        if (horizontal < 0f)
             key = -1;
 
-        if (Input.GetAxisRaw("Horizontal") > 0f)
+        if (horizontal > 0f)
             key = 1;
 
-        //ÁÂ¿ì ÀÌµ¿
+        if (horizontal == 0)
+            key = 0;
+
+        // ë°©í–¥ ì „í™˜
         if (key == 1)
             this.transform.localScale = new Vector3(1, 1, 1);
         else if (key == -1)
             this.transform.localScale = new Vector3(-1, 1, 1);
 
-        Vector2 p_vector = new Vector2(Input.GetAxisRaw("Horizontal"), .0f);
-        Vector2 p_move = p_vector * walkSpeed * Time.deltaTime;
-        rigid.position += p_move;
+        Vector2 p_move = new Vector2(horizontal * speed, rigid.linearVelocity.y);
+        rigid.linearVelocity = p_move;
     }
 
     public void PlayerDash(float dash)
     {
-        if (Input.GetKeyDown(KeyCode.LeftShift))
-        {
-            rigid.AddForce(new Vector2(dash * key, 0f), ForceMode2D.Impulse);
-        }
+        if (key == 0)
+            return;
+
+        rigid.AddForce(new Vector2(dash * key, 0f), ForceMode2D.Impulse);
     }
 
-    public void PlayerJump(float jumpforce , float doublejumpforce)
+    public void PlayerJump(float jumpforce, float doublejumpforce)
     {
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (jumpCnt < (doublejump ? 2 : 1))
         {
-            if (!doublejump)
-            {
-                if (jumpCnt < 1)
-                {
-                    //±×¶ó¿îµå¿¡ ´êÀ¸¸é ´Ù½Ã jumpCnt 0À¸·Î ÃÊ±âÈ­
-                    rigid.AddForce(new Vector2(0f, jumpforce), ForceMode2D.Impulse);
-                    jumpCnt++;
-                }
-            }
-            else
-            {
-                if (jumpCnt < 2)
-                {
-                    //±×¶ó¿îµå¿¡ ´êÀ¸¸é ´Ù½Ã jumpCnt 0À¸·Î ÃÊ±âÈ­
-                    rigid.AddForce(new Vector2(0f, doublejumpforce), ForceMode2D.Impulse);
-                    jumpCnt++;
-                }
-            }
+            float applyForce = jumpCnt == 0 ? jumpforce : (doublejumpforce > 0f ? doublejumpforce : jumpforce);
+            rigid.AddForce(new Vector2(0f, applyForce), ForceMode2D.Impulse);
+            jumpCnt++;
         }
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
     {
-        if (collision.gameObject.tag.Contains("Ground"))
+        if (IsGroundContact(collision))
         {
             //Debug.Log("jumpCnt reset");
             //rigid.velocity = Vector2.zero;
             jumpCnt = 0;
         }
+    }
+
+    private bool IsGroundContact(Collision2D collision)
+    {
+        if (collision == null)
+            return false;
+
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            ContactPoint2D contact = collision.GetContact(i);
+            if (contact.normal.y >= groundNormalThreshold)
+                return true;
+        }
+
+        return false;
     }
 }

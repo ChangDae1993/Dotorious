@@ -63,6 +63,18 @@ namespace JYW.Game.EventPlay
 
             // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
             public TooltipData Tooltip;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public BlackLabelData BlackLabel;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public TimeScaleData TimeScale;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public ScreenFlashData ScreenFlash;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public WaitUntilConditionData WaitUntilCondition;
         }
 
         // ??????????????????????????????????????????
@@ -118,6 +130,18 @@ namespace JYW.Game.EventPlay
 
             // 새 플래그는 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
             public bool IsTooltip = false;
+
+            // 새 플래그는 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsBlackLabel = false;
+
+            // 새 플래그는 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsTimeScale = false;
+
+            // 새 플래그는 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsScreenFlash = false;
+
+            // 새 플래그는 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsWaitUntilCondition = false;
         }
 
         // ??????????????????????????????????????????
@@ -148,6 +172,10 @@ namespace JYW.Game.EventPlay
 
             public SoftSpeechData SoftSpeech;
             public HardSpeechData HardSpeech;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsPortraitSpeech = false;
+            public PortraitSpeechData PortraitSpeech;
         }
 
         [System.Serializable]
@@ -176,6 +204,14 @@ namespace JYW.Game.EventPlay
 
             public CameraMovementData CameraMovement;
             public CameraAimData CameraAim;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsCameraShake = false;
+            public CameraShakeData CameraShake;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsCameraLens = false;
+            public CameraLensData CameraLens;
         }
 
         [System.Serializable]
@@ -190,6 +226,22 @@ namespace JYW.Game.EventPlay
             public DisableComponentData DisableComponent;
             public DisableColliderData DisableColliderObject;
             public UpdateComponentData UpdateComponent;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsAnimatorEvent = false;
+            public AnimatorEventData AnimatorEvent;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsVisualFade = false;
+            public VisualFadeData VisualFade;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsLightTween = false;
+            public LightTweenData LightTween;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsParticleEvent = false;
+            public ParticleEventData ParticleEvent;
         }
 
         [System.Serializable]
@@ -200,6 +252,10 @@ namespace JYW.Game.EventPlay
 
             public MoveObjectData MoveObject;
             public RotateObjectData RotateObject;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsAttachObject = false;
+            public AttachObjectData AttachObject;
         }
 
         [Tooltip("false이면 조건 검사 없이 ConditionSteps[0]을 실행합니다.")]
@@ -239,7 +295,17 @@ namespace JYW.Game.EventPlay
 
         public enum SetType { Set, Add }
         public enum ValueType { Int, Float, Bool, String, GameObject }
-        public enum CheckType { Value, Odd, Even }
+        public enum CheckType
+        {
+            Value,
+            Odd,
+            Even,
+            NotEqual,
+            Greater,
+            GreaterOrEqual,
+            Less,
+            LessOrEqual
+        }
 
         [Flags]
         public enum ConditionChecks
@@ -247,8 +313,21 @@ namespace JYW.Game.EventPlay
             None = 0,
             CheckValue = 1 << 0,
             TimeCount = 1 << 1,
-            CollisionAB = 1 << 2
+            CollisionAB = 1 << 2,
+            ObjectState = 1 << 3,
+            Distance = 1 << 4,
+            InputKey = 1 << 5,
+            AnimatorState = 1 << 6,
+            SceneState = 1 << 7,
+            CameraView = 1 << 8
         }
+
+        public enum ObjectStateCheck { Exists, Missing, Active, Inactive }
+        public enum DistanceCheck { AtMost, AtLeast }
+        public enum InputKeyCheck { PressedThisFrame, Held }
+        public enum AnimatorStateCheck { Current, Completed }
+        public enum SceneStateCheck { Loaded, Unloaded, Active }
+        public enum CameraViewCheck { Visible, NotVisible }
 
         [System.Serializable]
         public class SetValueSubData
@@ -267,14 +346,47 @@ namespace JYW.Game.EventPlay
         [System.Serializable]
         public class ConditionGroupData
         {
+            public ConditionSubData[] Conditions = Array.Empty<ConditionSubData>();
+
+            // 새 조건 필드는 기존 Conditions 뒤에만 추가해 직렬화 필드 순서를 보존합니다.
             [SerializeField] public ConditionChecks Checks = ConditionChecks.CheckValue;
             [Min(0f), Tooltip("게임 시작 후 이 시간이 지나면 Time Count 조건이 참이 됩니다.")]
             [SerializeField] public float TimeCountSeconds = 0f;
-            public ConditionSubData[] Conditions = Array.Empty<ConditionSubData>();
             [Tooltip("충돌을 확인할 씬 오브젝트 A의 이름 또는 Root/Child 경로입니다.")]
             [SerializeField] public string CollisionObjectA = "";
             [Tooltip("충돌을 확인할 씬 오브젝트 B의 이름 또는 Root/Child 경로입니다.")]
             [SerializeField] public string CollisionObjectB = "";
+
+            [Tooltip("존재 또는 활성 상태를 확인할 오브젝트 이름이나 Root/Child 경로입니다.")]
+            [SerializeField] public string ObjectStateTarget = "";
+            [SerializeField] public ObjectStateCheck ObjectState = ObjectStateCheck.Exists;
+
+            [Tooltip("거리를 확인할 오브젝트 A의 이름 또는 Root/Child 경로입니다.")]
+            [SerializeField] public string DistanceObjectA = "";
+            [Tooltip("거리를 확인할 오브젝트 B의 이름 또는 Root/Child 경로입니다.")]
+            [SerializeField] public string DistanceObjectB = "";
+            [Min(0f)] [SerializeField] public float DistanceThreshold = 1f;
+            [SerializeField] public DistanceCheck DistanceComparison = DistanceCheck.AtMost;
+            [Tooltip("켜면 X/Y 평면 거리만 사용하고, 끄면 X/Y/Z 3D 거리를 사용합니다.")]
+            [SerializeField] public bool DistanceUse2D = false;
+
+            [SerializeField] public KeyCode InputKeyCode = KeyCode.E;
+            [SerializeField] public InputKeyCheck InputKeyState = InputKeyCheck.PressedThisFrame;
+
+            [Tooltip("Animator를 확인할 오브젝트 이름 또는 Root/Child 경로입니다.")]
+            [SerializeField] public string AnimatorObject = "";
+            [SerializeField] public string AnimatorStateName = "";
+            [SerializeField] public int AnimatorLayer = 0;
+            [SerializeField] public AnimatorStateCheck AnimatorState = AnimatorStateCheck.Current;
+            [Min(0f), Tooltip("Completed 판정에 사용할 normalizedTime 기준입니다. 일반적으로 1입니다.")]
+            [SerializeField] public float AnimatorCompletionTime = 1f;
+
+            [SerializeField] public string SceneName = "";
+            [SerializeField] public SceneStateCheck SceneState = SceneStateCheck.Loaded;
+
+            [Tooltip("활성 게임 카메라 화면 안/밖 여부를 확인할 오브젝트 이름 또는 Root/Child 경로입니다.")]
+            [SerializeField] public string CameraViewTarget = "";
+            [SerializeField] public CameraViewCheck CameraViewState = CameraViewCheck.Visible;
         }
 
         [System.Serializable]
@@ -450,13 +562,22 @@ namespace JYW.Game.EventPlay
         }
 
         [System.Serializable]
-        public class SceneDatas { public string[] Scenes = Array.Empty<string>(); }
+        public class SceneDatas { public string[] Scenes; }
 
         [System.Serializable]
         public class SceneData { public string Scene; }
 
         [System.Serializable]
-        public class SoundData { public float time = 0f; public AudioClip audioClip = null; public float volume = 1.0f; public bool isLoop = false; }
+        public class SoundData
+        {
+            public float time = 0f;
+            public AudioClip audioClip = null;
+            public float volume = 1.0f;
+            public bool isLoop = false;
+
+            // 기존 Sound 동작은 false일 때 그대로 유지합니다.
+            public bool WaitForCompletion = false;
+        }
 
         [System.Serializable]
         public class FadeInfo { public bool FadeIn = false; public float StartTime = 0f; public float EndTime = 0f; }
@@ -508,6 +629,196 @@ namespace JYW.Game.EventPlay
             public bool IsRelative = false;
             public string CenterObject = "";
             public Vector2 Position = Vector2.zero;
+        }
+
+        [System.Serializable]
+        public class BlackLabelData
+        {
+            [Min(0f)] public float Duration = 0f;
+        }
+
+        public enum PortraitAdvanceMode { Timed, Input }
+
+        [System.Serializable]
+        public class PortraitSpeechLineData
+        {
+            public Sprite Portrait;
+            public string SpeakerName = "";
+            [TextArea] public string Text = "";
+            [Min(0f)] public float Duration = 2f;
+        }
+
+        [System.Serializable]
+        public class PortraitSpeechData
+        {
+            public PortraitAdvanceMode AdvanceMode = PortraitAdvanceMode.Input;
+            public KeyCode AdvanceKey = KeyCode.E;
+            public bool IsTyping = true;
+            public PortraitSpeechLineData[] Lines = Array.Empty<PortraitSpeechLineData>();
+        }
+
+        public enum AnimatorCommand
+        {
+            PlayState,
+            CrossFade,
+            SetTrigger,
+            ResetTrigger,
+            SetBool,
+            SetInteger,
+            SetFloat,
+            SetSpeed
+        }
+
+        [System.Serializable]
+        public class AnimatorEventData
+        {
+            [Tooltip("비우면 이 EventSO를 호출한 오브젝트를 사용합니다.")]
+            public string ObjectName = "";
+            public AnimatorCommand Command = AnimatorCommand.PlayState;
+            public string StateOrParameter = "";
+            public int Layer = -1;
+            [Range(0f, 1f)] public float NormalizedTime = 0f;
+            [Min(0f)] public float TransitionDuration = 0.15f;
+            public bool BoolValue = false;
+            public int IntValue = 0;
+            public float FloatValue = 0f;
+            [Min(0f), Tooltip("명령 적용 후 다음 Phase로 넘어가기 전에 기다릴 시간입니다.")]
+            public float Duration = 0f;
+        }
+
+        [System.Serializable]
+        public class CameraShakeData
+        {
+            [Tooltip("켜면 Main Camera, 끄면 Presentation EventCamera를 흔듭니다.")]
+            public bool UseMainCamera = true;
+            [Min(0f)] public float Duration = 0.5f;
+            public Vector3 PositionStrength = new Vector3(0.15f, 0.15f, 0f);
+            public Vector3 RotationStrength = new Vector3(0.8f, 0.8f, 1.2f);
+            [Min(0f)] public float Frequency = 24f;
+            public bool FadeOut = true;
+        }
+
+        [System.Serializable]
+        public class TimeScaleData
+        {
+            [Range(0f, 10f)] public float TargetScale = 0.2f;
+            [Min(0f)] public float Duration = 0.15f;
+            [Tooltip("켜면 Duration 후 이벤트 시작 전 Time Scale로 복구합니다.")]
+            public bool RestoreAfterDuration = true;
+        }
+
+        [System.Serializable]
+        public class ScreenFlashData
+        {
+            public Color FlashColor = Color.white;
+            [Range(0f, 1f)] public float PeakAlpha = 1f;
+            [Min(0f)] public float FadeInDuration = 0f;
+            [Min(0f), Tooltip("최대 알파로 유지할 시간입니다.")]
+            public float Duration = 0.05f;
+            [Min(0f)] public float FadeOutDuration = 0.2f;
+        }
+
+        [System.Serializable]
+        public class AttachObjectEntryData
+        {
+            [Tooltip("비우면 이 EventSO를 호출한 오브젝트를 사용합니다.")]
+            public string ObjectName = "";
+            [Tooltip("비우면 부모에서 분리합니다. 이름 또는 Root/Child 경로를 사용할 수 있습니다.")]
+            public string ParentName = "";
+            public bool WorldPositionStays = true;
+            public bool ApplyLocalTransform = false;
+            public Vector3 LocalPosition = Vector3.zero;
+            public Vector3 LocalEulerAngles = Vector3.zero;
+            public Vector3 LocalScale = Vector3.one;
+        }
+
+        [System.Serializable]
+        public class AttachObjectData
+        {
+            public AttachObjectEntryData[] AttachObjects = Array.Empty<AttachObjectEntryData>();
+        }
+
+        [System.Serializable]
+        public class WaitUntilConditionData
+        {
+            public ConditionGroupData Condition = new ConditionGroupData();
+            [Min(0f), Tooltip("0이면 조건이 충족될 때까지 제한 없이 기다립니다.")]
+            public float Timeout = 0f;
+        }
+
+        [System.Serializable]
+        public class CameraLensData
+        {
+            [Tooltip("켜면 Main Camera, 끄면 Presentation EventCamera의 렌즈를 조절합니다.")]
+            public bool UseMainCamera = true;
+            [Range(1f, 179f), Tooltip("Perspective Camera일 때 적용할 Field Of View입니다.")]
+            public float TargetFieldOfView = 60f;
+            [Min(0.0001f), Tooltip("Orthographic Camera일 때 적용할 Size입니다.")]
+            public float TargetOrthographicSize = 5f;
+            [Min(0f), Tooltip("목표 렌즈 값까지 전환하며 다음 Phase를 막는 unscaled seconds입니다.")]
+            public float Duration = 0.5f;
+            public bool EaseInOut = true;
+        }
+
+        [System.Serializable]
+        public class VisualFadeEntryData
+        {
+            [Tooltip("비우면 이 EventSO를 호출한 오브젝트를 사용합니다.")]
+            public string ObjectName = "";
+            public bool IncludeChildren = true;
+            [Range(0f, 1f)] public float TargetAlpha = 0f;
+            [Min(0f), Tooltip("목표 Alpha까지 전환하며 다음 Phase를 막는 unscaled seconds입니다.")]
+            public float Duration = 0.5f;
+            public bool EaseInOut = true;
+        }
+
+        [System.Serializable]
+        public class VisualFadeData
+        {
+            public VisualFadeEntryData[] Fades = Array.Empty<VisualFadeEntryData>();
+        }
+
+        [System.Serializable]
+        public class LightTweenEntryData
+        {
+            [Tooltip("비우면 이 EventSO를 호출한 오브젝트를 사용합니다.")]
+            public string ObjectName = "";
+            public bool IncludeChildren = true;
+            public bool AffectColor = false;
+            public Color TargetColor = Color.white;
+            public bool AffectIntensity = true;
+            [Min(0f)] public float TargetIntensity = 1f;
+            public bool AffectRange = false;
+            [Min(0f)] public float TargetRange = 10f;
+            [Min(0f), Tooltip("목표 조명 값까지 전환하며 다음 Phase를 막는 unscaled seconds입니다.")]
+            public float Duration = 0.5f;
+            public bool EaseInOut = true;
+        }
+
+        [System.Serializable]
+        public class LightTweenData
+        {
+            public LightTweenEntryData[] Lights = Array.Empty<LightTweenEntryData>();
+        }
+
+        public enum ParticleCommand
+        {
+            Play,
+            Pause,
+            StopEmitting,
+            StopAndClear,
+            Clear
+        }
+
+        [System.Serializable]
+        public class ParticleEventData
+        {
+            [Tooltip("비우면 이 EventSO를 호출한 오브젝트를 사용합니다.")]
+            public string ObjectName = "";
+            public bool IncludeChildren = true;
+            public ParticleCommand Command = ParticleCommand.Play;
+            [Min(0f), Tooltip("명령 적용 후 다음 Phase를 막는 unscaled seconds입니다.")]
+            public float Duration = 0f;
         }
     }
 }
