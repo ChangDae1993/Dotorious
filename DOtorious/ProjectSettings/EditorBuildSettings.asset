@@ -6,7 +6,7 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Presentation/Presentation.unity
+    path: Assets/FrameWork/Presentation/Presentation.unity
     guid: f40f6eb4eff654544a6074c65687655d
   - enabled: 1
     path: Assets/Scenes/Chapter1.unity

@@ -1,0 +1,20 @@
+{
+  "name": "JYW.ObjectMaker.PlayModeTests",
+  "rootNamespace": "JYW.Game.ObjectMaker.Tests",
+  "references": [
+    "JYW.ObjectMaker.Runtime",
+    "JYW.FrameWork.Core"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

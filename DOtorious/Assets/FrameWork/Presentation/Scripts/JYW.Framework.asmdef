@@ -1,0 +1,7 @@
+{
+	"name": "JYW.Framework",
+	"references": [
+		"JYW.FrameWork.Core",
+		"UnityEngine.UI"
+  ]
+}

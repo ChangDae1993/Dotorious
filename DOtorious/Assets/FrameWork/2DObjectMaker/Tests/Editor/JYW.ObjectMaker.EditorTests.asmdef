@@ -1,0 +1,25 @@
+{
+  "name": "JYW.ObjectMaker.EditorTests",
+  "rootNamespace": "JYW.Game.ObjectMaker.Tests",
+  "references": [
+    "JYW.ObjectMaker.Runtime",
+    "JYW.ObjectMaker.Editor",
+    "JYW.FrameWork.Core",
+    "JYW.FrameWork.Editor",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
