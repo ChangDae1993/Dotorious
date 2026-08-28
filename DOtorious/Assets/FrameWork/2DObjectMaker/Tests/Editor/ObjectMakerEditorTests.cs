@@ -34,7 +34,9 @@ namespace JYW.Game.ObjectMaker.Tests
             Assert.AreEqual(0.8f, data.attack.cooldownSeconds);
             Assert.AreEqual(0.05f, data.hit.hitStopSeconds);
             Assert.AreEqual(6, data.ai.rules.Count);
-            Assert.AreEqual(ObjectAICondition.Died, data.ai.rules[0].when);
+            Assert.AreEqual(ObjectAICondition.HealthReached, data.ai.rules[0].when);
+            Assert.AreEqual(0, data.ai.rules[0].condition.healthValue);
+            Assert.AreEqual("HP 0 도달", data.ai.rules[0].label);
             Assert.AreEqual(ObjectAIAction.Attack, data.ai.rules[2].action);
             Assert.AreEqual(ObjectAIAction.FollowTarget, data.ai.rules[4].action);
             Assert.AreEqual(ObjectAIAction.Patrol, data.ai.rules[5].action);
@@ -173,11 +175,14 @@ namespace JYW.Game.ObjectMaker.Tests
                 Assert.IsNull(result.Prefab.GetComponent<ObjectMonsterBrain2D>());
                 Assert.AreEqual(1f, result.Prefab.GetComponent<Rigidbody2D>().gravityScale,
                     "Player는 이전 Enemy 지상 이동 설정과 관계없이 점프용 중력을 사용해야 합니다.");
-                Assert.IsNull(FindState(result.AnimatorController, ObjectCommonAnimator.Walk));
+                Assert.IsNotNull(FindState(result.AnimatorController, ObjectCommonAnimator.Walk));
                 Assert.IsNull(FindState(result.AnimatorController, ObjectCommonAnimator.Attack));
                 Assert.IsNotNull(FindState(result.AnimatorController, ObjectCommonAnimator.Run));
                 Assert.IsNotNull(FindState(result.AnimatorController, ObjectCommonAnimator.Jump));
-                Assert.AreEqual(10, result.AnimatorController.layers[0].stateMachine.states.Length);
+                Assert.AreEqual(11, result.AnimatorController.layers[0].stateMachine.states.Length);
+                Assert.IsTrue(HasParameter(result.AnimatorController,
+                    ObjectAnimatorGraph2D.RunningParameter,
+                    AnimatorControllerParameterType.Bool));
                 Assert.IsTrue(HasParameter(result.AnimatorController,
                     ObjectAnimatorGraph2D.AttackingParameter,
                     AnimatorControllerParameterType.Bool));
@@ -216,6 +221,22 @@ namespace JYW.Game.ObjectMaker.Tests
                 string yaml = File.ReadAllText(Path.GetFullPath(result.DefinitionPath));
                 StringAssert.Contains("player:", yaml);
                 StringAssert.Contains("comboSteps: 3", yaml);
+                StringAssert.Contains("runKey:", yaml);
+                StringAssert.Contains("runSpeedMultiplier: 1.5", yaml);
+
+                AnimatorState idle = FindState(
+                    result.AnimatorController,
+                    ObjectCommonAnimator.Idle);
+                AnimatorState walk = FindState(
+                    result.AnimatorController,
+                    ObjectCommonAnimator.Walk);
+                AnimatorState run = FindState(
+                    result.AnimatorController,
+                    ObjectCommonAnimator.Run);
+                Assert.IsTrue(HasNamedTransition(idle, "Auto_Idle_Walk"));
+                Assert.IsTrue(HasNamedTransition(idle, "Auto_Idle_Run"));
+                Assert.IsTrue(HasNamedTransition(walk, "Auto_Walk_Run"));
+                Assert.IsTrue(HasNamedTransition(run, "Auto_Run_Walk"));
 
                 ObjectDefinitionData remapped = result.Definition.Data.Clone();
                 remapped.player.moveLeftKey = Key.None;
@@ -223,6 +244,7 @@ namespace JYW.Game.ObjectMaker.Tests
                 remapped.player.jumpKey = Key.None;
                 remapped.player.attacks[1].key = Key.None;
                 result = ObjectMakerPrefabBuilder.Make(remapped, result.Definition);
+                Assert.IsNull(FindState(result.AnimatorController, ObjectCommonAnimator.Walk));
                 Assert.IsNull(FindState(result.AnimatorController, ObjectCommonAnimator.Run));
                 Assert.IsNull(FindState(result.AnimatorController, ObjectCommonAnimator.Jump));
                 Assert.IsNull(FindState(
@@ -234,6 +256,9 @@ namespace JYW.Game.ObjectMaker.Tests
                 Assert.IsFalse(HasParameter(result.AnimatorController,
                     ObjectAnimatorGraph2D.SpeedParameter,
                     AnimatorControllerParameterType.Float));
+                Assert.IsFalse(HasParameter(result.AnimatorController,
+                    ObjectAnimatorGraph2D.RunningParameter,
+                    AnimatorControllerParameterType.Bool));
                 Assert.IsFalse(HasParameter(result.AnimatorController,
                     ObjectAnimatorGraph2D.JumpParameter,
                     AnimatorControllerParameterType.Trigger));
@@ -249,7 +274,7 @@ namespace JYW.Game.ObjectMaker.Tests
                     ObjectAnimatorGraph2D.PlayerAttackState(0, 0)));
                 Assert.IsFalse(HasNamedTransition(
                     FindState(result.AnimatorController, ObjectCommonAnimator.Idle),
-                    "Auto_Idle_Run"),
+                    "Auto_Idle_Walk"),
                     "Player에서 Enemy로 바꾼 뒤 Player 이동 전이가 남아 있습니다.");
             }
             finally
@@ -689,12 +714,149 @@ namespace JYW.Game.ObjectMaker.Tests
         }
 
         [UnityTest]
+        public IEnumerator HealthReachedConditionAndValuePersistThroughMakeAndReopen()
+        {
+            if (Application.isBatchMode)
+                Assert.Ignore("EditorWindow 입력 검증은 그래픽 장치가 있는 Editor에서 실행합니다.");
+
+            ObjectMakerWindow window = null;
+            string definitionPath = null;
+            string prefabPath = null;
+            string animatorControllerPath = null;
+            try
+            {
+                Selection.activeObject = null;
+                window = ObjectMakerWindow.Open(null);
+                window.position = new Rect(150f, 150f, 900f, 820f);
+                var serialized = new SerializedObject(window);
+                string[] closedFoldouts =
+                {
+                    "showCore", "showContactDamage", "showHit", "showDestruction",
+                    "showMotions", "showSceneSpawns"
+                };
+                for (int i = 0; i < closedFoldouts.Length; i++)
+                    serialized.FindProperty(closedFoldouts[i]).boolValue = false;
+                serialized.FindProperty("showRules").boolValue = true;
+                SerializedProperty draft = serialized.FindProperty("draft");
+                draft.FindPropertyRelative("objectId").stringValue = "ObjectMaker_HpReachedUiTest";
+                draft.FindPropertyRelative("displayName").stringValue = "ObjectMaker_HpReachedUiTest";
+                SerializedProperty rules = draft
+                    .FindPropertyRelative("ai")
+                    .FindPropertyRelative("rules");
+                rules.arraySize = 1;
+                SerializedProperty first = rules.GetArrayElementAtIndex(0);
+                first.FindPropertyRelative("label").stringValue = "파괴될 때";
+                first.FindPropertyRelative("when").enumValueIndex =
+                    (int)ObjectAICondition.NoTarget;
+                first.FindPropertyRelative("action").enumValueIndex =
+                    (int)ObjectAIAction.DestroySelf;
+                serialized.FindProperty("scrollPosition").vector2Value = Vector2.zero;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                window.Repaint();
+                yield return null;
+                yield return null;
+                Click(window, ObjectMakerWindow.LastConditionPopupRectForTests.center);
+                yield return null;
+                Assert.Greater(
+                    ObjectMakerWindow.LastHealthReachedConditionChoiceRectForTests.width,
+                    0f,
+                    "~할 때 목록에 '특정 HP에 도달했을 때'가 없습니다.");
+                Click(window,
+                    ObjectMakerWindow.LastHealthReachedConditionChoiceRectForTests.center);
+                yield return null;
+
+                serialized.Update();
+                first = serialized.FindProperty("draft")
+                    .FindPropertyRelative("ai")
+                    .FindPropertyRelative("rules")
+                    .GetArrayElementAtIndex(0);
+                Assert.AreEqual((int)ObjectAICondition.HealthReached,
+                    first.FindPropertyRelative("when").enumValueIndex);
+
+                window.Repaint();
+                yield return null;
+                Assert.Greater(ObjectMakerWindow.LastHealthReachedValueRectForTests.width, 0f,
+                    "HP 도달 조건을 골라도 특정 HP 입력칸이 열리지 않았습니다.");
+                Click(window, ObjectMakerWindow.LastHealthReachedValueRectForTests.center);
+                yield return null;
+                SendSelectAll(window);
+                SendCharacter(window, '3');
+                SendKey(window, KeyCode.Return);
+                yield return null;
+
+                serialized.Update();
+                first = serialized.FindProperty("draft")
+                    .FindPropertyRelative("ai")
+                    .FindPropertyRelative("rules")
+                    .GetArrayElementAtIndex(0);
+                Assert.AreEqual(3,
+                    first.FindPropertyRelative("condition")
+                        .FindPropertyRelative("healthValue").intValue,
+                    "특정 HP 입력값이 실제 규칙에 반영되지 않았습니다.");
+                Assert.AreEqual("HP 도달", first.FindPropertyRelative("label").stringValue,
+                    "기존 '파괴될 때' 명칭이 HP 도달 명칭으로 바뀌지 않았습니다.");
+
+                serialized.FindProperty("showRules").boolValue = false;
+                serialized.FindProperty("scrollPosition").vector2Value = Vector2.zero;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                window.Repaint();
+                yield return null;
+                yield return null;
+                Assert.Greater(ObjectMakerWindow.LastMakeButtonRectForTests.width, 0f);
+                Click(window, ObjectMakerWindow.LastMakeButtonRectForTests.center);
+                yield return null;
+                yield return null;
+
+                ObjectDefinitionSO generated = window.CurrentDefinitionForTests;
+                Assert.IsNotNull(generated,
+                    "HP 도달 규칙을 넣은 뒤 Make 실제 클릭으로 Definition이 생성되지 않았습니다.");
+                Assert.AreEqual(ObjectAICondition.HealthReached,
+                    generated.Data.ai.rules[0].when);
+                Assert.AreEqual(3, generated.Data.ai.rules[0].condition.healthValue);
+                definitionPath = AssetDatabase.GetAssetPath(generated);
+                prefabPath = AssetDatabase.GetAssetPath(generated.GeneratedPrefab);
+                animatorControllerPath = AssetDatabase.GetAssetPath(
+                    generated.Data.animatorController);
+                string yaml = File.ReadAllText(Path.GetFullPath(definitionPath));
+                StringAssert.Contains("when: 18", yaml,
+                    "기존 enum 직렬화 번호를 보존하지 못했습니다.");
+                StringAssert.Contains("healthValue: 3", yaml);
+
+                window.Close();
+                window = null;
+                yield return null;
+                window = ObjectMakerWindow.Open(generated.GeneratedPrefab);
+                yield return null;
+                Assert.AreSame(generated, window.CurrentDefinitionForTests);
+                Assert.AreEqual(3,
+                    window.CurrentDefinitionForTests.Data.ai.rules[0].condition.healthValue,
+                    "창을 닫고 Prefab으로 다시 열자 특정 HP 설정이 사라졌습니다.");
+            }
+            finally
+            {
+                if (window != null)
+                    window.Close();
+                Selection.activeObject = null;
+                if (!string.IsNullOrEmpty(prefabPath))
+                    AssetDatabase.DeleteAsset(prefabPath);
+                if (!string.IsNullOrEmpty(definitionPath))
+                    AssetDatabase.DeleteAsset(definitionPath);
+                if (!string.IsNullOrEmpty(animatorControllerPath))
+                    AssetDatabase.DeleteAsset(animatorControllerPath);
+            }
+        }
+
+        [UnityTest]
         public IEnumerator PlayerTargetAndAddAttackButtonsChangeActualDraft()
         {
             if (Application.isBatchMode)
                 Assert.Ignore("EditorWindow 입력 검증은 그래픽 장치가 있는 Editor에서 실행합니다.");
 
             ObjectMakerWindow window = null;
+            string definitionPath = null;
+            string prefabPath = null;
+            string animatorControllerPath = null;
             try
             {
                 Selection.activeObject = null;
@@ -702,8 +864,8 @@ namespace JYW.Game.ObjectMaker.Tests
                 window.position = new Rect(160f, 160f, 900f, 820f);
                 var serialized = new SerializedObject(window);
                 serialized.FindProperty("showCore").boolValue = false;
-                serialized.FindProperty("showPlayerControls").boolValue = false;
-                serialized.FindProperty("showPlayerAttacks").boolValue = true;
+                serialized.FindProperty("showPlayerControls").boolValue = true;
+                serialized.FindProperty("showPlayerAttacks").boolValue = false;
                 serialized.FindProperty("showHit").boolValue = false;
                 serialized.FindProperty("showDestruction").boolValue = false;
                 serialized.FindProperty("showSceneSpawns").boolValue = false;
@@ -729,6 +891,41 @@ namespace JYW.Game.ObjectMaker.Tests
 
                 window.Repaint();
                 yield return null;
+                yield return null;
+                Assert.Greater(ObjectMakerWindow.LastRunKeyRectForTests.width, 0f,
+                    "Player 설정 화면에 달리기 키 드롭다운이 없습니다.");
+                Assert.Greater(ObjectMakerWindow.LastRunSpeedRectForTests.width, 0f,
+                    "Player 설정 화면에 달리기 속도 칸이 없습니다.");
+                serialized.Update();
+                SerializedProperty playerSettings = serialized.FindProperty("draft")
+                    .FindPropertyRelative("player");
+                Assert.AreEqual((int)Key.LeftShift,
+                    playerSettings.FindPropertyRelative("runKey").intValue);
+
+                Click(window, ObjectMakerWindow.LastRunSpeedRectForTests.center);
+                yield return null;
+                SendSelectAll(window);
+                SendCharacter(window, '2');
+                SendCharacter(window, '.');
+                SendCharacter(window, '2');
+                SendCharacter(window, '5');
+                SendKey(window, KeyCode.Return);
+                yield return null;
+                serialized.Update();
+                Assert.AreEqual(2.25f,
+                    serialized.FindProperty("draft")
+                        .FindPropertyRelative("player")
+                        .FindPropertyRelative("runSpeedMultiplier").floatValue,
+                    0.001f,
+                    "달리기 속도 칸이 실제 키 입력을 저장하지 못했습니다.");
+
+                serialized.FindProperty("showPlayerControls").boolValue = false;
+                serialized.FindProperty("showPlayerAttacks").boolValue = true;
+                serialized.FindProperty("scrollPosition").vector2Value = Vector2.zero;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                window.Repaint();
+                yield return null;
+                yield return null;
                 Assert.Greater(ObjectMakerWindow.LastAddPlayerAttackButtonRectForTests.width, 0f);
                 Click(window, ObjectMakerWindow.LastAddPlayerAttackButtonRectForTests.center);
                 yield return null;
@@ -742,12 +939,62 @@ namespace JYW.Game.ObjectMaker.Tests
                 Assert.AreEqual(1,
                     attacks.GetArrayElementAtIndex(0)
                         .FindPropertyRelative("comboSteps").intValue);
+
+                serialized.FindProperty("showPlayerAttacks").boolValue = false;
+                serialized.FindProperty("scrollPosition").vector2Value = Vector2.zero;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                window.Repaint();
+                yield return null;
+                yield return null;
+                Assert.Greater(ObjectMakerWindow.LastMakeButtonRectForTests.width, 0f);
+                Click(window, ObjectMakerWindow.LastMakeButtonRectForTests.center);
+                yield return null;
+                yield return null;
+
+                ObjectDefinitionSO generated = window.CurrentDefinitionForTests;
+                Assert.IsNotNull(generated,
+                    "Player Make 실제 클릭으로 Definition이 생성되지 않았습니다.");
+                Assert.AreEqual(Key.LeftShift, generated.Data.player.runKey);
+                Assert.AreEqual(2.25f, generated.Data.player.runSpeedMultiplier, 0.001f);
+                Assert.IsNotNull(FindState(
+                    (AnimatorController)generated.Data.animatorController,
+                    ObjectCommonAnimator.Walk));
+                Assert.IsNotNull(FindState(
+                    (AnimatorController)generated.Data.animatorController,
+                    ObjectCommonAnimator.Run));
+
+                definitionPath = AssetDatabase.GetAssetPath(generated);
+                prefabPath = AssetDatabase.GetAssetPath(generated.GeneratedPrefab);
+                animatorControllerPath = AssetDatabase.GetAssetPath(
+                    generated.Data.animatorController);
+                string yaml = File.ReadAllText(Path.GetFullPath(definitionPath));
+                StringAssert.Contains("runKey:", yaml);
+                StringAssert.Contains("runSpeedMultiplier: 2.25", yaml);
+
+                window.Close();
+                window = null;
+                yield return null;
+                window = ObjectMakerWindow.Open(generated.GeneratedPrefab);
+                yield return null;
+                Assert.AreSame(generated, window.CurrentDefinitionForTests);
+                Assert.AreEqual(Key.LeftShift,
+                    window.CurrentDefinitionForTests.Data.player.runKey);
+                Assert.AreEqual(2.25f,
+                    window.CurrentDefinitionForTests.Data.player.runSpeedMultiplier,
+                    0.001f,
+                    "창을 닫고 Prefab으로 다시 열자 달리기 설정이 사라졌습니다.");
             }
             finally
             {
                 if (window != null)
                     window.Close();
                 Selection.activeObject = null;
+                if (!string.IsNullOrEmpty(prefabPath))
+                    AssetDatabase.DeleteAsset(prefabPath);
+                if (!string.IsNullOrEmpty(definitionPath))
+                    AssetDatabase.DeleteAsset(definitionPath);
+                if (!string.IsNullOrEmpty(animatorControllerPath))
+                    AssetDatabase.DeleteAsset(animatorControllerPath);
             }
         }
 
@@ -868,6 +1115,22 @@ namespace JYW.Game.ObjectMaker.Tests
                 type = EventType.KeyUp,
                 character = character,
                 keyCode = KeyCode.None
+            });
+        }
+
+        private static void SendSelectAll(EditorWindow window)
+        {
+            window.SendEvent(new Event
+            {
+                type = EventType.KeyDown,
+                keyCode = KeyCode.A,
+                control = true
+            });
+            window.SendEvent(new Event
+            {
+                type = EventType.KeyUp,
+                keyCode = KeyCode.A,
+                control = true
             });
         }
     }

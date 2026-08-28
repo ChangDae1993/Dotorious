@@ -3,7 +3,9 @@
   "rootNamespace": "JYW.Game.ObjectMaker.Tests",
   "references": [
     "JYW.ObjectMaker.Runtime",
-    "JYW.FrameWork.Core"
+    "JYW.FrameWork.Core",
+    "Unity.InputSystem",
+    "Unity.InputSystem.TestFramework"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

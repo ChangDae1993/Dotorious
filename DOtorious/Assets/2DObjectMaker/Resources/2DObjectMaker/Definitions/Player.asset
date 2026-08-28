@@ -92,7 +92,7 @@ MonoBehaviour:
       crossFadeSeconds: 0.05
       restartWhenEntered: 1
     - condition: 1
-      animatorState: Run
+      animatorState: Walk
       crossFadeSeconds: 0.05
       restartWhenEntered: 1
     - condition: 3
@@ -100,7 +100,7 @@ MonoBehaviour:
       crossFadeSeconds: 0.05
       restartWhenEntered: 1
     - condition: 4
-      animatorState: Run
+      animatorState: Walk
       crossFadeSeconds: 0.05
       restartWhenEntered: 1
     - condition: 10
@@ -123,7 +123,7 @@ MonoBehaviour:
     ai:
       useLegacyTuning: 0
       rules:
-      - label: "\uD30C\uAD34\uB420 \uB54C"
+      - label: "HP \uB3C4\uB2EC"
         enabled: 1
         when: 18
         action: 0
@@ -134,6 +134,7 @@ MonoBehaviour:
           rearDistance: 1.5
           verticalRange: 2
           healthRatio: 0.3
+          healthValue: 0
           intervalSeconds: {x: 1, y: 2}
           chance: 0.5
           requireLineOfSight: 0
@@ -200,6 +201,7 @@ MonoBehaviour:
           rearDistance: 1.5
           verticalRange: 2
           healthRatio: 0.3
+          healthValue: 0
           intervalSeconds: {x: 1, y: 2}
           chance: 0.5
           requireLineOfSight: 0
@@ -266,6 +268,7 @@ MonoBehaviour:
           rearDistance: 1.5
           verticalRange: 2
           healthRatio: 0.3
+          healthValue: 0
           intervalSeconds: {x: 1, y: 2}
           chance: 0.5
           requireLineOfSight: 0
@@ -332,6 +335,7 @@ MonoBehaviour:
           rearDistance: 1.5
           verticalRange: 2
           healthRatio: 0.3
+          healthValue: 0
           intervalSeconds: {x: 1, y: 2}
           chance: 0.5
           requireLineOfSight: 0
@@ -398,6 +402,7 @@ MonoBehaviour:
           rearDistance: 1.5
           verticalRange: 2
           healthRatio: 0.3
+          healthValue: 0
           intervalSeconds: {x: 1, y: 2}
           chance: 0.5
           requireLineOfSight: 0
@@ -464,6 +469,7 @@ MonoBehaviour:
           rearDistance: 1.5
           verticalRange: 2
           healthRatio: 0.3
+          healthValue: 0
           intervalSeconds: {x: 1, y: 2}
           chance: 0.5
           requireLineOfSight: 0
@@ -522,8 +528,10 @@ MonoBehaviour:
     player:
       moveLeftKey: 61
       moveRightKey: 62
+      runKey: 51
+      runSpeedMultiplier: 1.5
       jumpKey: 1
-      jumpForce: 20
+      jumpForce: 4
       groundCheckRadius: 0.12
       groundMask:
         serializedVersion: 2
@@ -537,8 +545,8 @@ MonoBehaviour:
         activeSeconds: 0.15
         recoverySeconds: 0.25
         cooldownSeconds: 0.4
-        range: 1.2
-        hitboxHeight: 1.2
+        range: 3.68
+        hitboxHeight: 2.85
         knockback: 0.2
         targetInvulnerabilitySeconds: 0.1
         comboSteps: 1

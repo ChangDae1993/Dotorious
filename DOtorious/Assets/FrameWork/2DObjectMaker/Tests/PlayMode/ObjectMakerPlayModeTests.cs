@@ -219,7 +219,7 @@ namespace JYW.Game.ObjectMaker.Tests
             ObjectDefinitionSO definition = CreateDefinition(ObjectKind.Monster, data =>
             {
                 data.core.maxHealth = 1;
-                data.destruction.destroyDelaySeconds = 0.03f;
+                data.destruction.destroyDelaySeconds = 10f;
                 data.destruction.disableCollisionsImmediately = true;
             });
             ObjectActor2D actor = CreateActor("ObjectMakerDeathMonster", definition, Vector2.zero, true);
@@ -228,8 +228,138 @@ namespace JYW.Game.ObjectMaker.Tests
                 1, null, Vector2.left, 0f, 0f, ObjectDamageCause.Script)));
             Assert.IsTrue(actor.IsDead);
             Assert.IsFalse(actor.BodyCollider.enabled);
-            yield return new WaitForSeconds(0.08f);
-            Assert.IsTrue(actor == null, "파괴 지연 시간이 지나도 오브젝트가 제거되지 않았습니다.");
+            Assert.IsFalse(actor.gameObject.activeSelf,
+                "HP 0이 된 호출 안에서 본체가 즉시 사라지지 않았습니다.");
+            yield return null;
+            Assert.IsTrue(actor == null,
+                "HP 0 본체가 프레임 종료 뒤에도 제거되지 않았습니다.");
+        }
+
+        [UnityTest]
+        public IEnumerator HealthReachedDestroySelfRuleRemovesActorImmediatelyAndKeepsEffect()
+        {
+            ObjectDefinitionSO definition = CreateDefinition(ObjectKind.Monster, data =>
+            {
+                data.core.maxHealth = 1;
+                data.destruction.destroyDelaySeconds = 10f;
+                data.ai.useLegacyTuning = false;
+                data.ai.rules = new List<ObjectAIRule>
+                {
+                    new ObjectAIRule
+                    {
+                        label = "HP 0 도달",
+                        enabled = true,
+                        when = ObjectAICondition.HealthReached,
+                        action = ObjectAIAction.DestroySelf,
+                        condition = new ObjectAIConditionParameters { healthValue = 0 },
+                        effect = ObjectRuleEffect.Explosion,
+                        effectSettings = new ObjectRuleEffectParameters
+                        {
+                            duration = 0.5f,
+                            amount = 4
+                        }
+                    }
+                };
+            });
+            ObjectActor2D actor = CreateActor(
+                "ObjectMakerImmediateDeathMonster", definition, Vector2.zero, true);
+            yield return null;
+
+            Assert.IsTrue(actor.TryReceiveDamage(new ObjectDamageRequest(
+                1, null, Vector2.left, 0f, 0f, ObjectDamageCause.Script)));
+            Assert.IsTrue(actor.IsDead);
+            Assert.IsFalse(actor.gameObject.activeSelf,
+                "HP 0 본체가 연출과 함께 남아 있습니다.");
+            ObjectFxController2D effects = actor.GetComponent<ObjectFxController2D>();
+            Assert.IsNotNull(effects);
+            Assert.AreEqual(1, effects.SpawnedEffectCount,
+                "HP 도달 연출이 정확히 한 번 재생되지 않았습니다.");
+            Assert.IsNotNull(GameObject.Find("2DObjectMakerFx_Circle"),
+                "본체를 숨기기 전에 독립 연출이 생성되지 않았습니다.");
+            yield return null;
+
+            Assert.IsTrue(actor == null,
+                "HP 도달 → 즉시 파괴 규칙인데 본체가 제거되지 않았습니다.");
+            Assert.IsNotNull(GameObject.Find("2DObjectMakerFx_Circle"),
+                "본체 제거와 함께 독립 파괴 연출까지 사라졌습니다.");
+        }
+
+        [UnityTest]
+        public IEnumerator HealthZeroRemovalDoesNotDependOnMonsterBrainSubscription()
+        {
+            ObjectDefinitionSO definition = CreateDefinition(ObjectKind.Monster, data =>
+            {
+                data.core.maxHealth = 1;
+                data.destruction.destroyDelaySeconds = 10f;
+                data.ai.useLegacyTuning = false;
+                data.ai.rules = new List<ObjectAIRule>
+                {
+                    new ObjectAIRule
+                    {
+                        label = "HP 0 도달",
+                        enabled = true,
+                        when = ObjectAICondition.HealthReached,
+                        action = ObjectAIAction.DestroySelf,
+                        condition = new ObjectAIConditionParameters { healthValue = 0 }
+                    }
+                };
+            });
+            ObjectActor2D actor = CreateActor(
+                "ObjectMakerImmediateDeathWithoutBrain", definition, Vector2.zero);
+            yield return null;
+
+            Assert.IsTrue(actor.TryReceiveDamage(new ObjectDamageRequest(
+                1, null, Vector2.left, 0f, 0f, ObjectDamageCause.Attack)));
+            Assert.IsTrue(actor.IsDead);
+            Assert.IsFalse(actor.gameObject.activeSelf);
+            yield return null;
+
+            Assert.IsTrue(actor == null,
+                "HP 0 제거가 Monster Brain 이벤트 구독 여부에 의존하고 있습니다.");
+        }
+
+        [UnityTest]
+        public IEnumerator HealthReachedRuleUsesConfiguredAbsoluteHpAndCommonAction()
+        {
+            ObjectDefinitionSO definition = CreateDefinition(ObjectKind.Monster, data =>
+            {
+                data.core.maxHealth = 3;
+                data.hit.blinkSeconds = 0f;
+                data.hit.interruptCurrentAction = false;
+                data.ai.useLegacyTuning = false;
+                data.ai.rules = new List<ObjectAIRule>
+                {
+                    new ObjectAIRule
+                    {
+                        label = "HP 2 도달",
+                        when = ObjectAICondition.HealthReached,
+                        action = ObjectAIAction.Stop,
+                        condition = new ObjectAIConditionParameters { healthValue = 2 },
+                        settings = new ObjectAIActionParameters
+                        {
+                            durationSeconds = Vector2.zero,
+                            groundMovement = false
+                        }
+                    }
+                };
+            });
+            ObjectActor2D actor = CreateActor(
+                "ObjectMakerHealthReachedMonster", definition, Vector2.zero, true);
+            ObjectMonsterBrain2D brain = actor.GetComponent<ObjectMonsterBrain2D>();
+            yield return null;
+
+            Assert.AreEqual(-1, brain.ActiveRuleIndex,
+                "설정 HP보다 높을 때 HP 도달 규칙이 먼저 실행됐습니다.");
+            Assert.IsTrue(actor.TryReceiveDamage(new ObjectDamageRequest(
+                1, null, Vector2.left, 0f, 0f, ObjectDamageCause.Script)));
+            float timeout = Time.realtimeSinceStartup + 0.5f;
+            while (brain.ActiveRuleIndex != 0 && Time.realtimeSinceStartup < timeout)
+                yield return null;
+
+            Assert.AreEqual(2, actor.CurrentHealth);
+            Assert.AreEqual(0, brain.ActiveRuleIndex);
+            Assert.AreEqual(ObjectAIAction.Stop, brain.ActiveAction,
+                "HP 도달 조건에서 선택한 공용 AI 행동이 실행되지 않았습니다.");
         }
 
         [UnityTest]
@@ -372,6 +502,8 @@ namespace JYW.Game.ObjectMaker.Tests
             ObjectDefinitionSO playerDefinition = CreateDefinition(ObjectKind.Player, data =>
             {
                 data.core.moveSpeed = 3f;
+                data.player.runKey = UnityEngine.InputSystem.Key.LeftShift;
+                data.player.runSpeedMultiplier = 2f;
                 data.player.jumpForce = 5f;
                 data.player.groundCheckRadius = 0.15f;
                 data.player.attacks = new List<ObjectPlayerAttack>
@@ -441,6 +573,17 @@ namespace JYW.Game.ObjectMaker.Tests
             Assert.AreEqual(3f, player.Body.linearVelocity.x, 0.15f,
                 "오른쪽 이동 입력이 설정된 이동 속도로 적용되지 않았습니다.");
 
+            controller.SetRunInput(true);
+            yield return new WaitForFixedUpdate();
+            Assert.IsTrue(controller.IsRunning);
+            Assert.AreEqual(6f, player.Body.linearVelocity.x, 0.15f,
+                "달리기 키 입력이 설정된 속도 배율로 적용되지 않았습니다.");
+            controller.SetRunInput(false);
+            yield return new WaitForFixedUpdate();
+            Assert.IsFalse(controller.IsRunning);
+            Assert.AreEqual(3f, player.Body.linearVelocity.x, 0.15f,
+                "달리기 키를 놓은 뒤 걷기 속도로 복구되지 않았습니다.");
+
             controller.SetMoveInput(0f);
             Physics2D.SyncTransforms();
             Assert.IsTrue(controller.TryJump(), "지면 위 점프 입력이 실행되지 않았습니다.");
@@ -451,6 +594,112 @@ namespace JYW.Game.ObjectMaker.Tests
             Assert.IsFalse(controller.IsGrounded, "점프 후에도 계속 지면 상태로 남아 있습니다.");
             Assert.IsFalse(controller.TryJump(),
                 "공중에서 점프를 다시 실행해 Jump 모션이 반복될 수 있습니다.");
+        }
+
+        [UnityTest]
+        public IEnumerator PlayerAttackStartsAtOutermostColliderFrontAndDestroysTarget()
+        {
+            ObjectDefinitionSO playerDefinition = CreateDefinition(ObjectKind.Player, data =>
+            {
+                data.player.attacks = new List<ObjectPlayerAttack>
+                {
+                    new ObjectPlayerAttack
+                    {
+                        key = UnityEngine.InputSystem.Key.A,
+                        damage = 1,
+                        inputDelaySeconds = 0.01f,
+                        activeSeconds = 0.01f,
+                        recoverySeconds = 0.01f,
+                        cooldownSeconds = 0f,
+                        range = 1.2f,
+                        hitboxHeight = 1.2f,
+                        knockback = 0f,
+                        targetInvulnerabilitySeconds = 0f
+                    }
+                };
+            });
+            ObjectDefinitionSO enemyDefinition = CreateDefinition(ObjectKind.Monster, data =>
+            {
+                data.objectId = "SG-001-AttackRangeRegression";
+                data.core.maxHealth = 1;
+                data.core.defense = 0;
+                data.hit.blinkSeconds = 0f;
+                data.hit.knockback = 0f;
+                data.destruction.destroyDelaySeconds = 0f;
+            });
+
+            ObjectActor2D player = CreateActor(
+                "ObjectMakerLargeColliderPlayer", playerDefinition, Vector2.zero);
+            player.Body.bodyType = RigidbodyType2D.Dynamic;
+            player.Body.gravityScale = 0f;
+            player.Body.freezeRotation = true;
+            BoxCollider2D addedSceneCollider = player.gameObject.AddComponent<BoxCollider2D>();
+            addedSceneCollider.size = new Vector2(3.94f, 2f);
+            var probe = new GameObject("GroundProbe");
+            probe.transform.SetParent(player.transform, false);
+            ObjectPlayerController2D controller =
+                player.gameObject.AddComponent<ObjectPlayerController2D>();
+            controller.Configure(player, player.Body, player.BodyCollider, probe.transform);
+
+            ObjectActor2D enemy = CreateActor(
+                "ObjectMakerLargeColliderAttackTarget", enemyDefinition, new Vector2(2.47f, 0f));
+            player.Body.bodyType = RigidbodyType2D.Kinematic;
+            enemy.Body.bodyType = RigidbodyType2D.Kinematic;
+            enemy.Body.gravityScale = 0f;
+            enemy.Body.freezeRotation = true;
+            ObjectMonsterBrain2D brain = enemy.GetComponent<ObjectMonsterBrain2D>();
+            if (brain != null)
+                brain.enabled = false;
+            enemy.Data.attack.contactDamage = 0;
+            enemy.Data.attack.attackDamage = 0;
+            Physics2D.SyncTransforms();
+
+            Assert.Greater(
+                Mathf.Abs(enemy.Body.position.x - player.Body.position.x),
+                1.7f,
+                "큰 Player Collider가 실제로 두 오브젝트를 기존 중심 기준 공격 범위 밖까지 밀어내지 않았습니다.");
+
+            player.SetFacing(1f);
+            Assert.IsTrue(controller.TryStartAttack(0));
+            float timeout = Time.realtimeSinceStartup + 0.5f;
+            while (enemy != null && Time.realtimeSinceStartup < timeout)
+                yield return null;
+
+            Assert.IsTrue(enemy == null,
+                "큰 Player Collider의 앞면부터 공격 범위를 계산하지 않아 체력 1인 대상이 제거되지 않았습니다.");
+        }
+
+        [UnityTest]
+        public IEnumerator PlayerJumpUsesLowestAttachedColliderForGrounding()
+        {
+            CreateGround(new Vector2(0f, -2.67f), new Vector2(20f, 1f));
+            ObjectDefinitionSO playerDefinition = CreateDefinition(ObjectKind.Player, data =>
+            {
+                data.player.jumpForce = 5f;
+                data.player.groundCheckRadius = 0.15f;
+            });
+            ObjectActor2D player = CreateActor(
+                "ObjectMakerMultiColliderPlayer", playerDefinition, Vector2.zero);
+            player.Body.bodyType = RigidbodyType2D.Dynamic;
+            player.Body.gravityScale = 1f;
+            ((BoxCollider2D)player.BodyCollider).size = new Vector2(1f, 1.8f);
+            BoxCollider2D addedSceneCollider = player.gameObject.AddComponent<BoxCollider2D>();
+            addedSceneCollider.size = new Vector2(2.47f, 4.34f);
+
+            var probe = new GameObject("GroundProbe");
+            probe.transform.SetParent(player.transform, false);
+            probe.transform.localPosition = Vector3.down * 0.9f;
+            ObjectPlayerController2D controller =
+                player.gameObject.AddComponent<ObjectPlayerController2D>();
+            controller.Configure(player, player.Body, player.BodyCollider, probe.transform);
+            Physics2D.SyncTransforms();
+
+            Assert.IsTrue(controller.RefreshGrounded(),
+                "추가 Collider가 실제 발이 됐지만 기존 GroundProbe만 검사해 지면을 놓쳤습니다.");
+            Assert.IsTrue(controller.TryJump(),
+                "Space로 매핑된 점프가 추가 Collider의 지면 접촉을 인식하지 못했습니다.");
+            Assert.Greater(player.Body.linearVelocity.y, 0f);
+            yield return null;
         }
 
         [UnityTest]
@@ -557,6 +806,8 @@ namespace JYW.Game.ObjectMaker.Tests
                 var probe = new GameObject("GroundProbe");
                 probe.transform.SetParent(gameObject.transform, false);
                 probe.transform.localPosition = Vector3.down * 0.5f;
+                ObjectFxController2D effects = gameObject.AddComponent<ObjectFxController2D>();
+                effects.Configure(actor, null);
                 var brain = gameObject.AddComponent<ObjectMonsterBrain2D>();
                 brain.Configure(actor, body, collider, probe.transform);
             }

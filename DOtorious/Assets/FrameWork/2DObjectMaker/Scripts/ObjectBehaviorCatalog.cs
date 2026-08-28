@@ -24,11 +24,13 @@ namespace JYW.Game.ObjectMaker
         [InspectorName("앞에 높은 장애물이 있을 때")] ObstacleAhead,
         [InspectorName("앞이 낭떠러지일 때")] CliffAhead,
         [InspectorName("현재 행동이 끝났을 때")] ActionFinished,
-        [InspectorName("체력이 0이 되어 파괴될 때")] Died,
+        [InspectorName("특정 HP에 도달했을 때")] HealthReached,
         [InspectorName("타겟이 죽었을 때")] TargetDead,
         [InspectorName("동료에게 경보를 받았을 때")] AllyAlertReceived,
         [InspectorName("플레이어와 접촉했을 때")] ContactingPlayer,
-        [InspectorName("지정 확률에 당첨됐을 때")] RandomChance
+        [InspectorName("지정 확률에 당첨됐을 때")] RandomChance,
+        [Obsolete("Use HealthReached. This alias only preserves source compatibility.")]
+        Died = HealthReached
     }
 
     public enum ObjectAIAction
@@ -189,6 +191,7 @@ namespace JYW.Game.ObjectMaker
         [Min(0f)] public float rearDistance = 1.5f;
         [Min(0f)] public float verticalRange = 2f;
         [Range(0f, 1f)] public float healthRatio = 0.3f;
+        [Min(0)] public int healthValue;
         public Vector2 intervalSeconds = new Vector2(1f, 2f);
         [Range(0f, 1f)] public float chance = 0.5f;
         public bool requireLineOfSight;
@@ -207,6 +210,7 @@ namespace JYW.Game.ObjectMaker
             rearDistance = Mathf.Max(0f, rearDistance);
             verticalRange = Mathf.Max(0f, verticalRange);
             healthRatio = Mathf.Clamp01(healthRatio);
+            healthValue = Mathf.Max(0, healthValue);
             chance = Mathf.Clamp01(chance);
             intervalSeconds = OrderedNonNegative(intervalSeconds);
         }
@@ -333,6 +337,10 @@ namespace JYW.Game.ObjectMaker
         public void Sanitize()
         {
             label = label ?? string.Empty;
+            if (when == ObjectAICondition.HealthReached &&
+                (string.IsNullOrWhiteSpace(label) ||
+                 string.Equals(label.Trim(), "파괴될 때", StringComparison.Ordinal)))
+                label = "HP 도달";
             condition = condition ?? new ObjectAIConditionParameters();
             settings = settings ?? new ObjectAIActionParameters();
             effectSettings = effectSettings ?? new ObjectRuleEffectParameters();
@@ -374,8 +382,9 @@ namespace JYW.Game.ObjectMaker
 
         public static List<ObjectAIRule> CreateSG001Rules()
         {
-            ObjectAIRule died = Rule("파괴될 때", ObjectAICondition.Died,
+            ObjectAIRule died = Rule("HP 0 도달", ObjectAICondition.HealthReached,
                 ObjectAIAction.None);
+            died.condition.healthValue = 0;
             died.effect = ObjectRuleEffect.PixelScatter;
 
             ObjectAIRule damaged = Rule("피격했을 때", ObjectAICondition.Damaged,
@@ -450,7 +459,9 @@ namespace JYW.Game.ObjectMaker
 
     public static class ObjectBehaviorCatalog
     {
-        public static int ConditionCount => Enum.GetValues(typeof(ObjectAICondition)).Length;
+        public static int ConditionCount =>
+            new HashSet<ObjectAICondition>(
+                (ObjectAICondition[])Enum.GetValues(typeof(ObjectAICondition))).Count;
         public static int ActionCount => Enum.GetValues(typeof(ObjectAIAction)).Length;
 
         public static void ImportLegacyTuning(ObjectDefinitionData data)
@@ -594,7 +605,7 @@ namespace JYW.Game.ObjectMaker
                 case ObjectAICondition.ObstacleAhead: return "현재 바라보는 방향의 높은 장애물을 감지했을 때 참입니다.";
                 case ObjectAICondition.CliffAhead: return "현재 바라보는 방향 아래에 지면이 없을 때 참입니다.";
                 case ObjectAICondition.ActionFinished: return "바로 전 규칙 행동이 끝난 순간 한 번만 참입니다.";
-                case ObjectAICondition.Died: return "이 오브젝트의 체력이 0이 된 순간 한 번만 사용됩니다.";
+                case ObjectAICondition.HealthReached: return "현재 체력이 지정 HP 이하가 되면 참입니다. HP 0에서는 연출과 별개로 본체가 즉시 제거됩니다.";
                 case ObjectAICondition.TargetDead: return "현재 타겟의 체력이 0이 된 순간 참입니다.";
                 case ObjectAICondition.AllyAlertReceived: return "주변 2DObjectMaker 몬스터에게 목표를 전달받은 순간 한 번만 참입니다.";
                 case ObjectAICondition.ContactingPlayer: return "몸체가 플레이어와 접촉 중일 때 참입니다.";
@@ -633,7 +644,7 @@ namespace JYW.Game.ObjectMaker
                 case ObjectAIAction.AlertAllies: return "지정 반경의 몬스터 Brain에 현재 타겟을 전달합니다.";
                 case ObjectAIAction.TeleportBehind: return "쿨다운이 허용되면 타겟 반대편으로 즉시 이동합니다.";
                 case ObjectAIAction.SelfDestruct: return "범위 피해를 한 번 적용하고 자신의 체력을 0으로 만듭니다.";
-                case ObjectAIAction.DestroySelf: return "피해 판정 없이 자신의 체력을 0으로 만듭니다.";
+                case ObjectAIAction.DestroySelf: return "사망 처리를 실행한 뒤 그 프레임 끝에 자신의 게임 오브젝트를 제거합니다.";
                 case ObjectAIAction.PlayMotion: return "설정한 Motion Condition만 재생하고 이동/전투는 바꾸지 않습니다.";
                 default: return string.Empty;
             }

@@ -25,7 +25,9 @@ namespace JYW.Game.ObjectMaker
         [SerializeField] private Transform groundProbe;
 
         private readonly HashSet<ObjectActor2D> damagedThisStep = new HashSet<ObjectActor2D>();
+        private readonly List<Collider2D> attachedColliders = new List<Collider2D>();
         private float moveInput;
+        private bool runInput;
         private bool grounded;
         private bool wasGrounded;
         private AttackPhase attackPhase;
@@ -42,6 +44,8 @@ namespace JYW.Game.ObjectMaker
         public int CurrentAttackIndex => attackIndex;
         public int CurrentComboStep => comboStep;
         public float MoveInput => moveInput;
+        public bool IsRunning => runInput && Mathf.Abs(moveInput) > 0.001f &&
+                                 Settings != null && Settings.runKey != Key.None;
 
         private ObjectDefinitionData Data => actor != null ? actor.Data : null;
         private ObjectPlayerSettings Settings => Data != null ? Data.player : null;
@@ -127,6 +131,18 @@ namespace JYW.Game.ObjectMaker
                 UpdateLocomotionAnimation();
         }
 
+        public void SetRunInput(bool running)
+        {
+            bool requested = running && Settings != null && Settings.runKey != Key.None;
+            if (runInput == requested)
+                return;
+
+            runInput = requested;
+            ApplyHorizontalMovement();
+            if (!IsAttacking)
+                UpdateLocomotionAnimation();
+        }
+
         public bool TryJump()
         {
             if (actor == null || actor.IsDead || body == null || Settings == null)
@@ -186,8 +202,9 @@ namespace JYW.Game.ObjectMaker
             if (groundProbe == null || Settings == null)
                 return false;
 
+            Vector2 groundCheckPosition = ResolveGroundCheckPosition();
             Collider2D[] contacts = Physics2D.OverlapCircleAll(
-                groundProbe.position,
+                groundCheckPosition,
                 Settings.groundCheckRadius,
                 Settings.groundMask.value);
             for (int i = 0; i < contacts.Length; i++)
@@ -210,6 +227,34 @@ namespace JYW.Game.ObjectMaker
             return grounded;
         }
 
+        private Vector2 ResolveGroundCheckPosition()
+        {
+            Vector2 position = groundProbe != null
+                ? groundProbe.position
+                : (Vector2)transform.position;
+            if (body == null)
+                return position;
+
+            attachedColliders.Clear();
+            body.GetAttachedColliders(attachedColliders, false);
+            float lowestColliderBottom = float.PositiveInfinity;
+            for (int i = 0; i < attachedColliders.Count; i++)
+            {
+                Collider2D candidate = attachedColliders[i];
+                if (candidate == null || !candidate.enabled || candidate.isTrigger)
+                    continue;
+
+                Bounds bounds = candidate.bounds;
+                if (bounds.size.sqrMagnitude <= Mathf.Epsilon)
+                    continue;
+                lowestColliderBottom = Mathf.Min(lowestColliderBottom, bounds.min.y);
+            }
+
+            if (!float.IsPositiveInfinity(lowestColliderBottom))
+                position.y = Mathf.Min(position.y, lowestColliderBottom);
+            return position;
+        }
+
         private void ReadKeyboardInput()
         {
             Keyboard keyboard = Keyboard.current;
@@ -221,6 +266,7 @@ namespace JYW.Game.ObjectMaker
                 horizontal -= 1f;
             if (IsPressed(keyboard, Settings.moveRightKey))
                 horizontal += 1f;
+            SetRunInput(IsPressed(keyboard, Settings.runKey));
             SetMoveInput(horizontal);
 
             if (WasPressedThisFrame(keyboard, Settings.jumpKey))
@@ -241,16 +287,22 @@ namespace JYW.Game.ObjectMaker
 
         private void ApplyHorizontalMovement()
         {
-            if (body == null || actor == null || actor.IsDead || Data == null)
+            if (body == null || actor == null || actor.IsDead || Data == null || Settings == null)
                 return;
 
             bool movementLocked = Time.time < hitLockUntil ||
                                   (IsAttacking && !Settings.allowMovementDuringAttack);
+            float speedMultiplier = runInput && Settings.runKey != Key.None
+                ? Settings.runSpeedMultiplier
+                : 1f;
             float horizontalVelocity = movementLocked
                 ? 0f
-                : moveInput * Data.core.moveSpeed;
+                : moveInput * Data.core.moveSpeed * speedMultiplier;
             body.linearVelocity = new Vector2(horizontalVelocity, body.linearVelocity.y);
             actor.SetLocomotionAnimation(Mathf.Abs(horizontalVelocity), grounded);
+            actor.SetAnimatorBool(
+                ObjectAnimatorGraph2D.RunningParameter,
+                !movementLocked && IsRunning && Mathf.Abs(horizontalVelocity) > 0.001f);
         }
 
         private void UpdateLocomotionAnimation(bool forceRestart = false)
@@ -261,6 +313,7 @@ namespace JYW.Game.ObjectMaker
                 ? Mathf.Abs(body.linearVelocity.x)
                 : Mathf.Abs(moveInput) * (Data != null ? Data.core.moveSpeed : 0f);
             actor.SetAnimatorFloat(ObjectAnimatorGraph2D.SpeedParameter, speed);
+            actor.SetAnimatorBool(ObjectAnimatorGraph2D.RunningParameter, IsRunning);
         }
 
         private void StartAttackStep(int index, int step)
@@ -321,7 +374,7 @@ namespace JYW.Game.ObjectMaker
                 return;
 
             float direction = actor.IsFacingRight ? 1f : -1f;
-            Vector2 center = body.position + Vector2.right * direction * (attack.range * 0.5f);
+            Vector2 center = ResolveAttackHitboxCenter(direction, attack.range);
             Collider2D[] hits = Physics2D.OverlapBoxAll(
                 center,
                 new Vector2(attack.range, attack.hitboxHeight),
@@ -381,8 +434,48 @@ namespace JYW.Game.ObjectMaker
         {
             CancelAttack();
             moveInput = 0f;
+            runInput = false;
+            if (actor != null)
+                actor.SetAnimatorBool(ObjectAnimatorGraph2D.RunningParameter, false);
             if (body != null)
                 body.linearVelocity = Vector2.zero;
+        }
+
+        private Vector2 ResolveAttackHitboxCenter(float direction, float range)
+        {
+            Vector2 center = body != null
+                ? body.position
+                : (Vector2)transform.position;
+            float frontX = center.x;
+            bool foundCollider = false;
+
+            if (body != null)
+            {
+                attachedColliders.Clear();
+                body.GetAttachedColliders(attachedColliders, false);
+                for (int i = 0; i < attachedColliders.Count; i++)
+                {
+                    Collider2D candidate = attachedColliders[i];
+                    if (candidate == null || !candidate.enabled || candidate.isTrigger)
+                        continue;
+
+                    Bounds bounds = candidate.bounds;
+                    if (bounds.size.sqrMagnitude <= Mathf.Epsilon)
+                        continue;
+
+                    float candidateFront = direction >= 0f ? bounds.max.x : bounds.min.x;
+                    if (!foundCollider ||
+                        (direction >= 0f && candidateFront > frontX) ||
+                        (direction < 0f && candidateFront < frontX))
+                    {
+                        frontX = candidateFront;
+                        foundCollider = true;
+                    }
+                }
+            }
+
+            center.x = frontX + direction * (range * 0.5f);
+            return center;
         }
 
         private void ResolveReferences()
@@ -433,7 +526,7 @@ namespace JYW.Game.ObjectMaker
             if (groundProbe != null && settings != null)
             {
                 Gizmos.color = grounded ? Color.green : Color.yellow;
-                Gizmos.DrawWireSphere(groundProbe.position, settings.groundCheckRadius);
+                Gizmos.DrawWireSphere(ResolveGroundCheckPosition(), settings.groundCheckRadius);
             }
 
             if (actor == null || body == null || settings == null ||
@@ -446,7 +539,7 @@ namespace JYW.Game.ObjectMaker
             if (attack == null)
                 return;
             float direction = actor.IsFacingRight ? 1f : -1f;
-            Vector2 center = body.position + Vector2.right * direction * (attack.range * 0.5f);
+            Vector2 center = ResolveAttackHitboxCenter(direction, attack.range);
             Gizmos.color = new Color(1f, 0.3f, 0.15f, 0.9f);
             Gizmos.DrawWireCube(center, new Vector3(attack.range, attack.hitboxHeight, 0f));
         }

@@ -19,6 +19,7 @@ namespace JYW.Game.ObjectMaker
     public static class ObjectAnimatorGraph2D
     {
         public const string SpeedParameter = "MoveSpeed";
+        public const string RunningParameter = "IsRunning";
         public const string GroundedParameter = "IsGrounded";
         public const string AttackingParameter = "IsAttacking";
         public const string PlayerAttackParameter = "PlayerAttack";
@@ -145,6 +146,8 @@ namespace JYW.Game.ObjectMaker
     {
         public Key moveLeftKey = Key.A;
         public Key moveRightKey = Key.D;
+        public Key runKey = Key.LeftShift;
+        [Min(1f)] public float runSpeedMultiplier = 1.5f;
         public Key jumpKey = Key.Space;
         [Min(0f)] public float jumpForce = 7f;
         [Min(0.01f)] public float groundCheckRadius = 0.12f;
@@ -169,6 +172,7 @@ namespace JYW.Game.ObjectMaker
 
         public void Sanitize()
         {
+            runSpeedMultiplier = Mathf.Max(1f, runSpeedMultiplier);
             jumpForce = Mathf.Max(0f, jumpForce);
             groundCheckRadius = Mathf.Max(0.01f, groundCheckRadius);
             attacks = attacks ?? new List<ObjectPlayerAttack>();
@@ -486,9 +490,13 @@ namespace JYW.Game.ObjectMaker
                                    player.moveRightKey != Key.None);
                 if (hasMoveKey)
                 {
-                    AddMotion(ObjectMotionCondition.Patrol, ObjectCommonAnimator.Run);
-                    AddMotion(ObjectMotionCondition.Chase, ObjectCommonAnimator.Run);
-                    AddMotion(ObjectMotionCondition.Return, ObjectCommonAnimator.Run);
+                    AddMotion(ObjectMotionCondition.Patrol, ObjectCommonAnimator.Walk);
+                    AddMotion(
+                        ObjectMotionCondition.Chase,
+                        player.runKey != Key.None
+                            ? ObjectCommonAnimator.Run
+                            : ObjectCommonAnimator.Walk);
+                    AddMotion(ObjectMotionCondition.Return, ObjectCommonAnimator.Walk);
                 }
                 if (player.jumpKey != Key.None && player.jumpForce > 0f)
                     AddMotion(ObjectMotionCondition.Jump, ObjectCommonAnimator.Jump);

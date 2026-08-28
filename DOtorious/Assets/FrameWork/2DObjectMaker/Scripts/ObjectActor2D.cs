@@ -149,10 +149,21 @@ namespace JYW.Game.ObjectMaker
             bool isDead = currentHealth <= 0;
             var result = new ObjectDamageResult(request, appliedDamage, currentHealth, isDead);
             SetAnimatorTrigger(ObjectAnimatorGraph2D.HitParameter);
-            Damaged?.Invoke(result);
-
             if (isDead)
-                Die();
+            {
+                try
+                {
+                    Damaged?.Invoke(result);
+                }
+                finally
+                {
+                    Die();
+                }
+            }
+            else
+            {
+                Damaged?.Invoke(result);
+            }
 
             return true;
         }
@@ -175,6 +186,20 @@ namespace JYW.Game.ObjectMaker
                 return;
             currentHealth = 0;
             Die();
+        }
+
+        public void ForceDestroy(GameObject source = null)
+        {
+            if (!dead && definition != null)
+            {
+                currentHealth = 0;
+                Die();
+                return;
+            }
+
+            if (gameObject.activeSelf)
+                gameObject.SetActive(false);
+            Destroy(gameObject);
         }
 
         public void SetFacing(float horizontalDirection)
@@ -306,8 +331,18 @@ namespace JYW.Game.ObjectMaker
             if (effect != null)
                 Instantiate(effect, transform.position, transform.rotation);
 
-            Died?.Invoke(this);
-            Destroy(gameObject, definition.Data.destruction.destroyDelaySeconds);
+            try
+            {
+                Died?.Invoke(this);
+            }
+            finally
+            {
+                // Destroy() is finalized at the end of the frame. Disable the root first so
+                // the body can never remain visible while an independent death effect plays.
+                if (gameObject.activeSelf)
+                    gameObject.SetActive(false);
+                Destroy(gameObject);
+            }
         }
 
         private void ResolveReferences()

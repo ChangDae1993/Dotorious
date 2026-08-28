@@ -39,10 +39,14 @@ namespace JYW.Game.ObjectMaker.Editor
         public static Rect LastActionPopupRectForTests { get; private set; }
         public static Rect LastAddRuleButtonRectForTests { get; private set; }
         public static Rect LastConditionChoiceRectForTests { get; private set; }
+        public static Rect LastHealthReachedConditionChoiceRectForTests { get; private set; }
         public static Rect LastActionChoiceRectForTests { get; private set; }
+        public static Rect LastHealthReachedValueRectForTests { get; private set; }
         public static Rect LastEnemyTargetButtonRectForTests { get; private set; }
         public static Rect LastPlayerTargetButtonRectForTests { get; private set; }
         public static Rect LastAddPlayerAttackButtonRectForTests { get; private set; }
+        public static Rect LastRunKeyRectForTests { get; private set; }
+        public static Rect LastRunSpeedRectForTests { get; private set; }
         public ObjectDefinitionSO CurrentDefinitionForTests => currentDefinition;
 
         [MenuItem("Window/FrameWork/2DObjectMaker", false, 2301)]
@@ -244,7 +248,7 @@ namespace JYW.Game.ObjectMaker.Editor
             EditorGUILayout.HelpBox(
                 draft.kind == ObjectKind.Player
                     ? "Player를 만들면 이동·점프 입력과 모든 공격/콤보가 연결된 Prefab 및 Animator가 생성됩니다. " +
-                      "Prefab의 Visual/Sprite Renderer에서 이미지를 바꾸고, 생성된 Idle·Run·Jump·Hit·Dead 및 Player_Attack State에 모션만 넣으세요."
+                      "Prefab의 Visual/Sprite Renderer에서 이미지를 바꾸고, 생성된 Idle·Walk·Run·Jump·Hit·Dead 및 Player_Attack State에 모션만 넣으세요."
                     : "Enemy를 만들면 아래 AI 규칙 수와 행동에 맞춘 State/전이가 포함된 Prefab 및 Animator가 생성됩니다. " +
                       "Prefab의 Visual/Sprite Renderer에서 이미지를 바꾸고, 생성된 공용/Enemy_Rule State에 모션만 넣으세요.",
                 MessageType.Info);
@@ -291,6 +295,12 @@ namespace JYW.Game.ObjectMaker.Editor
                     "왼쪽 이동 키", draft.player.moveLeftKey);
                 draft.player.moveRightKey = (Key)EditorGUILayout.EnumPopup(
                     "오른쪽 이동 키", draft.player.moveRightKey);
+                draft.player.runKey = (Key)EditorGUILayout.EnumPopup(
+                    "달리기 키", draft.player.runKey);
+                LastRunKeyRectForTests = ToWindowRect(GUILayoutUtility.GetLastRect());
+                draft.player.runSpeedMultiplier = EditorGUILayout.FloatField(
+                    "달리기 속도 배율", draft.player.runSpeedMultiplier);
+                LastRunSpeedRectForTests = ToWindowRect(GUILayoutUtility.GetLastRect());
                 draft.player.jumpKey = (Key)EditorGUILayout.EnumPopup(
                     "점프 키", draft.player.jumpKey);
                 draft.player.jumpForce = EditorGUILayout.FloatField(
@@ -513,20 +523,28 @@ namespace JYW.Game.ObjectMaker.Editor
                 return current;
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            Array values = Enum.GetValues(typeof(ObjectAICondition));
-            for (int index = 0; index < values.Length; index += 2)
+            Array rawValues = Enum.GetValues(typeof(ObjectAICondition));
+            var values = new List<ObjectAICondition>();
+            var seenValues = new HashSet<int>();
+            for (int i = 0; i < rawValues.Length; i++)
+            {
+                ObjectAICondition value = (ObjectAICondition)rawValues.GetValue(i);
+                if (seenValues.Add((int)value))
+                    values.Add(value);
+            }
+            for (int index = 0; index < values.Count; index += 2)
             {
                 EditorGUILayout.BeginHorizontal();
                 for (int column = 0; column < 2; column++)
                 {
                     int optionIndex = index + column;
-                    if (optionIndex >= values.Length)
+                    if (optionIndex >= values.Count)
                     {
                         GUILayout.FlexibleSpace();
                         continue;
                     }
 
-                    ObjectAICondition option = (ObjectAICondition)values.GetValue(optionIndex);
+                    ObjectAICondition option = values[optionIndex];
                     Color previous = GUI.backgroundColor;
                     if (option == current)
                         GUI.backgroundColor = new Color(0.55f, 0.8f, 1f);
@@ -538,6 +556,9 @@ namespace JYW.Game.ObjectMaker.Editor
                     }
                     if (ruleIndex == 0 && option == ObjectAICondition.HasTarget)
                         LastConditionChoiceRectForTests = ToWindowRect(GUILayoutUtility.GetLastRect());
+                    if (ruleIndex == 0 && option == ObjectAICondition.HealthReached)
+                        LastHealthReachedConditionChoiceRectForTests =
+                            ToWindowRect(GUILayoutUtility.GetLastRect());
                     GUI.backgroundColor = previous;
                 }
                 EditorGUILayout.EndHorizontal();
@@ -654,6 +675,13 @@ namespace JYW.Game.ObjectMaker.Editor
             {
                 condition.healthRatio = EditorGUILayout.Slider(
                     "체력 비율", condition.healthRatio, 0f, 1f);
+            }
+            else if (rule.when == ObjectAICondition.HealthReached)
+            {
+                condition.healthValue = EditorGUILayout.IntField(
+                    "도달 HP (이하)", condition.healthValue);
+                LastHealthReachedValueRectForTests =
+                    ToWindowRect(GUILayoutUtility.GetLastRect());
             }
             else if (rule.when == ObjectAICondition.EveryInterval)
             {
@@ -1009,9 +1037,12 @@ namespace JYW.Game.ObjectMaker.Editor
 
         private void DrawDestruction()
         {
-            showDestruction = EditorGUILayout.BeginFoldoutHeaderGroup(showDestruction, "파괴");
+            showDestruction = EditorGUILayout.BeginFoldoutHeaderGroup(showDestruction, "HP 0 / 제거 연출");
             if (showDestruction)
             {
+                EditorGUILayout.HelpBox(
+                    "HP가 0이 되면 본체는 연출 재생 시간과 관계없이 즉시 사라지고 제거됩니다.",
+                    MessageType.Info);
                 draft.destruction.effectPrefab = (GameObject)EditorGUILayout.ObjectField(
                     "Parts / Effect Prefab",
                     draft.destruction.effectPrefab,
@@ -1020,8 +1051,6 @@ namespace JYW.Game.ObjectMaker.Editor
                 draft.destruction.disableCollisionsImmediately = EditorGUILayout.Toggle(
                     "Disable Collision At 0 HP",
                     draft.destruction.disableCollisionsImmediately);
-                draft.destruction.destroyDelaySeconds = EditorGUILayout.FloatField(
-                    "Destroy Delay", draft.destruction.destroyDelaySeconds);
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
         }

@@ -277,16 +277,53 @@ namespace JYW.Game.ObjectMaker.Editor
             {
                 EnsureParameter(controller, ObjectAnimatorGraph2D.SpeedParameter,
                     AnimatorControllerParameterType.Float);
-                AnimatorState run = AddState(
+                bool hasRunKey = settings.runKey != UnityEngine.InputSystem.Key.None;
+                if (hasRunKey)
+                {
+                    EnsureParameter(controller, ObjectAnimatorGraph2D.RunningParameter,
+                        AnimatorControllerParameterType.Bool);
+                }
+
+                AnimatorState walk = AddState(
                     stateMachine,
-                    ObjectCommonAnimator.Run,
+                    ObjectCommonAnimator.Walk,
                     new Vector3(220f, 140f),
                     preservedMotions,
-                    ObjectCommonAnimator.Walk);
-                AddFloatTransition(idle, run, ObjectAnimatorGraph2D.SpeedParameter,
-                    AnimatorConditionMode.Greater, 0.01f, "Auto_Idle_Run");
-                AddFloatTransition(run, idle, ObjectAnimatorGraph2D.SpeedParameter,
-                    AnimatorConditionMode.Less, 0.01f, "Auto_Run_Idle");
+                    ObjectCommonAnimator.Run);
+
+                AnimatorStateTransition idleToWalk = AddTransition(
+                    idle, walk, "Auto_Idle_Walk");
+                idleToWalk.AddCondition(AnimatorConditionMode.Greater, 0.01f,
+                    ObjectAnimatorGraph2D.SpeedParameter);
+                if (hasRunKey)
+                {
+                    idleToWalk.AddCondition(AnimatorConditionMode.IfNot, 0f,
+                        ObjectAnimatorGraph2D.RunningParameter);
+                }
+                AddFloatTransition(walk, idle, ObjectAnimatorGraph2D.SpeedParameter,
+                    AnimatorConditionMode.Less, 0.01f, "Auto_Walk_Idle");
+
+                if (hasRunKey)
+                {
+                    AnimatorState run = AddState(
+                        stateMachine,
+                        ObjectCommonAnimator.Run,
+                        new Vector3(220f, 240f),
+                        preservedMotions,
+                        ObjectCommonAnimator.Walk);
+                    AnimatorStateTransition idleToRun = AddTransition(
+                        idle, run, "Auto_Idle_Run");
+                    idleToRun.AddCondition(AnimatorConditionMode.Greater, 0.01f,
+                        ObjectAnimatorGraph2D.SpeedParameter);
+                    idleToRun.AddCondition(AnimatorConditionMode.If, 0f,
+                        ObjectAnimatorGraph2D.RunningParameter);
+                    AddFloatTransition(run, idle, ObjectAnimatorGraph2D.SpeedParameter,
+                        AnimatorConditionMode.Less, 0.01f, "Auto_Run_Idle");
+                    AddBoolTransition(walk, run, ObjectAnimatorGraph2D.RunningParameter,
+                        true, "Auto_Walk_Run");
+                    AddBoolTransition(run, walk, ObjectAnimatorGraph2D.RunningParameter,
+                        false, "Auto_Run_Walk");
+                }
             }
 
             bool hasJumpKey = settings.jumpKey != UnityEngine.InputSystem.Key.None &&

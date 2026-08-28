@@ -71,6 +71,7 @@ namespace JYW.Game.ObjectMaker
         private float[] nextIntervalAt = new float[0];
         private float[] nextRandomDecisionAt = new float[0];
         private bool[] consumedRules = new bool[0];
+        private bool[] playedHealthReachedEffects = new bool[0];
         private ObjectAIActionParameters activeSettings;
         private ObjectAttackPattern activeAttackPattern;
 
@@ -267,12 +268,13 @@ namespace JYW.Game.ObjectMaker
         private void EnsureRuleRuntimeState()
         {
             int count = Program != null && Program.rules != null ? Program.rules.Count : 0;
-            if (nextIntervalAt.Length == count)
+            if (nextIntervalAt.Length == count && playedHealthReachedEffects.Length == count)
                 return;
 
             nextIntervalAt = new float[count];
             nextRandomDecisionAt = new float[count];
             consumedRules = new bool[count];
+            playedHealthReachedEffects = new bool[count];
             for (int i = 0; i < count; i++)
             {
                 ObjectAIRule rule = GetRule(i);
@@ -458,9 +460,13 @@ namespace JYW.Game.ObjectMaker
         {
             for (int i = 0; i < consumedRules.Length; i++)
             {
+                ObjectAIRule rule = GetRule(i);
+                if (rule != null && rule.when == ObjectAICondition.HealthReached &&
+                    actor.CurrentHealth > Mathf.Max(0, rule.condition.healthValue))
+                    playedHealthReachedEffects[i] = false;
+
                 if (!consumedRules[i])
                     continue;
-                ObjectAIRule rule = GetRule(i);
                 if (rule == null || !ConditionMatches(rule, i, true))
                     consumedRules[i] = false;
             }
@@ -517,6 +523,8 @@ namespace JYW.Game.ObjectMaker
                     return damagedPending;
                 case ObjectAICondition.LowHealth:
                     return actor.CurrentHealthRatio <= condition.healthRatio;
+                case ObjectAICondition.HealthReached:
+                    return actor.CurrentHealth <= condition.healthValue;
                 case ObjectAICondition.EveryInterval:
                     return index >= 0 && index < nextIntervalAt.Length && Time.time >= nextIntervalAt[index];
                 case ObjectAICondition.AtSpawn:
@@ -663,6 +671,9 @@ namespace JYW.Game.ObjectMaker
             ApplyLegacyTuning(rule.action, activeSettings);
             if (effects != null)
                 effects.Play(rule.effect, rule.effectSettings, moveDirection);
+            if (rule.when == ObjectAICondition.HealthReached &&
+                index >= 0 && index < playedHealthReachedEffects.Length)
+                playedHealthReachedEffects[index] = true;
             if (rule.when == ObjectAICondition.EveryInterval && index < nextIntervalAt.Length)
                 nextIntervalAt[index] = Time.time + RandomRange(rule.condition.intervalSeconds);
 
@@ -764,7 +775,7 @@ namespace JYW.Game.ObjectMaker
                     actor.ForceDeath(gameObject);
                     break;
                 case ObjectAIAction.DestroySelf:
-                    actor.ForceDeath(gameObject);
+                    actor.ForceDestroy(gameObject);
                     break;
                 case ObjectAIAction.PlayMotion:
                     BeginState(ObjectBrainState.Idle, RandomRange(activeSettings.durationSeconds));
@@ -1519,13 +1530,22 @@ namespace JYW.Game.ObjectMaker
 
         private void OnActorDied(ObjectActor2D deadActor)
         {
-            if (effects != null && Program != null && Program.rules != null)
+            EnsureRuleRuntimeState();
+            if (Program != null && Program.rules != null)
             {
                 for (int i = 0; i < Program.rules.Count; i++)
                 {
                     ObjectAIRule rule = Program.rules[i];
-                    if (rule != null && rule.enabled && rule.when == ObjectAICondition.Died)
+                    if (rule == null || !rule.enabled ||
+                        rule.when != ObjectAICondition.HealthReached ||
+                        deadActor.CurrentHealth > Mathf.Max(0, rule.condition.healthValue) ||
+                        (i < playedHealthReachedEffects.Length && playedHealthReachedEffects[i]))
+                        continue;
+
+                    if (effects != null)
                         effects.Play(rule.effect, rule.effectSettings, moveDirection);
+                    if (i < playedHealthReachedEffects.Length)
+                        playedHealthReachedEffects[i] = true;
                 }
             }
             actor.SetEnemyRuleAnimation(-1, ObjectEnemyAnimatorPhase.None);
