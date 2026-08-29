@@ -23,6 +23,7 @@ public class EventSOEditor : Editor
     private static int dragFromIndex = -1;
     private static int dragToIndex = -1;
     private static bool dragInProgress = false;
+    private static int dragControlId = 0;
     private static readonly Dictionary<string, List<Rect>> itemHeaderRects = new Dictionary<string, List<Rect>>();
 
     private static readonly Dictionary<string, FieldInfo> fieldInfoCache = new Dictionary<string, FieldInfo>();
@@ -678,6 +679,16 @@ public class EventSOEditor : Editor
         var steps = new List<PhaseNode>();
         CollectPhaseChain(firstStepProp, firstContainerArrayProp, firstContainerIndex, steps);
 
+        string phaseDragKey = BuildKey(
+            firstStepProp.propertyPath,
+            $".PhaseDrag_{keySuffix ?? string.Empty}");
+        if (!itemHeaderRects.TryGetValue(phaseDragKey, out _))
+            itemHeaderRects[phaseDragKey] = new List<Rect>();
+        itemHeaderRects[phaseDragKey].Clear();
+        int reorderablePhaseCount = GetReorderablePhaseCount(steps);
+        bool canReorderPhases = !serializedObject.isEditingMultipleObjects &&
+                                reorderablePhaseCount > 1;
+
         for (int pi = 0; pi < steps.Count; pi++)
         {
             var node = steps[pi];
@@ -689,28 +700,67 @@ public class EventSOEditor : Editor
             if (!masterFoldouts.TryGetValue(phaseKey, out _)) masterFoldouts[phaseKey] = true;
 
             EditorGUILayout.BeginVertical("box");
-            EditorGUILayout.BeginHorizontal();
-            masterFoldouts[phaseKey] = EditorGUILayout.Foldout(masterFoldouts[phaseKey], $"Phase {pi + 1}", true);
-            GUILayout.FlexibleSpace();
+            Rect headerRect = EditorGUILayout.GetControlRect(
+                false,
+                EditorGUIUtility.singleLineHeight);
+            const float handleWidth = 18f;
+            const float buttonWidth = 22f;
+            const float headerPadding = 4f;
+            Rect handleRect = new Rect(headerRect.x, headerRect.y, handleWidth, headerRect.height);
+            float removeWidth = !isFirst ? buttonWidth : 0f;
+            Rect labelRect = new Rect(
+                handleRect.xMax + headerPadding,
+                headerRect.y,
+                Mathf.Max(0f, headerRect.width - handleWidth - headerPadding - removeWidth),
+                headerRect.height);
+            Rect removeRect = new Rect(
+                headerRect.xMax - buttonWidth,
+                headerRect.y,
+                buttonWidth,
+                headerRect.height);
+
+            bool canDragThisPhase = canReorderPhases && pi < reorderablePhaseCount;
+            int phaseDragControlId = GUIUtility.GetControlID(FocusType.Passive, handleRect);
+            GUI.Label(handleRect, canDragThisPhase ? "=" : "·");
+            if (canDragThisPhase)
+            {
+                EditorGUIUtility.AddCursorRect(handleRect, MouseCursor.Pan);
+                if (Event.current.type == EventType.MouseDown &&
+                    Event.current.button == 0 &&
+                    handleRect.Contains(Event.current.mousePosition))
+                {
+                    GUIUtility.hotControl = phaseDragControlId;
+                    dragInProgress = true;
+                    dragActiveKey = phaseDragKey;
+                    dragFromIndex = pi;
+                    dragToIndex = pi;
+                    dragControlId = phaseDragControlId;
+                    Event.current.Use();
+                }
+            }
+
+            masterFoldouts[phaseKey] = EditorGUI.Foldout(
+                labelRect,
+                masterFoldouts[phaseKey],
+                $"Phase {pi + 1}",
+                true);
+            itemHeaderRects[phaseDragKey].Add(headerRect);
 
             // X 버튼 (Phase 1 제외)
             if (!isFirst && node.IsEventExeProp != null)
             {
                 Color prevBg = GUI.backgroundColor;
                 GUI.backgroundColor = new Color(1f, 0.5f, 0.5f, 1f);
-                if (GUILayout.Button("X", GUILayout.Width(22)))
+                if (GUI.Button(removeRect, "X"))
                 {
                     node.IsEventExeProp.boolValue = false;
                     node.IsEventExeProp.serializedObject.ApplyModifiedProperties();
                     GUI.backgroundColor = prevBg;
-                    EditorGUILayout.EndHorizontal();
                     EditorGUILayout.EndVertical();
                     break;
                 }
                 GUI.backgroundColor = prevBg;
             }
-
-            EditorGUILayout.EndHorizontal();
 
             bool isConditionRouter = !isFirst && node.UseCondProp != null && node.UseCondProp.boolValue;
             EditorGUILayout.BeginHorizontal();
@@ -771,6 +821,17 @@ public class EventSOEditor : Editor
 
             EditorGUILayout.EndVertical();
         }
+
+        HandlePhaseReorderDrag(steps, phaseDragKey, reorderablePhaseCount);
+        if (reorderablePhaseCount < steps.Count)
+            EditorGUILayout.HelpBox(
+                "Condition 분기 카드는 분기 구조 보호를 위해 드래그 대상에서 제외됩니다. " +
+                "그 앞의 일반 Phase와 분기 안 각 Event Step의 Phase는 해당 목록에서 드래그할 수 있습니다.",
+                MessageType.Info);
+        if (serializedObject.isEditingMultipleObjects && reorderablePhaseCount > 1)
+            EditorGUILayout.HelpBox(
+                "Phase 순서 변경은 한 번에 하나의 EventSO를 선택했을 때 사용할 수 있습니다.",
+                MessageType.Info);
 
         DrawBrokenNextPhaseRepair(steps[steps.Count - 1]);
 
@@ -862,6 +923,16 @@ public class EventSOEditor : Editor
 
             current = nextStep;
         }
+    }
+
+    private static int GetReorderablePhaseCount(List<PhaseNode> steps)
+    {
+        if (steps == null || steps.Count == 0) return 0;
+        PhaseNode last = steps[steps.Count - 1];
+        SerializedProperty useCondition = last.UseCondProp;
+        return useCondition != null && useCondition.boolValue
+            ? steps.Count - 1
+            : steps.Count;
     }
 
     private void DrawObjectsGroup(SerializedProperty flagsProp, SerializedProperty stepProp)
@@ -2917,5 +2988,154 @@ public class EventSOEditor : Editor
             dragInProgress = false; dragActiveKey = null; dragFromIndex = -1; dragToIndex = -1; Event.current.Use();
         }
         else { Rect r = rects[dragToIndex]; EditorGUI.DrawRect(new Rect(r.x, r.y - 1, r.width, 2), new Color(0f, 0.7f, 1f, 0.9f)); }
+    }
+
+    private void HandlePhaseReorderDrag(
+        List<PhaseNode> steps,
+        string key,
+        int reorderablePhaseCount)
+    {
+        if (!dragInProgress || dragActiveKey != key) return;
+        if (steps == null || reorderablePhaseCount < 2 ||
+            reorderablePhaseCount > steps.Count ||
+            dragFromIndex < 0 || dragFromIndex >= reorderablePhaseCount ||
+            !itemHeaderRects.TryGetValue(key, out var rects) ||
+            rects == null || rects.Count != steps.Count)
+        {
+            ResetPhaseDragState();
+            return;
+        }
+
+        if ((Event.current.type == EventType.KeyDown && Event.current.keyCode == KeyCode.Escape) ||
+            Event.current.type == EventType.MouseLeaveWindow ||
+            Event.current.type == EventType.Ignore)
+        {
+            ResetPhaseDragState();
+            Event.current.Use();
+            return;
+        }
+
+        Vector2 mouse = Event.current.mousePosition;
+        int target = reorderablePhaseCount - 1;
+        for (int i = 0; i < reorderablePhaseCount; i++)
+        {
+            if (mouse.y < rects[i].center.y)
+            {
+                target = i;
+                break;
+            }
+        }
+        dragToIndex = Mathf.Clamp(target, 0, reorderablePhaseCount - 1);
+
+        if (Event.current.type == EventType.MouseUp)
+        {
+            bool changed = dragFromIndex >= 0 && dragToIndex >= 0 &&
+                           dragFromIndex != dragToIndex &&
+                           ReorderPhaseContents(
+                               steps,
+                               dragFromIndex,
+                               dragToIndex,
+                               reorderablePhaseCount);
+            ResetPhaseDragState();
+            Event.current.Use();
+            if (changed)
+                GUIUtility.ExitGUI();
+            return;
+        }
+
+        Rect targetRect = rects[dragToIndex];
+        EditorGUI.DrawRect(
+            new Rect(targetRect.x, targetRect.y - 1f, targetRect.width, 2f),
+            new Color(0f, 0.7f, 1f, 0.9f));
+    }
+
+    private static void ResetPhaseDragState()
+    {
+        if (dragControlId != 0 && GUIUtility.hotControl == dragControlId)
+            GUIUtility.hotControl = 0;
+        dragControlId = 0;
+        dragInProgress = false;
+        dragActiveKey = null;
+        dragFromIndex = -1;
+        dragToIndex = -1;
+    }
+
+    private bool ReorderPhaseContents(
+        List<PhaseNode> steps,
+        int fromIndex,
+        int toIndex,
+        int reorderablePhaseCount)
+    {
+        if (steps == null || reorderablePhaseCount < 2 ||
+            reorderablePhaseCount > steps.Count ||
+            fromIndex < 0 || fromIndex >= reorderablePhaseCount ||
+            toIndex < 0 || toIndex >= reorderablePhaseCount || fromIndex == toIndex)
+            return false;
+
+        EventSO asset = serializedObject.targetObject as EventSO;
+        if (asset == null) return false;
+
+        try
+        {
+            serializedObject.ApplyModifiedProperties();
+            var destinations = new List<EventSO.EventStep>(reorderablePhaseCount);
+            var reordered = new List<EventSO.EventStep>(reorderablePhaseCount);
+            for (int i = 0; i < reorderablePhaseCount; i++)
+            {
+                PhaseNode node = steps[i];
+                EventSO.EventStep destination = GetEventStep(
+                    asset,
+                    node.ContainerArrayProp,
+                    node.ContainerIndex);
+                if (destination == null) return false;
+
+                EventSO.EventStep snapshot = CreatePhaseSnapshot(destination);
+                if (snapshot == null) return false;
+                string json = EditorJsonUtility.ToJson(snapshot, false);
+                var clone = new EventSO.EventStep();
+                EditorJsonUtility.FromJsonOverwrite(json, clone);
+                clone.EventExe = null;
+                destinations.Add(destination);
+                reordered.Add(clone);
+            }
+
+            EventSO.EventStep moved = reordered[fromIndex];
+            reordered.RemoveAt(fromIndex);
+            reordered.Insert(toIndex, moved);
+
+            Undo.RecordObject(asset, "Reorder Phases");
+            FieldInfo[] fields = typeof(EventSO.EventStep).GetFields(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            for (int i = 0; i < destinations.Count; i++)
+            {
+                EventSO.EventStep destination = destinations[i];
+                EventSO.EventStep source = reordered[i];
+                bool keepNextPhase = destination.Flags != null &&
+                                     destination.Flags.IsEventExe;
+                EventSO.EventExeData keepEventExe = destination.EventExe;
+
+                for (int fieldIndex = 0; fieldIndex < fields.Length; fieldIndex++)
+                {
+                    FieldInfo field = fields[fieldIndex];
+                    if (field.Name == nameof(EventSO.EventStep.EventExe)) continue;
+                    field.SetValue(destination, field.GetValue(source));
+                }
+
+                if (destination.Flags == null)
+                    destination.Flags = new EventSO.EventStepFlags();
+                destination.Flags.IsEventExe = keepNextPhase;
+                destination.EventExe = keepEventExe;
+            }
+
+            EditorUtility.SetDirty(asset);
+            serializedObject.Update();
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"[EventSOEditor] Phase 순서 변경 실패: {exception.Message}");
+            serializedObject.Update();
+            return false;
+        }
     }
 }
