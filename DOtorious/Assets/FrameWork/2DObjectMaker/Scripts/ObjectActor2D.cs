@@ -17,6 +17,9 @@ namespace JYW.Game.ObjectMaker
         [SerializeField] private SpriteRenderer spriteRenderer;
         [SerializeField] private Animator animator;
 
+        // 새 직렬화 필드는 기존 Prefab 연결 순서를 보존하기 위해 끝에 추가합니다.
+        [SerializeField] private ObjectAudioController2D audioController;
+
         private int currentHealth;
         private float invulnerableUntil;
         private bool initialized;
@@ -37,6 +40,17 @@ namespace JYW.Game.ObjectMaker
         public Collider2D BodyCollider => bodyCollider;
         public SpriteRenderer SpriteRenderer => spriteRenderer;
         public Animator Animator => animator;
+        public ObjectAudioController2D AudioController
+        {
+            get
+            {
+                if (audioController == null)
+                    audioController = GetComponent<ObjectAudioController2D>();
+                if (audioController == null && Application.isPlaying)
+                    audioController = gameObject.AddComponent<ObjectAudioController2D>();
+                return audioController;
+            }
+        }
         public int CurrentHealth => currentHealth;
         public int MaxHealth => Data != null ? Data.core.maxHealth : 1;
         public float CurrentHealthRatio => MaxHealth > 0
@@ -149,6 +163,8 @@ namespace JYW.Game.ObjectMaker
             bool isDead = currentHealth <= 0;
             var result = new ObjectDamageResult(request, appliedDamage, currentHealth, isDead);
             SetAnimatorTrigger(ObjectAnimatorGraph2D.HitParameter);
+            if (!isDead)
+                AudioController?.PlayOneShot(definition.Data.hit.sound);
             if (isDead)
             {
                 try
@@ -327,6 +343,7 @@ namespace JYW.Game.ObjectMaker
             SetAnimatorInteger(ObjectAnimatorGraph2D.EnemyAttackPhaseParameter, 0);
             ResetAnimatorTrigger(ObjectAnimatorGraph2D.HitParameter);
             SetAnimatorTrigger(ObjectAnimatorGraph2D.DeadParameter);
+            AudioController?.PlayDetachedOneShot(definition.Data.destruction.sound);
             GameObject effect = definition.Data.destruction.effectPrefab;
             if (effect != null)
                 Instantiate(effect, transform.position, transform.rotation);
@@ -357,6 +374,8 @@ namespace JYW.Game.ObjectMaker
                 spriteRenderer = GetComponentInChildren<SpriteRenderer>(true);
             if (animator == null)
                 animator = GetComponentInChildren<Animator>(true);
+            if (audioController == null)
+                audioController = GetComponent<ObjectAudioController2D>();
             facingRenderers = GetComponentsInChildren<SpriteRenderer>(true);
         }
 

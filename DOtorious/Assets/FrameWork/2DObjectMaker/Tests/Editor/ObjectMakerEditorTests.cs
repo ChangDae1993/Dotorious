@@ -47,6 +47,45 @@ namespace JYW.Game.ObjectMaker.Tests
         }
 
         [Test]
+        public void SoundSettingsCloneDeeplyAndSanitizeValues()
+        {
+            AudioClip clip = AudioClip.Create("ObjectMakerAudioClone", 128, 1, 8000, false);
+            try
+            {
+                ObjectDefinitionData source = ObjectDefinitionData.CreateSG001();
+                source.player.walkSound.audioClip = clip;
+                source.player.walkSound.volume = 2f;
+                source.player.attacks[0].sound.audioClip = clip;
+                source.ai.rules[0].conditionSound.audioClip = clip;
+                source.ai.rules[0].actionSound.audioClip = clip;
+                source.hit.sound.audioClip = clip;
+                source.destruction.sound.audioClip = clip;
+                source.Sanitize();
+
+                ObjectDefinitionData clone = source.Clone();
+                Assert.AreSame(clip, clone.player.walkSound.audioClip);
+                Assert.AreEqual(1f, clone.player.walkSound.volume);
+                Assert.AreNotSame(source.player.walkSound, clone.player.walkSound);
+                Assert.AreNotSame(source.player.attacks[0].sound,
+                    clone.player.attacks[0].sound);
+                Assert.AreNotSame(source.ai.rules[0].conditionSound,
+                    clone.ai.rules[0].conditionSound);
+                Assert.AreNotSame(source.ai.rules[0].actionSound,
+                    clone.ai.rules[0].actionSound);
+                Assert.AreNotSame(source.hit.sound, clone.hit.sound);
+                Assert.AreNotSame(source.destruction.sound, clone.destruction.sound);
+
+                clone.player.walkSound.volume = 0.25f;
+                Assert.AreEqual(1f, source.player.walkSound.volume,
+                    "Modify draft의 Sound 변경이 원본 Definition에 먼저 반영됐습니다.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(clip);
+            }
+        }
+
+        [Test]
         public void BuilderCreatesLinkedDefinitionAndPrefab()
         {
             ObjectMakerBuildResult result = default;
@@ -70,6 +109,12 @@ namespace JYW.Game.ObjectMaker.Tests
                 Assert.IsNotNull(result.Prefab.GetComponent<ObjectActor2D>());
                 Assert.IsNotNull(result.Prefab.GetComponent<ObjectMonsterBrain2D>());
                 Assert.IsNotNull(result.Prefab.GetComponent<ObjectFxController2D>());
+                ObjectAudioController2D audio =
+                    result.Prefab.GetComponent<ObjectAudioController2D>();
+                Assert.IsNotNull(audio);
+                Assert.IsNotNull(audio.OneShotSource);
+                Assert.IsNotNull(audio.BehaviorLoopSource);
+                Assert.GreaterOrEqual(result.Prefab.GetComponents<AudioSource>().Length, 2);
                 Assert.IsNotNull(result.Prefab.GetComponent<Rigidbody2D>());
                 Assert.IsNotNull(result.Prefab.GetComponent<Collider2D>());
                 Animator prefabAnimator = result.Prefab.GetComponentInChildren<Animator>(true);

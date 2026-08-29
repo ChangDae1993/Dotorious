@@ -11,6 +11,13 @@ namespace JYW.Game.ObjectMaker
     [RequireComponent(typeof(Rigidbody2D))]
     public sealed class ObjectPlayerController2D : MonoBehaviour
     {
+        private enum LocomotionSoundState
+        {
+            None,
+            Walk,
+            Run
+        }
+
         private enum AttackPhase
         {
             None,
@@ -23,6 +30,7 @@ namespace JYW.Game.ObjectMaker
         [SerializeField] private Rigidbody2D body;
         [SerializeField] private Collider2D bodyCollider;
         [SerializeField] private Transform groundProbe;
+        [SerializeField] private ObjectAudioController2D audioController;
 
         private readonly HashSet<ObjectActor2D> damagedThisStep = new HashSet<ObjectActor2D>();
         private readonly List<Collider2D> attachedColliders = new List<Collider2D>();
@@ -38,6 +46,7 @@ namespace JYW.Game.ObjectMaker
         private float phaseEndsAt;
         private float[] nextAttackAt = Array.Empty<float>();
         private float hitLockUntil;
+        private LocomotionSoundState locomotionSoundState;
 
         public bool IsGrounded => grounded;
         public bool IsAttacking => attackPhase != AttackPhase.None;
@@ -82,6 +91,7 @@ namespace JYW.Game.ObjectMaker
                 actor.Damaged -= OnActorDamaged;
                 actor.Died -= OnActorDied;
             }
+            StopLocomotionSound();
         }
 
         private void OnValidate()
@@ -158,6 +168,8 @@ namespace JYW.Game.ObjectMaker
             wasGrounded = false;
             actor.SetLocomotionAnimation(Mathf.Abs(body.linearVelocity.x), false);
             actor.SetAnimatorTrigger(ObjectAnimatorGraph2D.JumpParameter);
+            StopLocomotionSound();
+            audioController?.PlayOneShot(Settings.jumpSound);
             return true;
         }
 
@@ -303,6 +315,7 @@ namespace JYW.Game.ObjectMaker
             actor.SetAnimatorBool(
                 ObjectAnimatorGraph2D.RunningParameter,
                 !movementLocked && IsRunning && Mathf.Abs(horizontalVelocity) > 0.001f);
+            UpdateLocomotionSound(movementLocked ? 0f : horizontalVelocity);
         }
 
         private void UpdateLocomotionAnimation(bool forceRestart = false)
@@ -328,6 +341,7 @@ namespace JYW.Game.ObjectMaker
             phaseEndsAt = Time.time + attack.inputDelaySeconds;
 
             actor.SetPlayerAttackAnimation(true, attackIndex, comboStep);
+            audioController?.PlayOneShot(attack.sound);
             ApplyHorizontalMovement();
         }
 
@@ -427,6 +441,7 @@ namespace JYW.Game.ObjectMaker
         {
             CancelAttack();
             hitLockUntil = Time.time + Mathf.Max(0f, Data != null ? Data.hit.hitStopSeconds : 0f);
+            StopLocomotionSound();
             SetMoveInput(0f);
         }
 
@@ -435,6 +450,7 @@ namespace JYW.Game.ObjectMaker
             CancelAttack();
             moveInput = 0f;
             runInput = false;
+            StopLocomotionSound();
             if (actor != null)
                 actor.SetAnimatorBool(ObjectAnimatorGraph2D.RunningParameter, false);
             if (body != null)
@@ -492,6 +508,32 @@ namespace JYW.Game.ObjectMaker
                 if (found != null)
                     groundProbe = found;
             }
+            if (audioController == null && actor != null)
+                audioController = actor.AudioController;
+        }
+
+        private void UpdateLocomotionSound(float horizontalVelocity)
+        {
+            LocomotionSoundState nextState = LocomotionSoundState.None;
+            if (grounded && Mathf.Abs(horizontalVelocity) > 0.001f && Settings != null)
+                nextState = IsRunning ? LocomotionSoundState.Run : LocomotionSoundState.Walk;
+            if (nextState == locomotionSoundState)
+                return;
+
+            audioController?.StopBehavior();
+            locomotionSoundState = nextState;
+            if (audioController == null || Settings == null)
+                return;
+            if (nextState == LocomotionSoundState.Run)
+                audioController.PlayBehavior(Settings.runSound);
+            else if (nextState == LocomotionSoundState.Walk)
+                audioController.PlayBehavior(Settings.walkSound);
+        }
+
+        private void StopLocomotionSound()
+        {
+            locomotionSoundState = LocomotionSoundState.None;
+            audioController?.StopBehavior();
         }
 
         private void EnsureRuntimeArrays()

@@ -76,6 +76,31 @@ namespace JYW.Game.ObjectMaker
         Recover = 3
     }
 
+    [Serializable]
+    public sealed class ObjectSoundCue2D
+    {
+        [Min(0f)] public float delaySeconds;
+        public AudioClip audioClip;
+        [Range(0f, 1f)] public float volume = 1f;
+        public bool isLoop;
+
+        public ObjectSoundCue2D Clone()
+        {
+            return (ObjectSoundCue2D)MemberwiseClone();
+        }
+
+        public void Sanitize()
+        {
+            delaySeconds = Mathf.Max(0f, delaySeconds);
+            volume = Mathf.Clamp01(volume);
+        }
+
+        public static ObjectSoundCue2D CreateLooping()
+        {
+            return new ObjectSoundCue2D { isLoop = true };
+        }
+    }
+
     public enum ObjectKind
     {
         Monster,
@@ -116,9 +141,14 @@ namespace JYW.Game.ObjectMaker
         [Min(0f)] public float comboInputWindowSeconds = 0.35f;
         [Min(0f)] public float comboResetSeconds = 0.8f;
 
+        // 새 필드는 기존 Object Definition 직렬화 순서를 보존하기 위해 끝에 추가합니다.
+        public ObjectSoundCue2D sound = new ObjectSoundCue2D();
+
         public ObjectPlayerAttack Clone()
         {
-            return (ObjectPlayerAttack)MemberwiseClone();
+            var clone = (ObjectPlayerAttack)MemberwiseClone();
+            clone.sound = sound != null ? sound.Clone() : new ObjectSoundCue2D();
+            return clone;
         }
 
         public void Sanitize(int index)
@@ -138,6 +168,8 @@ namespace JYW.Game.ObjectMaker
             comboSteps = Mathf.Clamp(comboSteps, 1, 12);
             comboInputWindowSeconds = Mathf.Max(0f, comboInputWindowSeconds);
             comboResetSeconds = Mathf.Max(0f, comboResetSeconds);
+            sound = sound ?? new ObjectSoundCue2D();
+            sound.Sanitize();
         }
     }
 
@@ -155,6 +187,11 @@ namespace JYW.Game.ObjectMaker
         public bool allowMovementDuringAttack;
         public List<ObjectPlayerAttack> attacks = CreateDefaultAttacks();
 
+        // 새 필드는 기존 Object Definition 직렬화 순서를 보존하기 위해 끝에 추가합니다.
+        public ObjectSoundCue2D walkSound = ObjectSoundCue2D.CreateLooping();
+        public ObjectSoundCue2D runSound = ObjectSoundCue2D.CreateLooping();
+        public ObjectSoundCue2D jumpSound = new ObjectSoundCue2D();
+
         public ObjectPlayerSettings Clone()
         {
             var clone = (ObjectPlayerSettings)MemberwiseClone();
@@ -167,6 +204,15 @@ namespace JYW.Game.ObjectMaker
                         clone.attacks.Add(attacks[i].Clone());
                 }
             }
+            clone.walkSound = walkSound != null
+                ? walkSound.Clone()
+                : ObjectSoundCue2D.CreateLooping();
+            clone.runSound = runSound != null
+                ? runSound.Clone()
+                : ObjectSoundCue2D.CreateLooping();
+            clone.jumpSound = jumpSound != null
+                ? jumpSound.Clone()
+                : new ObjectSoundCue2D();
             return clone;
         }
 
@@ -182,6 +228,12 @@ namespace JYW.Game.ObjectMaker
                     attacks[i] = new ObjectPlayerAttack();
                 attacks[i].Sanitize(i);
             }
+            walkSound = walkSound ?? ObjectSoundCue2D.CreateLooping();
+            runSound = runSound ?? ObjectSoundCue2D.CreateLooping();
+            jumpSound = jumpSound ?? new ObjectSoundCue2D();
+            walkSound.Sanitize();
+            runSound.Sanitize();
+            jumpSound.Sanitize();
         }
 
         public static List<ObjectPlayerAttack> CreateDefaultAttacks()
@@ -285,9 +337,14 @@ namespace JYW.Game.ObjectMaker
         [Min(0f)] public float blinkSeconds = 0.18f;
         [Min(1)] public int blinkCount = 2;
 
+        // 새 필드는 기존 Object Definition 직렬화 순서를 보존하기 위해 끝에 추가합니다.
+        public ObjectSoundCue2D sound = new ObjectSoundCue2D();
+
         public ObjectHitSettings Clone()
         {
-            return (ObjectHitSettings)MemberwiseClone();
+            var clone = (ObjectHitSettings)MemberwiseClone();
+            clone.sound = sound != null ? sound.Clone() : new ObjectSoundCue2D();
+            return clone;
         }
     }
 
@@ -298,9 +355,14 @@ namespace JYW.Game.ObjectMaker
         public bool disableCollisionsImmediately = true;
         [Min(0f)] public float destroyDelaySeconds = 0.8f;
 
+        // 새 필드는 기존 Object Definition 직렬화 순서를 보존하기 위해 끝에 추가합니다.
+        public ObjectSoundCue2D sound = new ObjectSoundCue2D();
+
         public ObjectDestructionSettings Clone()
         {
-            return (ObjectDestructionSettings)MemberwiseClone();
+            var clone = (ObjectDestructionSettings)MemberwiseClone();
+            clone.sound = sound != null ? sound.Clone() : new ObjectSoundCue2D();
+            return clone;
         }
     }
 
@@ -446,9 +508,13 @@ namespace JYW.Game.ObjectMaker
             hit.knockback = Mathf.Max(0f, hit.knockback);
             hit.blinkSeconds = Mathf.Max(0f, hit.blinkSeconds);
             hit.blinkCount = Mathf.Max(1, hit.blinkCount);
+            hit.sound = hit.sound ?? new ObjectSoundCue2D();
+            hit.sound.Sanitize();
 
             destruction = destruction ?? new ObjectDestructionSettings();
             destruction.destroyDelaySeconds = Mathf.Max(0f, destruction.destroyDelaySeconds);
+            destruction.sound = destruction.sound ?? new ObjectSoundCue2D();
+            destruction.sound.Sanitize();
 
             ai = ai ?? new ObjectAIProgram();
             ai.Sanitize();

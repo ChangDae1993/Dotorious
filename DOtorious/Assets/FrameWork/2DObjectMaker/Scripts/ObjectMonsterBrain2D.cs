@@ -37,6 +37,7 @@ namespace JYW.Game.ObjectMaker
         [SerializeField] private Collider2D bodyCollider;
         [SerializeField] private Transform groundProbe;
         [SerializeField] private ObjectFxController2D effects;
+        [SerializeField] private ObjectAudioController2D audioController;
 
         private ObjectBrainState state;
         private ObjectActor2D target;
@@ -66,6 +67,8 @@ namespace JYW.Game.ObjectMaker
         private bool actionHoldsAfterCondition;
         private bool attackLocksRules;
         private bool searchReturning;
+        private bool resumeActionSoundPending;
+        private int resumeActionSoundRuleIndex = -1;
         private float contactUntil;
         private int activeRuleIndex = -1;
         private float[] nextIntervalAt = new float[0];
@@ -105,6 +108,15 @@ namespace JYW.Game.ObjectMaker
                 actor.Died -= OnActorDied;
                 actor.Died += OnActorDied;
             }
+
+            ObjectAIRule activeRule = ActiveRule;
+            resumeActionSoundPending = actor != null && !actor.IsDead &&
+                                       audioController != null && activeRule != null &&
+                                       activeRule.actionSound != null &&
+                                       activeRule.actionSound.isLoop;
+            resumeActionSoundRuleIndex = resumeActionSoundPending
+                ? activeRuleIndex
+                : -1;
         }
 
         private void Start()
@@ -134,6 +146,9 @@ namespace JYW.Game.ObjectMaker
                 if (actor.Animator != null)
                     actor.Animator.speed = 1f;
             }
+            resumeActionSoundPending = false;
+            resumeActionSoundRuleIndex = -1;
+            audioController?.StopBehavior();
         }
 
         private void Update()
@@ -173,6 +188,19 @@ namespace JYW.Game.ObjectMaker
 
             TickActiveAction();
             ClearTransientConditions();
+
+            if (resumeActionSoundPending)
+            {
+                // Resume only when condition evaluation kept the same rule. EnterRule
+                // already starts the correct sound when the rule changed while disabled.
+                resumeActionSoundPending = false;
+                int expectedRuleIndex = resumeActionSoundRuleIndex;
+                resumeActionSoundRuleIndex = -1;
+                ObjectAIRule activeRule = ActiveRule;
+                if (activeRuleIndex == expectedRuleIndex && activeRule != null &&
+                    activeRule.actionSound != null && activeRule.actionSound.isLoop)
+                    audioController?.PlayBehavior(activeRule.actionSound);
+            }
         }
 
         private void FixedUpdate()
@@ -263,6 +291,8 @@ namespace JYW.Game.ObjectMaker
                 bodyCollider = GetComponent<Collider2D>();
             if (effects == null)
                 effects = GetComponent<ObjectFxController2D>();
+            if (audioController == null && actor != null)
+                audioController = actor.AudioController;
         }
 
         private void EnsureRuleRuntimeState()
@@ -648,6 +678,7 @@ namespace JYW.Game.ObjectMaker
 
         private void EnterRule(int index)
         {
+            audioController?.StopBehavior();
             activeRuleIndex = index;
             actionHoldsAfterCondition = false;
             attackLocksRules = false;
@@ -671,6 +702,21 @@ namespace JYW.Game.ObjectMaker
             ApplyLegacyTuning(rule.action, activeSettings);
             if (effects != null)
                 effects.Play(rule.effect, rule.effectSettings, moveDirection);
+            if (audioController != null)
+            {
+                bool destroysImmediately = rule.action == ObjectAIAction.SelfDestruct ||
+                                           rule.action == ObjectAIAction.DestroySelf;
+                if (destroysImmediately)
+                {
+                    audioController.PlayDetachedOneShot(rule.conditionSound);
+                    audioController.PlayDetachedOneShot(rule.actionSound);
+                }
+                else
+                {
+                    audioController.PlayOneShot(rule.conditionSound);
+                    audioController.PlayBehavior(rule.actionSound);
+                }
+            }
             if (rule.when == ObjectAICondition.HealthReached &&
                 index >= 0 && index < playedHealthReachedEffects.Length)
                 playedHealthReachedEffects[index] = true;
@@ -1485,6 +1531,7 @@ namespace JYW.Game.ObjectMaker
 
         private void CompleteAction(bool preserveState)
         {
+            audioController?.StopBehavior();
             activeRuleIndex = -1;
             activeSettings = null;
             actionHoldsAfterCondition = false;
@@ -1519,6 +1566,7 @@ namespace JYW.Game.ObjectMaker
             hitStopRemaining = Data.hit.hitStopSeconds;
             if (Data.hit.interruptCurrentAction)
             {
+                audioController?.StopBehavior();
                 attackLocksRules = false;
                 actionHoldsAfterCondition = false;
                 activeRuleIndex = -1;
@@ -1530,6 +1578,7 @@ namespace JYW.Game.ObjectMaker
 
         private void OnActorDied(ObjectActor2D deadActor)
         {
+            audioController?.StopBehavior();
             EnsureRuleRuntimeState();
             if (Program != null && Program.rules != null)
             {
@@ -1544,6 +1593,18 @@ namespace JYW.Game.ObjectMaker
 
                     if (effects != null)
                         effects.Play(rule.effect, rule.effectSettings, moveDirection);
+                    if (audioController != null)
+                    {
+                        // HP 0 is handled synchronously by ObjectActor2D before another AI
+                        // Update can enter this rule. Detach its condition cue so disabling
+                        // the dead root in the same frame cannot cut it off. Only immediate
+                        // removal actions are fulfilled by this death path; unrelated action
+                        // cues (Attack, Follow, and so on) must not be played.
+                        audioController.PlayDetachedOneShot(rule.conditionSound);
+                        if (rule.action == ObjectAIAction.SelfDestruct ||
+                            rule.action == ObjectAIAction.DestroySelf)
+                            audioController.PlayDetachedOneShot(rule.actionSound);
+                    }
                     if (i < playedHealthReachedEffects.Length)
                         playedHealthReachedEffects[i] = true;
                 }

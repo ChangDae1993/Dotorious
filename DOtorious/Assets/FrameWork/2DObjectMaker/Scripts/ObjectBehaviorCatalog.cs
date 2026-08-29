@@ -323,6 +323,11 @@ namespace JYW.Game.ObjectMaker
         public ObjectRuleEffect effect = ObjectRuleEffect.None;
         public ObjectRuleEffectParameters effectSettings = new ObjectRuleEffectParameters();
 
+        // 조건 발동음은 1회, 행동음은 isLoop 설정에 따라 행동 동안 반복됩니다.
+        // 새 필드는 기존 Object Definition 직렬화 순서를 보존하기 위해 끝에 추가합니다.
+        public ObjectSoundCue2D conditionSound = new ObjectSoundCue2D();
+        public ObjectSoundCue2D actionSound = new ObjectSoundCue2D();
+
         public ObjectAIRule Clone()
         {
             var clone = (ObjectAIRule)MemberwiseClone();
@@ -331,6 +336,12 @@ namespace JYW.Game.ObjectMaker
             clone.effectSettings = effectSettings != null
                 ? effectSettings.Clone()
                 : new ObjectRuleEffectParameters();
+            clone.conditionSound = conditionSound != null
+                ? conditionSound.Clone()
+                : new ObjectSoundCue2D();
+            clone.actionSound = actionSound != null
+                ? actionSound.Clone()
+                : new ObjectSoundCue2D();
             return clone;
         }
 
@@ -344,9 +355,13 @@ namespace JYW.Game.ObjectMaker
             condition = condition ?? new ObjectAIConditionParameters();
             settings = settings ?? new ObjectAIActionParameters();
             effectSettings = effectSettings ?? new ObjectRuleEffectParameters();
+            conditionSound = conditionSound ?? new ObjectSoundCue2D();
+            actionSound = actionSound ?? new ObjectSoundCue2D();
             condition.Sanitize();
             settings.Sanitize();
             effectSettings.Sanitize();
+            conditionSound.Sanitize();
+            actionSound.Sanitize();
         }
     }
 

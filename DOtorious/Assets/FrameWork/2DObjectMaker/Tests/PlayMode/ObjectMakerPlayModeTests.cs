@@ -36,9 +36,112 @@ namespace JYW.Game.ObjectMaker.Tests
                 GameObject candidate = allObjects[i];
                 if (candidate != null && candidate.scene.IsValid() &&
                     (candidate.name.StartsWith("2DObjectMakerFx_", StringComparison.Ordinal) ||
-                     candidate.name.EndsWith("_Projectile", StringComparison.Ordinal)))
+                     candidate.name.EndsWith("_Projectile", StringComparison.Ordinal) ||
+                     candidate.name.EndsWith(" Death Sound", StringComparison.Ordinal)))
                     UnityEngine.Object.DestroyImmediate(candidate);
             }
+        }
+
+        [UnityTest]
+        public IEnumerator PlayerAndMonsterBehaviorSoundsUseConfiguredCues()
+        {
+            AudioClip walkClip = CreateClip("WalkSound");
+            AudioClip runClip = CreateClip("RunSound");
+            AudioClip jumpClip = CreateClip("JumpSound");
+            AudioClip attackClip = CreateClip("AttackSound");
+            AudioClip detectedClip = CreateClip("DetectedSound");
+            AudioClip followClip = CreateClip("FollowSound");
+
+            CreateGround(new Vector2(0f, -1f), new Vector2(20f, 1f));
+            ObjectDefinitionSO playerDefinition = CreateDefinition(ObjectKind.Player, data =>
+            {
+                data.core.moveSpeed = 2f;
+                data.player.walkSound = new ObjectSoundCue2D
+                {
+                    audioClip = walkClip,
+                    isLoop = true
+                };
+                data.player.runSound = new ObjectSoundCue2D
+                {
+                    audioClip = runClip,
+                    isLoop = true
+                };
+                data.player.jumpSound.audioClip = jumpClip;
+                data.player.attacks[0].sound.audioClip = attackClip;
+            });
+            ObjectActor2D player = CreateActor(
+                "ObjectMakerAudioPlayer", playerDefinition, Vector2.zero);
+            var playerProbe = new GameObject("GroundProbe");
+            playerProbe.transform.SetParent(player.transform, false);
+            playerProbe.transform.localPosition = Vector3.down * 0.5f;
+            ObjectPlayerController2D playerController =
+                player.gameObject.AddComponent<ObjectPlayerController2D>();
+            playerController.Configure(
+                player,
+                player.Body,
+                player.BodyCollider,
+                playerProbe.transform);
+            Assert.IsTrue(playerController.RefreshGrounded());
+
+            ObjectAudioController2D playerAudio = player.AudioController;
+            playerController.SetMoveInput(1f);
+            Assert.AreSame(walkClip, playerAudio.BehaviorLoopSource.clip);
+            playerController.SetRunInput(true);
+            Assert.AreSame(runClip, playerAudio.BehaviorLoopSource.clip);
+            Assert.IsTrue(playerController.TryJump());
+            Assert.AreSame(jumpClip, playerAudio.LastOneShotClip);
+            Assert.IsNull(playerAudio.BehaviorLoopSource.clip,
+                "점프 뒤에도 이동 Loop가 남아 있습니다.");
+            Assert.IsTrue(playerController.TryStartAttack(0));
+            Assert.AreSame(attackClip, playerAudio.LastOneShotClip);
+
+            ObjectDefinitionSO monsterDefinition = CreateDefinition(ObjectKind.Monster, data =>
+            {
+                data.movement.groundWalker = false;
+                data.ai.useLegacyTuning = false;
+                data.ai.rules = new List<ObjectAIRule>
+                {
+                    new ObjectAIRule
+                    {
+                        label = "발견하고 따라가기",
+                        when = ObjectAICondition.OnSpawn,
+                        action = ObjectAIAction.Wait,
+                        settings = new ObjectAIActionParameters
+                        {
+                            durationSeconds = new Vector2(1f, 1f),
+                            groundMovement = false
+                        },
+                        conditionSound = new ObjectSoundCue2D
+                        {
+                            audioClip = detectedClip
+                        },
+                        actionSound = new ObjectSoundCue2D
+                        {
+                            audioClip = followClip,
+                            isLoop = true
+                        }
+                    }
+                };
+            });
+            ObjectActor2D monster = CreateActor(
+                "ObjectMakerAudioMonster", monsterDefinition, new Vector2(3f, 0f), true);
+            yield return null;
+            yield return null;
+
+            ObjectAudioController2D monsterAudio = monster.AudioController;
+            Assert.AreSame(detectedClip, monsterAudio.LastOneShotClip);
+            Assert.AreSame(followClip, monsterAudio.BehaviorLoopSource.clip);
+            Assert.AreEqual(1, monsterAudio.OneShotPlayCount,
+                "같은 AI Rule을 매 프레임 검사하며 발동음이 중복 재생됐습니다.");
+
+            monster.gameObject.SetActive(false);
+            Assert.IsNull(monsterAudio.BehaviorLoopSource.clip);
+            monster.gameObject.SetActive(true);
+            yield return null;
+            Assert.AreSame(followClip, monsterAudio.BehaviorLoopSource.clip,
+                "Monster를 다시 켰을 때 진행 중이던 행동 Loop가 복구되지 않았습니다.");
+            Assert.AreEqual(1, monsterAudio.OneShotPlayCount,
+                "Monster 재활성화가 조건 발동음을 다시 재생했습니다.");
         }
 
         [UnityTest]
@@ -238,6 +341,9 @@ namespace JYW.Game.ObjectMaker.Tests
         [UnityTest]
         public IEnumerator HealthReachedDestroySelfRuleRemovesActorImmediatelyAndKeepsEffect()
         {
+            AudioClip conditionClip = CreateClip("HealthReachedConditionSound");
+            AudioClip actionClip = CreateClip("HealthReachedDestroySound");
+            AudioClip unexecutedActionClip = CreateClip("HealthReachedUnexecutedAttackSound");
             ObjectDefinitionSO definition = CreateDefinition(ObjectKind.Monster, data =>
             {
                 data.core.maxHealth = 1;
@@ -252,11 +358,32 @@ namespace JYW.Game.ObjectMaker.Tests
                         when = ObjectAICondition.HealthReached,
                         action = ObjectAIAction.DestroySelf,
                         condition = new ObjectAIConditionParameters { healthValue = 0 },
+                        conditionSound = new ObjectSoundCue2D
+                        {
+                            audioClip = conditionClip
+                        },
+                        actionSound = new ObjectSoundCue2D
+                        {
+                            audioClip = actionClip,
+                            isLoop = true
+                        },
                         effect = ObjectRuleEffect.Explosion,
                         effectSettings = new ObjectRuleEffectParameters
                         {
                             duration = 0.5f,
                             amount = 4
+                        }
+                    },
+                    new ObjectAIRule
+                    {
+                        label = "HP 0 공격 (실행 안 됨)",
+                        enabled = true,
+                        when = ObjectAICondition.HealthReached,
+                        action = ObjectAIAction.Attack,
+                        condition = new ObjectAIConditionParameters { healthValue = 0 },
+                        actionSound = new ObjectSoundCue2D
+                        {
+                            audioClip = unexecutedActionClip
                         }
                     }
                 };
@@ -276,12 +403,68 @@ namespace JYW.Game.ObjectMaker.Tests
                 "HP 도달 연출이 정확히 한 번 재생되지 않았습니다.");
             Assert.IsNotNull(GameObject.Find("2DObjectMakerFx_Circle"),
                 "본체를 숨기기 전에 독립 연출이 생성되지 않았습니다.");
+            Assert.IsTrue(HasDetachedSound(conditionClip),
+                "HP 0 규칙의 '~할 때 발동 소리'가 독립 재생되지 않았습니다.");
+            Assert.IsTrue(HasDetachedSound(actionClip),
+                "HP 0 → 즉시 제거 행동음이 본체 제거와 함께 잘렸습니다.");
+            Assert.IsFalse(HasDetachedSound(unexecutedActionClip),
+                "HP 0에서 실제 실행되지 않은 일반 행동음까지 재생됐습니다.");
             yield return null;
 
             Assert.IsTrue(actor == null,
                 "HP 도달 → 즉시 파괴 규칙인데 본체가 제거되지 않았습니다.");
             Assert.IsNotNull(GameObject.Find("2DObjectMakerFx_Circle"),
                 "본체 제거와 함께 독립 파괴 연출까지 사라졌습니다.");
+        }
+
+        [UnityTest]
+        public IEnumerator SelfDestructRuleDetachesConditionAndActionSounds()
+        {
+            AudioClip conditionClip = CreateClip("SelfDestructConditionSound");
+            AudioClip actionClip = CreateClip("SelfDestructActionSound");
+            ObjectDefinitionSO definition = CreateDefinition(ObjectKind.Monster, data =>
+            {
+                data.movement.groundWalker = false;
+                data.ai.useLegacyTuning = false;
+                data.ai.rules = new List<ObjectAIRule>
+                {
+                    new ObjectAIRule
+                    {
+                        label = "Spawn Self Destruct",
+                        when = ObjectAICondition.OnSpawn,
+                        action = ObjectAIAction.SelfDestruct,
+                        conditionSound = new ObjectSoundCue2D
+                        {
+                            audioClip = conditionClip
+                        },
+                        actionSound = new ObjectSoundCue2D
+                        {
+                            audioClip = actionClip,
+                            isLoop = true
+                        },
+                        settings = new ObjectAIActionParameters
+                        {
+                            damage = 0,
+                            groundMovement = false
+                        }
+                    }
+                };
+            });
+            ObjectActor2D actor = CreateActor(
+                "ObjectMakerSelfDestructSoundMonster",
+                definition,
+                Vector2.zero,
+                true);
+
+            yield return null;
+            yield return null;
+
+            Assert.IsTrue(actor == null,
+                "SelfDestruct 행동 뒤 본체가 제거되지 않았습니다.");
+            Assert.IsTrue(HasDetachedSound(conditionClip),
+                "SelfDestruct 조건음이 같은 프레임의 제거로 잘렸습니다.");
+            Assert.IsTrue(HasDetachedSound(actionClip),
+                "SelfDestruct 행동음이 같은 프레임의 제거로 잘렸습니다.");
         }
 
         [UnityTest]
@@ -846,6 +1029,27 @@ namespace JYW.Game.ObjectMaker.Tests
             var collider = ground.AddComponent<BoxCollider2D>();
             collider.size = size;
             cleanup.Add(ground);
+        }
+
+        private AudioClip CreateClip(string name)
+        {
+            AudioClip clip = AudioClip.Create(name, 128, 1, 8000, false);
+            cleanup.Add(clip);
+            return clip;
+        }
+
+        private static bool HasDetachedSound(AudioClip clip)
+        {
+            AudioSource[] sources = Resources.FindObjectsOfTypeAll<AudioSource>();
+            for (int i = 0; i < sources.Length; i++)
+            {
+                AudioSource source = sources[i];
+                if (source != null && source.gameObject.scene.IsValid() &&
+                    source.gameObject.name.EndsWith(" Death Sound", StringComparison.Ordinal) &&
+                    source.clip == clip)
+                    return true;
+            }
+            return false;
         }
     }
 

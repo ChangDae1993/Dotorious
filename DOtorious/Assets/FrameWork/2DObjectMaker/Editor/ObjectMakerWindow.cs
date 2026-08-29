@@ -47,6 +47,14 @@ namespace JYW.Game.ObjectMaker.Editor
         public static Rect LastAddPlayerAttackButtonRectForTests { get; private set; }
         public static Rect LastRunKeyRectForTests { get; private set; }
         public static Rect LastRunSpeedRectForTests { get; private set; }
+        public static Rect LastPlayerWalkSoundRectForTests { get; private set; }
+        public static Rect LastPlayerRunSoundRectForTests { get; private set; }
+        public static Rect LastPlayerJumpSoundRectForTests { get; private set; }
+        public static Rect LastPlayerAttackSoundRectForTests { get; private set; }
+        public static Rect LastEnemyConditionSoundRectForTests { get; private set; }
+        public static Rect LastEnemyActionSoundRectForTests { get; private set; }
+        public static Rect LastHitSoundRectForTests { get; private set; }
+        public static Rect LastDestructionSoundRectForTests { get; private set; }
         public ObjectDefinitionSO CurrentDefinitionForTests => currentDefinition;
 
         [MenuItem("Window/FrameWork/2DObjectMaker", false, 2301)]
@@ -311,6 +319,24 @@ namespace JYW.Game.ObjectMaker.Editor
                     "지면 레이어", draft.player.groundMask);
                 draft.player.allowMovementDuringAttack = EditorGUILayout.Toggle(
                     "공격 중 이동 허용", draft.player.allowMovementDuringAttack);
+
+                GUILayout.Space(4f);
+                EditorGUILayout.LabelField("Player 행동 소리", EditorStyles.boldLabel);
+                draft.player.walkSound = DrawSoundCue(
+                    "걷기 소리",
+                    draft.player.walkSound ?? ObjectSoundCue2D.CreateLooping(),
+                    true,
+                    rect => LastPlayerWalkSoundRectForTests = rect);
+                draft.player.runSound = DrawSoundCue(
+                    "달리기 소리",
+                    draft.player.runSound ?? ObjectSoundCue2D.CreateLooping(),
+                    true,
+                    rect => LastPlayerRunSoundRectForTests = rect);
+                draft.player.jumpSound = DrawSoundCue(
+                    "점프 소리",
+                    draft.player.jumpSound,
+                    false,
+                    rect => LastPlayerJumpSoundRectForTests = rect);
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
 
@@ -370,6 +396,13 @@ namespace JYW.Game.ObjectMaker.Editor
                     attack.knockback = EditorGUILayout.FloatField("넉백", attack.knockback);
                     attack.targetInvulnerabilitySeconds = EditorGUILayout.FloatField(
                         "대상 피격 무적", attack.targetInvulnerabilitySeconds);
+                    attack.sound = DrawSoundCue(
+                        "공격 소리",
+                        attack.sound,
+                        false,
+                        i == 0
+                            ? rect => LastPlayerAttackSoundRectForTests = rect
+                            : (Action<Rect>)null);
                     attack.comboSteps = EditorGUILayout.IntSlider(
                         "콤보 수", attack.comboSteps, 1, 12);
                     if (attack.comboSteps > 1)
@@ -472,12 +505,26 @@ namespace JYW.Game.ObjectMaker.Editor
                         ObjectBehaviorCatalog.DescribeCondition(rule.when),
                         MessageType.None);
                     DrawConditionFields(rule);
+                    rule.conditionSound = DrawSoundCue(
+                        "~할 때 발동 소리",
+                        rule.conditionSound,
+                        false,
+                        i == 0
+                            ? rect => LastEnemyConditionSoundRectForTests = rect
+                            : (Action<Rect>)null);
 
                     rule.action = DrawActionDropdown(i, rule.action);
                     EditorGUILayout.HelpBox(
                         ObjectBehaviorCatalog.DescribeAction(rule.action),
                         MessageType.None);
                     DrawActionFields(rule);
+                    rule.actionSound = DrawSoundCue(
+                        "이 행동 소리",
+                        rule.actionSound,
+                        true,
+                        i == 0
+                            ? rect => LastEnemyActionSoundRectForTests = rect
+                            : (Action<Rect>)null);
                     DrawRuleEffect(rule);
                     EditorGUI.EndDisabledGroup();
                     EditorGUILayout.EndVertical();
@@ -907,6 +954,40 @@ namespace JYW.Game.ObjectMaker.Editor
                 "연출 입자 수", rule.effectSettings.amount, 1, 32);
         }
 
+        private ObjectSoundCue2D DrawSoundCue(
+            string label,
+            ObjectSoundCue2D cue,
+            bool allowLoop,
+            Action<Rect> captureObjectFieldRect = null)
+        {
+            cue = cue ?? new ObjectSoundCue2D();
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.LabelField(label, EditorStyles.miniBoldLabel);
+            cue.audioClip = (AudioClip)EditorGUILayout.ObjectField(
+                "소리 파일",
+                cue.audioClip,
+                typeof(AudioClip),
+                false);
+            captureObjectFieldRect?.Invoke(ToWindowRect(GUILayoutUtility.GetLastRect()));
+            if (cue.audioClip != null)
+            {
+                cue.delaySeconds = EditorGUILayout.FloatField(
+                    "시작 딜레이", cue.delaySeconds);
+                cue.volume = EditorGUILayout.Slider("볼륨", cue.volume, 0f, 1f);
+                if (allowLoop)
+                    cue.isLoop = EditorGUILayout.Toggle("행동 중 반복", cue.isLoop);
+                else
+                    cue.isLoop = false;
+            }
+            else if (!allowLoop)
+            {
+                cue.isLoop = false;
+            }
+            cue.Sanitize();
+            EditorGUILayout.EndVertical();
+            return cue;
+        }
+
         private void DrawContactDamage()
         {
             showContactDamage = EditorGUILayout.BeginFoldoutHeaderGroup(
@@ -1031,6 +1112,11 @@ namespace JYW.Game.ObjectMaker.Editor
                 draft.hit.knockback = EditorGUILayout.FloatField("Knockback", draft.hit.knockback);
                 draft.hit.blinkSeconds = EditorGUILayout.FloatField("Blink Duration", draft.hit.blinkSeconds);
                 draft.hit.blinkCount = EditorGUILayout.IntField("Blink Count", draft.hit.blinkCount);
+                draft.hit.sound = DrawSoundCue(
+                    "피격 소리",
+                    draft.hit.sound,
+                    false,
+                    rect => LastHitSoundRectForTests = rect);
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
         }
@@ -1051,6 +1137,11 @@ namespace JYW.Game.ObjectMaker.Editor
                 draft.destruction.disableCollisionsImmediately = EditorGUILayout.Toggle(
                     "Disable Collision At 0 HP",
                     draft.destruction.disableCollisionsImmediately);
+                draft.destruction.sound = DrawSoundCue(
+                    "HP 0 / 제거 소리",
+                    draft.destruction.sound,
+                    false,
+                    rect => LastDestructionSoundRectForTests = rect);
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
         }

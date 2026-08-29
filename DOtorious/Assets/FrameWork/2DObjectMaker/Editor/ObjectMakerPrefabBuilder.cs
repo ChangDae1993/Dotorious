@@ -754,6 +754,11 @@ namespace JYW.Game.ObjectMaker.Editor
             if (actor == null)
                 actor = root.AddComponent<ObjectActor2D>();
 
+            ObjectAudioController2D audio = root.GetComponent<ObjectAudioController2D>();
+            if (audio == null)
+                audio = root.AddComponent<ObjectAudioController2D>();
+            audio.Configure();
+
             SpriteRenderer spriteRenderer = FindPrimarySpriteRenderer(root, actor);
             if (spriteRenderer == null)
             {
