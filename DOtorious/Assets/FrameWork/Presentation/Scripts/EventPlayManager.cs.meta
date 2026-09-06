@@ -24,6 +24,8 @@ MonoImporter:
       type: 3}
   - screenFlashPrefab: {fileID: 6000, guid: a4a3efac602d45659a865cef9dded39e,
       type: 3}
+  - speechBubblePrefab: {fileID: 8057697975183847726, guid: 70dc85ec6adfcda48b20550ff528f8af,
+      type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

@@ -1,0 +1,891 @@
+fileFormatVersion: 2
+guid: 1dae5e4a31acdd344b38c3a27fd63d6b
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 5451353066478720456
+    second: CrawlerSheet_0
+  - first:
+      213: -7058009413260855891
+    second: CrawlerSheet_1
+  - first:
+      213: -356691872186213796
+    second: CrawlerSheet_2
+  - first:
+      213: 2144557515520009560
+    second: CrawlerSheet_3
+  - first:
+      213: 1540361546945058237
+    second: CrawlerSheet_4
+  - first:
+      213: 8683979276347411828
+    second: CrawlerSheet_5
+  - first:
+      213: 2510629881322194467
+    second: CrawlerSheet_6
+  - first:
+      213: 7525206679507389251
+    second: CrawlerSheet_7
+  - first:
+      213: 3301643648141143368
+    second: CrawlerSheet_8
+  - first:
+      213: -4793229912037243968
+    second: CrawlerSheet_9
+  - first:
+      213: -5113762110458125713
+    second: CrawlerSheet_10
+  - first:
+      213: 4413812781780369058
+    second: CrawlerSheet_11
+  - first:
+      213: 5625511264208468185
+    second: CrawlerSheet_12
+  - first:
+      213: -1880541227514384048
+    second: CrawlerSheet_13
+  - first:
+      213: -2027542578019631328
+    second: CrawlerSheet_14
+  - first:
+      213: -4242385937071764867
+    second: CrawlerSheet_15
+  - first:
+      213: 6832445878015266340
+    second: CrawlerSheet_16
+  - first:
+      213: -8322881824633855660
+    second: CrawlerSheet_17
+  - first:
+      213: 8053810928233374172
+    second: CrawlerSheet_18
+  - first:
+      213: -6573170192101718879
+    second: CrawlerSheet_19
+  - first:
+      213: -5971572922130325980
+    second: CrawlerSheet_20
+  - first:
+      213: 7904543823390853909
+    second: CrawlerSheet_21
+  - first:
+      213: 7661207215523355794
+    second: CrawlerSheet_22
+  - first:
+      213: -6171895324463593172
+    second: CrawlerSheet_23
+  - first:
+      213: 1528303389908529963
+    second: CrawlerSheet_24
+  - first:
+      213: 1886365348786238866
+    second: CrawlerSheet_25
+  - first:
+      213: -6731251145404992620
+    second: CrawlerSheet_26
+  - first:
+      213: 9173212079763311660
+    second: CrawlerSheet_27
+  - first:
+      213: 2963672651861402797
+    second: CrawlerSheet_28
+  - first:
+      213: 4432990848712812375
+    second: CrawlerSheet_29
+  - first:
+      213: -2180777883063995693
+    second: CrawlerSheet_30
+  - first:
+      213: -6581820671789568619
+    second: CrawlerSheet_31
+  - first:
+      213: -5689328599881142015
+    second: CrawlerSheet_32
+  - first:
+      213: -6983132522407335809
+    second: CrawlerSheet_33
+  - first:
+      213: -2300409412681388360
+    second: CrawlerSheet_34
+  - first:
+      213: -5571580727422735685
+    second: CrawlerSheet_35
+  - first:
+      213: 39079153151539343
+    second: CrawlerSheet_36
+  - first:
+      213: 3656318766869255899
+    second: CrawlerSheet_37
+  - first:
+      213: 7909733096077469848
+    second: CrawlerSheet_38
+  - first:
+      213: -7976913076606555346
+    second: CrawlerSheet_39
+  - first:
+      213: -1752165259296142265
+    second: CrawlerSheet_40
+  - first:
+      213: -7575811463490824560
+    second: CrawlerSheet_41
+  - first:
+      213: -6831519719882513929
+    second: CrawlerSheet_42
+  - first:
+      213: 3248942606644025484
+    second: CrawlerSheet_43
+  - first:
+      213: 3871532543327178547
+    second: CrawlerSheet_44
+  - first:
+      213: 3721886676830570440
+    second: CrawlerSheet_45
+  - first:
+      213: -7738082328709494036
+    second: CrawlerSheet_46
+  - first:
+      213: -3424934207674633101
+    second: CrawlerSheet_47
+  - first:
+      213: 7596340998923685558
+    second: CrawlerSheet_48
+  - first:
+      213: 1304952311013623605
+    second: CrawlerSheet_49
+  - first:
+      213: 6484256962057781594
+    second: CrawlerSheet_50
+  - first:
+      213: -2133504591307628629
+    second: CrawlerSheet_51
+  - first:
+      213: -666235193418483987
+    second: CrawlerSheet_52
+  - first:
+      213: -6810278048039956833
+    second: CrawlerSheet_53
+  - first:
+      213: 4016771991289655266
+    second: CrawlerSheet_54
+  - first:
+      213: -3774981614365468847
+    second: CrawlerSheet_55
+  - first:
+      213: 6499844556545012329
+    second: CrawlerSheet_56
+  - first:
+      213: -4180589440257881610
+    second: CrawlerSheet_57
+  - first:
+      213: -8791805553981770498
+    second: CrawlerSheet_58
+  - first:
+      213: 3125306087556355247
+    second: CrawlerSheet_59
+  - first:
+      213: 8771267715333346014
+    second: CrawlerSheet_60
+  - first:
+      213: 4677738056585020326
+    second: CrawlerSheet_61
+  - first:
+      213: 6597220496935173474
+    second: CrawlerSheet_62
+  - first:
+      213: 5626221235986283266
+    second: CrawlerSheet_63
+  - first:
+      213: 3674576224996454082
+    second: CrawlerSheet_64
+  - first:
+      213: -5587356415018872543
+    second: CrawlerSheet_65
+  - first:
+      213: 2922855076674659889
+    second: CrawlerSheet_66
+  - first:
+      213: 5491651307563726610
+    second: CrawlerSheet_67
+  - first:
+      213: -4051881535539699634
+    second: CrawlerSheet_68
+  - first:
+      213: 8534600722430485725
+    second: CrawlerSheet_69
+  - first:
+      213: 4314822034033008236
+    second: CrawlerSheet_70
+  - first:
+      213: -2862788247637628739
+    second: CrawlerSheet_71
+  - first:
+      213: 3443716258748001126
+    second: CrawlerSheet_72
+  - first:
+      213: 5180959979934674249
+    second: CrawlerSheet_73
+  - first:
+      213: 7863495174057578566
+    second: CrawlerSheet_74
+  - first:
+      213: 1702326836884100894
+    second: CrawlerSheet_75
+  - first:
+      213: -411419215618993658
+    second: CrawlerSheet_76
+  - first:
+      213: -5564126975479468055
+    second: CrawlerSheet_77
+  - first:
+      213: 6327507328500419056
+    second: CrawlerSheet_78
+  - first:
+      213: -6043534550546533536
+    second: CrawlerSheet_79
+  - first:
+      213: -8634903098125894409
+    second: CrawlerSheet_80
+  - first:
+      213: -5926971728890511996
+    second: CrawlerSheet_81
+  - first:
+      213: -4078079919603249881
+    second: CrawlerSheet_82
+  - first:
+      213: -132550219072989413
+    second: CrawlerSheet_83
+  - first:
+      213: 2417055436690038084
+    second: CrawlerSheet_84
+  - first:
+      213: 9116378806734158872
+    second: CrawlerSheet_85
+  - first:
+      213: -1052184513088585965
+    second: CrawlerSheet_86
+  - first:
+      213: 349495234039641374
+    second: CrawlerSheet_87
+  - first:
+      213: 8970138285561078415
+    second: CrawlerSheet_88
+  - first:
+      213: -8249310598769370782
+    second: CrawlerSheet_89
+  - first:
+      213: -5424806502592930132
+    second: CrawlerSheet_90
+  - first:
+      213: 3276239495828086569
+    second: CrawlerSheet_91
+  - first:
+      213: 2057000669258666769
+    second: CrawlerSheet_92
+  - first:
+      213: -2270735256562026657
+    second: CrawlerSheet_93
+  - first:
+      213: 8247958490452154880
+    second: CrawlerSheet_94
+  - first:
+      213: -2141988271501188587
+    second: CrawlerSheet_95
+  - first:
+      213: 4375586689325007942
+    second: CrawlerSheet_96
+  - first:
+      213: -5242014125337270037
+    second: CrawlerSheet_97
+  - first:
+      213: 5666292490798344671
+    second: CrawlerSheet_98
+  - first:
+      213: 4137837100743470616
+    second: CrawlerSheet_99
+  - first:
+      213: -3361412161897464136
+    second: CrawlerSheet_100
+  - first:
+      213: -4425879427050165381
+    second: CrawlerSheet_101
+  - first:
+      213: 4342139874920563987
+    second: CrawlerSheet_102
+  - first:
+      213: -3589154530101915644
+    second: CrawlerSheet_103
+  - first:
+      213: -2609105591881638515
+    second: CrawlerSheet_104
+  - first:
+      213: -6586107175749401521
+    second: CrawlerSheet_105
+  - first:
+      213: 5786696509295974968
+    second: CrawlerSheet_106
+  - first:
+      213: -6882628852274597828
+    second: CrawlerSheet_107
+  - first:
+      213: 3797384795258150577
+    second: CrawlerSheet_108
+  - first:
+      213: -2971691458798110550
+    second: CrawlerSheet_109
+  - first:
+      213: -6907294080352351508
+    second: CrawlerSheet_110
+  - first:
+      213: 492684805705294754
+    second: CrawlerSheet_111
+  - first:
+      213: -4003309023178429477
+    second: CrawlerSheet_112
+  - first:
+      213: 7807902815352682753
+    second: CrawlerSheet_113
+  - first:
+      213: -4822104004234239141
+    second: CrawlerSheet_114
+  - first:
+      213: -7768057513600839607
+    second: CrawlerSheet_115
+  - first:
+      213: -5976827892091415839
+    second: CrawlerSheet_116
+  - first:
+      213: -653538187901708199
+    second: CrawlerSheet_117
+  - first:
+      213: 2630190746979157745
+    second: CrawlerSheet_118
+  - first:
+      213: 8801349098192249639
+    second: CrawlerSheet_119
+  - first:
+      213: -8945293449262234466
+    second: CrawlerSheet_120
+  - first:
+      213: -945986031613827471
+    second: CrawlerSheet_121
+  - first:
+      213: 2677436655578429978
+    second: CrawlerSheet_122
+  - first:
+      213: -5692494641459464225
+    second: CrawlerSheet_123
+  - first:
+      213: -8469266157323200711
+    second: CrawlerSheet_124
+  - first:
+      213: -2243594927186461986
+    second: CrawlerSheet_125
+  - first:
+      213: 3765825384004329832
+    second: CrawlerSheet_126
+  - first:
+      213: 6923865479959876678
+    second: CrawlerSheet_127
+  - first:
+      213: 3927585841397660165
+    second: CrawlerSheet_128
+  - first:
+      213: -1130676489586326060
+    second: CrawlerSheet_129
+  - first:
+      213: -9103365727479146644
+    second: CrawlerSheet_130
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 1
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 170
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: CrawlerSheet_10
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 314
+        width: 313
+        height: 281
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f62aa4454744809b0800000000000000
+      internalID: -5113762110458125713
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_11
+      rect:
+        serializedVersion: 2
+        x: 940
+        y: 382
+        width: 280
+        height: 191
+      alignment: 9
+      pivot: {x: 0.5607143, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2aef813f653014d30800000000000000
+      internalID: 4413812781780369058
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_12
+      rect:
+        serializedVersion: 2
+        x: 24
+        y: 63
+        width: 267
+        height: 220
+      alignment: 9
+      pivot: {x: 0.49625468, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d8ba1780b4d11e40800000000000000
+      internalID: 5625511264208468185
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_13
+      rect:
+        serializedVersion: 2
+        x: 345
+        y: 63
+        width: 250
+        height: 240
+      alignment: 9
+      pivot: {x: 0.5, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 051378497b9f6e5e0800000000000000
+      internalID: -1880541227514384048
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_14
+      rect:
+        serializedVersion: 2
+        x: 643
+        y: 60
+        width: 282
+        height: 254
+      alignment: 9
+      pivot: {x: 0.49822694, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 02ff82684c8bcd3e0800000000000000
+      internalID: -2027542578019631328
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_15
+      rect:
+        serializedVersion: 2
+        x: 950
+        y: 59
+        width: 287
+        height: 188
+      alignment: 9
+      pivot: {x: 0.5121951, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7a89b4a7740025c0800000000000000
+      internalID: -4242385937071764867
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_00
+      rect:
+        serializedVersion: 2
+        x: 19
+        y: 981
+        width: 244
+        height: 210
+      alignment: 9
+      pivot: {x: 0.5635246, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 6fa6b4070169b114f8f1d9f5e641cb00
+      internalID: 606270123
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_01
+      rect:
+        serializedVersion: 2
+        x: 336
+        y: 981
+        width: 240
+        height: 204
+      alignment: 9
+      pivot: {x: 0.55833334, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 69b4e16e81df1834a8e56d4de5f676e3
+      internalID: 1602978602
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_02
+      rect:
+        serializedVersion: 2
+        x: 655
+        y: 981
+        width: 263
+        height: 193
+      alignment: 9
+      pivot: {x: 0.48859316, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e7bc64787bc21884284cd0d38426e81e
+      internalID: -139710757
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_03
+      rect:
+        serializedVersion: 2
+        x: 972
+        y: 981
+        width: 223
+        height: 194
+      alignment: 9
+      pivot: {x: 0.5605381, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 38d3ae70991da1b41a99b176eff073b8
+      internalID: 1308036901
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_04
+      rect:
+        serializedVersion: 2
+        x: 21
+        y: 686
+        width: 248
+        height: 203
+      alignment: 9
+      pivot: {x: 0.546371, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: bbb8b6a95e0e5a24491e8cae8958d1dc
+      internalID: -890618474
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_05
+      rect:
+        serializedVersion: 2
+        x: 340
+        y: 687
+        width: 248
+        height: 200
+      alignment: 9
+      pivot: {x: 0.5241935, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: b055b35d44ede9242b6f9d1bd42e0c78
+      internalID: 868770836
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_06
+      rect:
+        serializedVersion: 2
+        x: 648
+        y: 685
+        width: 265
+        height: 196
+      alignment: 9
+      pivot: {x: 0.51132077, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f4d17a4f1b1c57647b321dd5e1885a84
+      internalID: -1325020537
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_07
+      rect:
+        serializedVersion: 2
+        x: 975
+        y: 684
+        width: 231
+        height: 199
+      alignment: 9
+      pivot: {x: 0.5281385, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8c11b68149b44164eb4af0683afd8210
+      internalID: -1081778391
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_08
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 380
+        width: 283
+        height: 195
+      alignment: 9
+      pivot: {x: 0.5282686, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f3270321a6b51224c9d85a3495b8b584
+      internalID: 1879524508
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: CrawlerSheet_09
+      rect:
+        serializedVersion: 2
+        x: 329
+        y: 378
+        width: 298
+        height: 208
+      alignment: 9
+      pivot: {x: 0.47315437, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: aafde208c751f904085b921f7b2c1e94
+      internalID: 854559673
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 47d4c267539606b448c1cdebe7e9497e
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      CrawlerSheet_00: 606270123
+      CrawlerSheet_01: 1602978602
+      CrawlerSheet_02: -139710757
+      CrawlerSheet_03: 1308036901
+      CrawlerSheet_04: -890618474
+      CrawlerSheet_05: 868770836
+      CrawlerSheet_06: -1325020537
+      CrawlerSheet_07: -1081778391
+      CrawlerSheet_08: 1879524508
+      CrawlerSheet_09: 854559673
+      CrawlerSheet_10: -5113762110458125713
+      CrawlerSheet_11: 4413812781780369058
+      CrawlerSheet_12: 5625511264208468185
+      CrawlerSheet_13: -1880541227514384048
+      CrawlerSheet_14: -2027542578019631328
+      CrawlerSheet_15: -4242385937071764867
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

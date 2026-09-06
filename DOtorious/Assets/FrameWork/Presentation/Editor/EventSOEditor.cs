@@ -202,7 +202,7 @@ public class EventSOEditor : Editor
             "Components (Enable/Disable/Animator/Fade/Light/Particle)",
             "Transforms (Move/Rotate/Attach)",
             "Wait","Lock",
-            "Speeches (Soft/Hard/Portrait)",
+            "Speeches (Soft/Hard/Portrait/Bubble)",
             "Scenes (Active/Change/Add/Off/Pause/UnPause)",
             "Sound","Fade Play",
             "Cameras (Move/Aim/Shake/Lens)",
@@ -665,7 +665,7 @@ public class EventSOEditor : Editor
     // ??????????????????????????????????????????
     //  Phase List: EventExe 체인을 iterative하게 순회하며 동일 형식으로 표시
     //  Phase 1 = firstStepProp 자체, Phase 2+ = EventExe.ConditionSteps[0] 체인
-    //  모든 Phase가 동일한 형식: Foldout + [Condition] + [X](Phase1 제외)
+    //  모든 Phase가 동일한 형식: Foldout + [Condition] + [X]
     //  Condition OFF → DrawStepContent (현재 Phase 내용)
     //  Condition ON  → Conditions[] + ConditionSteps[] (재귀)
     // ??????????????????????????????????????????
@@ -707,7 +707,7 @@ public class EventSOEditor : Editor
             const float buttonWidth = 22f;
             const float headerPadding = 4f;
             Rect handleRect = new Rect(headerRect.x, headerRect.y, handleWidth, headerRect.height);
-            float removeWidth = !isFirst ? buttonWidth : 0f;
+            float removeWidth = buttonWidth;
             Rect labelRect = new Rect(
                 handleRect.xMax + headerPadding,
                 headerRect.y,
@@ -746,20 +746,35 @@ public class EventSOEditor : Editor
                 true);
             itemHeaderRects[phaseDragKey].Add(headerRect);
 
-            // X 버튼 (Phase 1 제외)
-            if (!isFirst && node.IsEventExeProp != null)
+            // 첫 Phase는 다음 Phase를 앞으로 당기며, Event Step의 Condition 매핑은 유지한다.
+            if (isFirst || node.IsEventExeProp != null)
             {
                 Color prevBg = GUI.backgroundColor;
                 GUI.backgroundColor = new Color(1f, 0.5f, 0.5f, 1f);
-                if (GUI.Button(removeRect, "X"))
-                {
-                    node.IsEventExeProp.boolValue = false;
-                    node.IsEventExeProp.serializedObject.ApplyModifiedProperties();
-                    GUI.backgroundColor = prevBg;
-                    EditorGUILayout.EndVertical();
-                    break;
-                }
+                EditorGUI.BeginDisabledGroup(isFirst && serializedObject.isEditingMultipleObjects);
+                bool removeClicked = GUI.Button(removeRect, new GUIContent("X", isFirst
+                    ? "첫 Phase를 삭제하고 다음 Phase를 앞으로 당깁니다. 마지막 Phase는 내용을 비우며, Condition 분기 연결은 보존합니다."
+                    : "이 Phase의 연결을 해제합니다."));
+                EditorGUI.EndDisabledGroup();
                 GUI.backgroundColor = prevBg;
+                if (removeClicked)
+                {
+                    if (isFirst)
+                    {
+                        if (RemoveFirstPhase(node))
+                        {
+                            EditorGUILayout.EndVertical();
+                            GUIUtility.ExitGUI();
+                        }
+                    }
+                    else
+                    {
+                        node.IsEventExeProp.boolValue = false;
+                        node.IsEventExeProp.serializedObject.ApplyModifiedProperties();
+                        EditorGUILayout.EndVertical();
+                        break;
+                    }
+                }
             }
 
             bool isConditionRouter = !isFirst && node.UseCondProp != null && node.UseCondProp.boolValue;
@@ -925,6 +940,46 @@ public class EventSOEditor : Editor
         }
     }
 
+    private bool RemoveFirstPhase(PhaseNode node)
+    {
+        if (serializedObject.isEditingMultipleObjects) return false;
+        EventSO asset = serializedObject.targetObject as EventSO;
+        if (asset == null || node.ContainerArrayProp == null) return false;
+
+        serializedObject.ApplyModifiedProperties();
+        EventSO.EventStep current = GetEventStep(asset, node.ContainerArrayProp, node.ContainerIndex);
+        if (current == null) return false;
+
+        var replacement = new EventSO.EventStep();
+        if (current.Flags != null && current.Flags.IsEventExe && current.EventExe != null)
+        {
+            EventSO.EventExeData next = current.EventExe;
+            if (!next.UseCondition && next.ConditionSteps != null &&
+                next.ConditionSteps.Length > 0 && next.ConditionSteps[0] != null)
+            {
+                replacement = next.ConditionSteps[0];
+            }
+            else
+            {
+                // A conditional router belongs to the outgoing link, not one of its child steps.
+                // Keep that link (including Else and incomplete data) behind an empty root step.
+                replacement.Flags.IsEventExe = true;
+                replacement.EventExe = next;
+            }
+        }
+
+        Undo.RegisterCompleteObjectUndo(asset, "Delete First Phase");
+        FieldInfo[] fields = typeof(EventSO.EventStep).GetFields(
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        for (int i = 0; i < fields.Length; i++)
+            fields[i].SetValue(current, fields[i].GetValue(replacement));
+        EditorUtility.SetDirty(asset);
+        serializedObject.Update();
+        ResetPhaseDragState();
+        Repaint();
+        return true;
+    }
+
     private static int GetReorderablePhaseCount(List<PhaseNode> steps)
     {
         if (steps == null || steps.Count == 0) return 0;
@@ -1001,8 +1056,8 @@ public class EventSOEditor : Editor
         var speechesProp = stepProp.FindPropertyRelative("Speeches");
         if (speechesProp == null) { EditorGUILayout.LabelField("Speeches is null"); EditorGUILayout.EndVertical(); return; }
 
-        string[] subFlags = { "IsSoftSpeech", "IsHardSpeech", "IsPortraitSpeech" };
-        string[] subLabels = { "Soft Speech", "Hard Speech", "Portrait Speech" };
+        string[] subFlags = { "IsSoftSpeech", "IsHardSpeech", "IsPortraitSpeech", "IsSpeechBubble" };
+        string[] subLabels = { "Soft Speech", "Hard Speech", "Portrait Speech", "Speech Bubble" };
         DrawSubFlagTogglesOnProp(speechesProp, subFlags, subLabels);
 
         if (GetBoolProp(speechesProp, "IsSoftSpeech"))
@@ -1019,6 +1074,11 @@ public class EventSOEditor : Editor
         {
             var p = speechesProp.FindPropertyRelative("PortraitSpeech");
             if (p != null) DrawPortraitSpeechDirect(p, stepProp.propertyPath + ".Speeches.PortraitSpeech");
+        }
+        if (GetBoolProp(speechesProp, "IsSpeechBubble"))
+        {
+            var p = speechesProp.FindPropertyRelative("SpeechBubble");
+            if (p != null) DrawSpeechBubbleDirect(p, stepProp.propertyPath + ".Speeches.SpeechBubble");
         }
 
         EditorGUILayout.EndVertical();
@@ -1335,6 +1395,93 @@ public class EventSOEditor : Editor
                 if (durationProp.floatValue <= 0f)
                     EditorGUILayout.HelpBox("Duration이 0이면 이 Line은 같은 프레임에 다음 Line으로 넘어갑니다.", MessageType.Warning);
             }
+
+            EditorGUILayout.EndVertical();
+        }
+        if (removeIndex >= 0)
+            linesProp.DeleteArrayElementAtIndex(removeIndex);
+
+        EditorGUILayout.EndVertical();
+    }
+
+    private void DrawSpeechBubbleDirect(SerializedProperty dataProp, string uniqueKey)
+    {
+        if (dataProp == null || drawnDataKeys.Contains(uniqueKey)) return;
+        drawnDataKeys.Add(uniqueKey);
+
+        string foldKey = BuildKey(uniqueKey);
+        if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
+        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "Speech Bubble", true);
+        if (!masterFoldouts[foldKey]) return;
+
+        SerializedProperty objectNameProp = dataProp.FindPropertyRelative("GameObjectName");
+        SerializedProperty isTypingProp = dataProp.FindPropertyRelative("isTyping");
+        SerializedProperty linesProp = dataProp.FindPropertyRelative("SpeechBubbleTexts");
+
+        EditorGUILayout.BeginVertical("box");
+        EditorGUILayout.LabelField("SPEECH BUBBLE", EditorStyles.boldLabel);
+        if (objectNameProp != null)
+            EditorGUILayout.PropertyField(
+                objectNameProp,
+                new GUIContent("GameObject Name", "비우면 이 EventSO를 호출한 오브젝트 위에 표시합니다."));
+        if (isTypingProp != null)
+            EditorGUILayout.PropertyField(isTypingProp, new GUIContent("Is Typing"));
+
+        EditorGUILayout.HelpBox(
+            "각 Line은 Duration 동안 대상 위에 표시됩니다. 글 길이에 맞춰 말풍선 폭과 높이가 자동으로 조정되며, 모든 Line이 끝날 때까지 다음 Phase로 넘어가지 않습니다.",
+            MessageType.Info);
+
+        if (linesProp == null)
+        {
+            EditorGUILayout.HelpBox("Speech Bubble Lines 데이터를 찾을 수 없습니다.", MessageType.Error);
+            EditorGUILayout.EndVertical();
+            return;
+        }
+
+        EditorGUILayout.Space(3);
+        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.LabelField($"Lines ({linesProp.arraySize})", EditorStyles.boldLabel);
+        if (GUILayout.Button("Add Line", GUILayout.Width(80)))
+        {
+            int newIndex = linesProp.arraySize;
+            linesProp.arraySize++;
+            SerializedProperty newLine = linesProp.GetArrayElementAtIndex(newIndex);
+            SerializedProperty durationProp = newLine?.FindPropertyRelative("Duration");
+            SerializedProperty textProp = newLine?.FindPropertyRelative("Text");
+            if (durationProp != null) durationProp.floatValue = 2f;
+            if (textProp != null) textProp.stringValue = string.Empty;
+        }
+        EditorGUI.BeginDisabledGroup(linesProp.arraySize == 0);
+        if (GUILayout.Button("-", GUILayout.Width(24)))
+            linesProp.DeleteArrayElementAtIndex(linesProp.arraySize - 1);
+        EditorGUI.EndDisabledGroup();
+        EditorGUILayout.EndHorizontal();
+
+        if (linesProp.arraySize == 0)
+            EditorGUILayout.HelpBox("표시할 Line을 하나 이상 추가해 주세요.", MessageType.Warning);
+
+        int removeIndex = -1;
+        for (int i = 0; i < linesProp.arraySize; i++)
+        {
+            SerializedProperty lineProp = linesProp.GetArrayElementAtIndex(i);
+            if (lineProp == null) continue;
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField($"Line {i + 1}", EditorStyles.miniBoldLabel);
+            if (GUILayout.Button("X", GUILayout.Width(24))) removeIndex = i;
+            EditorGUILayout.EndHorizontal();
+
+            SerializedProperty durationProp = lineProp.FindPropertyRelative("Duration");
+            SerializedProperty textProp = lineProp.FindPropertyRelative("Text");
+            if (durationProp != null)
+            {
+                EditorGUILayout.PropertyField(durationProp, new GUIContent("Duration (Unscaled Seconds)"));
+                if (durationProp.floatValue <= 0f)
+                    EditorGUILayout.HelpBox("Duration이 0이면 이 Line은 같은 프레임에 다음 Line으로 넘어갑니다.", MessageType.Warning);
+            }
+            if (textProp != null)
+                EditorGUILayout.PropertyField(textProp, new GUIContent("Text"));
 
             EditorGUILayout.EndVertical();
         }
@@ -2212,9 +2359,10 @@ public class EventSOEditor : Editor
         masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], lockDataName, true);
         if (!masterFoldouts[foldKey]) return;
         EditorGUILayout.BeginVertical("box");
-        var moveProp = lockProp.FindPropertyRelative("IsLockMove"); var camProp = lockProp.FindPropertyRelative("IsLockCamera");
-        if (moveProp != null) EditorGUILayout.PropertyField(moveProp, new GUIContent("Lock Move"));
-        if (camProp != null) EditorGUILayout.PropertyField(camProp, new GUIContent("Lock Camera"));
+        // 기존 EventSO의 직렬화 키는 보존하고 편집 의미만 Keyboard/Mouse로 노출합니다.
+        var keyboardProp = lockProp.FindPropertyRelative("IsLockMove"); var mouseProp = lockProp.FindPropertyRelative("IsLockCamera");
+        if (keyboardProp != null) EditorGUILayout.PropertyField(keyboardProp, new GUIContent("Lock Keyboard"));
+        if (mouseProp != null) EditorGUILayout.PropertyField(mouseProp, new GUIContent("Lock Mouse"));
         EditorGUILayout.EndVertical();
     }
 

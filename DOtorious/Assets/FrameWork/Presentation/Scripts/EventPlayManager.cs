@@ -26,6 +26,18 @@ namespace JYW.Game.EventPlay
         [HideInInspector] public bool isLockCamera = false;
         [HideInInspector] public bool isLockMove = false;
 
+        public bool isLockKeyboard
+        {
+            get => isLockMove;
+            set => isLockMove = value;
+        }
+
+        public bool isLockMouse
+        {
+            get => isLockCamera;
+            set => isLockCamera = value;
+        }
+
         [HideInInspector] public List<GameObject> cachedObjects = new List<GameObject>();
 
         // 새 프리팹 참조는 기존 직렬화 필드 뒤에만 추가합니다.
@@ -33,6 +45,7 @@ namespace JYW.Game.EventPlay
         [SerializeField] private GameObject blackLabelPrefab;
         [SerializeField] private GameObject portraitSpeechPrefab;
         [SerializeField] private GameObject screenFlashPrefab;
+        [SerializeField] private GameObject speechBubblePrefab;
 
         private GameObject fadeCanvas = null;
         private CanvasGroup fadeCanvasGroup = null;
@@ -64,8 +77,8 @@ namespace JYW.Game.EventPlay
 
         internal bool HasRunningEvents => runningEventPairs.Count > 0;
 
-        private int lockMoveCount = 0;
-        private int lockCameraCount = 0;
+        private int lockKeyboardCount = 0;
+        private int lockMouseCount = 0;
 
         private readonly Dictionary<GameObject, Vector3> drawerClosedLocal = new Dictionary<GameObject, Vector3>();
         private readonly Dictionary<GameObject, Vector3> drawerLastOffset = new Dictionary<GameObject, Vector3>();
@@ -78,6 +91,7 @@ namespace JYW.Game.EventPlay
         private TooltipData activeTooltipData = null;
         private GameObject activeTooltipCenterObject = null;
         private Camera[] tooltipCameraBuffer = Array.Empty<Camera>();
+        private Camera[] speechBubbleCameraBuffer = Array.Empty<Camera>();
 
         private readonly Dictionary<string, List<GameObject>> pausedSceneRoots = new Dictionary<string, List<GameObject>>();
 
@@ -161,6 +175,16 @@ namespace JYW.Game.EventPlay
             public bool Cleaned;
         }
 
+        private sealed class SpeechBubbleTargetRuntimeState
+        {
+            public GameObject Target;
+            public Renderer[] Renderers = Array.Empty<Renderer>();
+            public Collider2D[] Colliders2D = Array.Empty<Collider2D>();
+            public Collider[] Colliders = Array.Empty<Collider>();
+            public int LayerMask;
+            public Vector3 LocalFallbackAnchor;
+        }
+
         private sealed class LightTweenStart
         {
             public Color Color;
@@ -192,8 +216,8 @@ namespace JYW.Game.EventPlay
             private readonly List<System.Action> onCancel = new List<System.Action>();
             public bool IsCancelled { get; private set; }
 
-            public int AcquiredMoveLocks = 0;
-            public int AcquiredCameraLocks = 0;
+            public int AcquiredKeyboardLocks = 0;
+            public int AcquiredMouseLocks = 0;
 
             private readonly List<Coroutine> trackedCoroutines = new List<Coroutine>();
             public IReadOnlyList<Coroutine> TrackedCoroutines => trackedCoroutines;
@@ -1667,6 +1691,34 @@ namespace JYW.Game.EventPlay
                         PortraitSpeechRoutine(uiObj, speeches.PortraitSpeech),
                         onCancelPortraitSpeech));
                 }
+
+                // Speech Bubble
+                if (speeches.IsSpeechBubble && speeches.SpeechBubble != null)
+                {
+                    var uiObj = GetOrCreateSingletonUI(speechBubblePrefab);
+                    SpeechBubbleData speechBubble = speeches.SpeechBubble;
+                    string targetName = speechBubble.GameObjectName?.Trim();
+                    GameObject target = string.IsNullOrEmpty(targetName)
+                        ? caller
+                        : ResolveByName(targetName);
+                    if (target != null) AddToCacheIfNeeded(target);
+
+                    Action onCancelSpeechBubble = () =>
+                    {
+                        try
+                        {
+                            var bubbleCanvas = uiObj != null
+                                ? uiObj.GetComponentInChildren<SpeechBubbleCanvas>(true) ?? uiObj.GetComponent<SpeechBubbleCanvas>()
+                                : null;
+                            bubbleCanvas?.Clear();
+                        }
+                        catch { }
+                        try { if (uiObj != null) uiObj.SetActive(false); } catch { }
+                    };
+                    StartCoroutine(RunRoutine(
+                        SpeechBubbleRoutine(uiObj, speechBubble, target),
+                        onCancelSpeechBubble));
+                }
             }
 
             // Tooltip (독립)
@@ -1858,8 +1910,8 @@ namespace JYW.Game.EventPlay
             // Lock (독립)
             if (step.Flags.IsLock && step.Lock != null)
             {
-                if (step.Lock.IsLockMove) { lockMoveCount++; isLockMove = true; context.AcquiredMoveLocks++; }
-                if (step.Lock.IsLockCamera) { lockCameraCount++; isLockCamera = true; context.AcquiredCameraLocks++; }
+                if (step.Lock.IsLockKeyboard) { lockKeyboardCount++; isLockKeyboard = true; context.AcquiredKeyboardLocks++; }
+                if (step.Lock.IsLockMouse) { lockMouseCount++; isLockMouse = true; context.AcquiredMouseLocks++; }
             }
 
             // ── Scenes 그룹 ──
@@ -1964,7 +2016,7 @@ namespace JYW.Game.EventPlay
             // Choice (독립)
             if (step.Flags.IsChoice && step.Choice != null)
             {
-                Action onCancelChoice = () => { try { CleanupChoiceUIIfAny(); } catch { } try { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; isLockMove = false; isLockCamera = false; } catch { } };
+                Action onCancelChoice = () => { try { CleanupChoiceUIIfAny(); } catch { } try { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; isLockKeyboard = false; isLockMouse = false; } catch { } };
                 StartCoroutine(RunRoutine(ChoiceRoutine(step.Choice, caller), onCancelChoice));
                 while (activeRoutines > 0) yield return null;
                 if (context != null && context.IsCancelled) yield break;
@@ -2027,8 +2079,8 @@ namespace JYW.Game.EventPlay
         {
             if (runningContexts.TryGetValue(pair, out var ctx) && ctx != null)
             {
-                if (ctx.AcquiredMoveLocks > 0) { lockMoveCount = Math.Max(0, lockMoveCount - ctx.AcquiredMoveLocks); isLockMove = lockMoveCount > 0; }
-                if (ctx.AcquiredCameraLocks > 0) { lockCameraCount = Math.Max(0, lockCameraCount - ctx.AcquiredCameraLocks); isLockCamera = lockCameraCount > 0; }
+                if (ctx.AcquiredKeyboardLocks > 0) { lockKeyboardCount = Math.Max(0, lockKeyboardCount - ctx.AcquiredKeyboardLocks); isLockKeyboard = lockKeyboardCount > 0; }
+                if (ctx.AcquiredMouseLocks > 0) { lockMouseCount = Math.Max(0, lockMouseCount - ctx.AcquiredMouseLocks); isLockMouse = lockMouseCount > 0; }
             }
             runningEventPairs.Remove(pair); runningCoroutines.Remove(pair); runningContexts.Remove(pair);
         }
@@ -2686,6 +2738,260 @@ namespace JYW.Game.EventPlay
                 eventUI.SetText(string.Empty);
             }
             uiObj.SetActive(false);
+        }
+
+        private IEnumerator SpeechBubbleRoutine(
+            GameObject uiObj,
+            SpeechBubbleData speechBubble,
+            GameObject target)
+        {
+            if (uiObj == null)
+            {
+                Debug.LogWarning("[EventPlayManager] Speech Bubble 프리팹이 연결되지 않았습니다.");
+                yield break;
+            }
+            if (speechBubble == null || speechBubble.SpeechBubbleTexts == null ||
+                speechBubble.SpeechBubbleTexts.Count == 0)
+            {
+                if (uiObj.activeSelf) uiObj.SetActive(false);
+                yield break;
+            }
+
+            SpeechBubbleCanvas bubbleCanvas =
+                uiObj.GetComponentInChildren<SpeechBubbleCanvas>(true) ??
+                uiObj.GetComponent<SpeechBubbleCanvas>();
+            if (bubbleCanvas == null)
+            {
+                Debug.LogWarning("[EventPlayManager] Speech Bubble 프리팹에 SpeechBubbleCanvas가 없습니다.");
+                if (uiObj.activeSelf) uiObj.SetActive(false);
+                yield break;
+            }
+
+            if (target == null)
+            {
+                string targetDescription = string.IsNullOrWhiteSpace(speechBubble.GameObjectName)
+                    ? "호출 오브젝트"
+                    : $"'{speechBubble.GameObjectName}'";
+                Debug.LogWarning($"[EventPlayManager] Speech Bubble 대상 {targetDescription}를 찾을 수 없습니다.");
+                bubbleCanvas.Clear();
+                if (uiObj.activeSelf) uiObj.SetActive(false);
+                yield break;
+            }
+
+            Canvas rootCanvas = uiObj.GetComponent<Canvas>() ?? uiObj.GetComponentInChildren<Canvas>(true);
+            SpeechBubbleTargetRuntimeState targetState = CreateSpeechBubbleTargetState(target);
+            Camera projectionCamera = GetSpeechBubbleProjectionCamera(rootCanvas, targetState.LayerMask);
+            if (projectionCamera == null)
+            {
+                Debug.LogWarning($"[EventPlayManager] Speech Bubble 대상 '{target.name}'을 표시할 Game 카메라를 찾을 수 없습니다.");
+                bubbleCanvas.Clear();
+                if (uiObj.activeSelf) uiObj.SetActive(false);
+                yield break;
+            }
+
+            if (!uiObj.activeSelf) uiObj.SetActive(true);
+            const float typingInterval = 0.05f;
+            try
+            {
+                for (int lineIndex = 0; lineIndex < speechBubble.SpeechBubbleTexts.Count; lineIndex++)
+                {
+                    SpeechData line = speechBubble.SpeechBubbleTexts[lineIndex];
+                    if (line == null) continue;
+
+                    string fullText = line.Text ?? string.Empty;
+                    float duration = Mathf.Max(0f, line.Duration);
+                    bubbleCanvas.PrepareLine(fullText);
+                    bubbleCanvas.SetText(speechBubble.isTyping ? string.Empty : fullText);
+
+                    if (!TryUpdateSpeechBubblePosition(bubbleCanvas, targetState, ref projectionCamera))
+                    {
+                        Debug.LogWarning($"[EventPlayManager] Speech Bubble 대상 '{target.name}'을 화면 좌표로 변환할 수 없습니다.");
+                        yield break;
+                    }
+
+                    float elapsed = 0f;
+                    float typingElapsed = 0f;
+                    int shownCharacters = 0;
+                    while (elapsed < duration)
+                    {
+                        if (target == null)
+                        {
+                            Debug.LogWarning("[EventPlayManager] Speech Bubble 표시 중 대상 오브젝트가 사라졌습니다.");
+                            yield break;
+                        }
+
+                        if (!TryUpdateSpeechBubblePosition(bubbleCanvas, targetState, ref projectionCamera))
+                        {
+                            bubbleCanvas.Clear();
+                            yield break;
+                        }
+                        float delta = Time.unscaledDeltaTime;
+                        elapsed += delta;
+
+                        if (speechBubble.isTyping && shownCharacters < fullText.Length)
+                        {
+                            typingElapsed += delta;
+                            while (typingElapsed >= typingInterval && shownCharacters < fullText.Length)
+                            {
+                                typingElapsed -= typingInterval;
+                                shownCharacters++;
+                            }
+                            bubbleCanvas.SetText(fullText.Substring(0, shownCharacters));
+                        }
+
+                        yield return null;
+                    }
+
+                    bubbleCanvas.Clear();
+                }
+            }
+            finally
+            {
+                bubbleCanvas.Clear();
+                if (uiObj != null) uiObj.SetActive(false);
+            }
+        }
+
+        private bool TryUpdateSpeechBubblePosition(
+            SpeechBubbleCanvas bubbleCanvas,
+            SpeechBubbleTargetRuntimeState targetState,
+            ref Camera projectionCamera)
+        {
+            if (bubbleCanvas == null || targetState == null || targetState.Target == null) return false;
+
+            Canvas canvas = bubbleCanvas.GetComponent<Canvas>() ??
+                            bubbleCanvas.GetComponentInParent<Canvas>();
+            projectionCamera = GetSpeechBubbleProjectionCamera(canvas, targetState.LayerMask);
+            if (projectionCamera == null) return false;
+
+            return bubbleCanvas.TrySetTargetWorldPosition(
+                GetSpeechBubbleWorldAnchor(targetState),
+                projectionCamera);
+        }
+
+        private Camera GetSpeechBubbleProjectionCamera(Canvas canvas, int targetLayerMask)
+        {
+            int cameraCount = Camera.allCamerasCount;
+            if (cameraCount <= 0) return null;
+            if (speechBubbleCameraBuffer.Length < cameraCount)
+                speechBubbleCameraBuffer = new Camera[cameraCount];
+
+            int foundCount = Camera.GetAllCameras(speechBubbleCameraBuffer);
+            Camera bestCamera = null;
+            for (int i = 0; i < foundCount; i++)
+            {
+                Camera candidate = speechBubbleCameraBuffer[i];
+                if (candidate == null || !candidate.isActiveAndEnabled ||
+                    candidate.cameraType != CameraType.Game || candidate.targetTexture != null)
+                    continue;
+                if (canvas != null && candidate.targetDisplay != canvas.targetDisplay)
+                    continue;
+                if (targetLayerMask != 0 && (candidate.cullingMask & targetLayerMask) == 0)
+                    continue;
+                if (bestCamera == null || candidate.depth > bestCamera.depth)
+                    bestCamera = candidate;
+            }
+
+            return bestCamera;
+        }
+
+        private static SpeechBubbleTargetRuntimeState CreateSpeechBubbleTargetState(GameObject target)
+        {
+            var state = new SpeechBubbleTargetRuntimeState { Target = target };
+            if (target == null) return state;
+
+            state.Renderers = target.GetComponentsInChildren<Renderer>(true);
+            state.Colliders2D = target.GetComponentsInChildren<Collider2D>(true);
+            state.Colliders = target.GetComponentsInChildren<Collider>(true);
+            Transform[] transforms = target.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform child = transforms[i];
+                if (child != null) state.LayerMask |= 1 << child.gameObject.layer;
+            }
+            state.LocalFallbackAnchor = target.transform.InverseTransformPoint(
+                GetSpeechBubbleColliderAnchor(state, target.transform.position));
+            return state;
+        }
+
+        private static Vector3 GetSpeechBubbleWorldAnchor(SpeechBubbleTargetRuntimeState targetState)
+        {
+            if (targetState == null || targetState.Target == null) return Vector3.zero;
+
+            bool hasBounds = false;
+            Bounds combinedBounds = default;
+            Renderer[] renderers = targetState.Renderers;
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy ||
+                    renderer is ParticleSystemRenderer || renderer is TrailRenderer || renderer is LineRenderer ||
+                    (renderer is SpriteRenderer spriteRenderer && spriteRenderer.sprite == null) ||
+                    renderer.bounds.size.sqrMagnitude <= Mathf.Epsilon)
+                    continue;
+                if (!hasBounds)
+                {
+                    combinedBounds = renderer.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    combinedBounds.Encapsulate(renderer.bounds);
+                }
+            }
+
+            Vector3 anchor = hasBounds
+                ? new Vector3(combinedBounds.center.x, combinedBounds.max.y, combinedBounds.center.z)
+                : targetState.Target.transform.TransformPoint(targetState.LocalFallbackAnchor);
+            return anchor;
+        }
+
+        private static Vector3 GetSpeechBubbleColliderAnchor(
+            SpeechBubbleTargetRuntimeState targetState,
+            Vector3 fallback)
+        {
+            bool hasBounds = false;
+            Bounds combinedBounds = default;
+            Collider2D[] colliders2D = targetState.Colliders2D;
+            for (int i = 0; i < colliders2D.Length; i++)
+            {
+                Collider2D collider = colliders2D[i];
+                if (collider == null || !collider.enabled || !collider.gameObject.activeInHierarchy)
+                    continue;
+                if (!hasBounds)
+                {
+                    combinedBounds = collider.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    combinedBounds.Encapsulate(collider.bounds);
+                }
+            }
+
+            if (!hasBounds)
+            {
+                Collider[] colliders = targetState.Colliders;
+                for (int i = 0; i < colliders.Length; i++)
+                {
+                    Collider collider = colliders[i];
+                    if (collider == null || !collider.enabled || !collider.gameObject.activeInHierarchy)
+                        continue;
+                    if (!hasBounds)
+                    {
+                        combinedBounds = collider.bounds;
+                        hasBounds = true;
+                    }
+                    else
+                    {
+                        combinedBounds.Encapsulate(collider.bounds);
+                    }
+                }
+            }
+
+            return hasBounds
+                ? new Vector3(combinedBounds.center.x, combinedBounds.max.y, combinedBounds.center.z)
+                : fallback;
         }
 
         private IEnumerator PortraitSpeechRoutine(
@@ -3587,8 +3893,8 @@ namespace JYW.Game.EventPlay
         private IEnumerator ChoiceRoutine(ChoiceData choice, GameObject caller)
         {
             if (choice == null || choice.Candidates == null || choice.Candidates.Length == 0) { Debug.LogWarning("[EventPlayManager] ChoiceRoutine: choice 또는 후보가 없습니다."); yield break; }
-            var prevCursorLock = Cursor.lockState; var prevCursorVisible = Cursor.visible; bool prevIsLockMove = isLockMove; bool prevIsLockCamera = isLockCamera;
-            isLockMove = true; isLockCamera = true; Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
+            var prevCursorLock = Cursor.lockState; var prevCursorVisible = Cursor.visible; bool prevIsLockKeyboard = isLockKeyboard; bool prevIsLockMouse = isLockMouse;
+            isLockKeyboard = true; isLockMouse = true; Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
             GameObject tempEventSystem = null;
             Component addedInputModule = null;
             var temporarilyDisabledModules = new List<Behaviour>();
@@ -3659,7 +3965,7 @@ namespace JYW.Game.EventPlay
             finally
             {
                 CleanupChoiceUIIfAny();
-                RestoreCursorAndLock(prevCursorLock, prevCursorVisible, prevIsLockMove, prevIsLockCamera);
+                RestoreCursorAndLock(prevCursorLock, prevCursorVisible, prevIsLockKeyboard, prevIsLockMouse);
                 RestorePreparedInputModules(addedInputModule, temporarilyDisabledModules, temporarilyEnabledModules);
                 if (tempEventSystem != null) Destroy(tempEventSystem);
             }
@@ -3885,7 +4191,7 @@ namespace JYW.Game.EventPlay
 
         public GameObject GetSpawnCaller(GameObject go) { if (go == null) return null; return spawnerMap.TryGetValue(go, out var caller) ? caller : null; }
 
-        private void RestoreCursorAndLock(CursorLockMode prevLock, bool prevVisible, bool prevMove, bool prevCam) { Cursor.lockState = prevLock; Cursor.visible = prevVisible; isLockMove = prevMove; isLockCamera = prevCam; }
+        private void RestoreCursorAndLock(CursorLockMode prevLock, bool prevVisible, bool prevKeyboard, bool prevMouse) { Cursor.lockState = prevLock; Cursor.visible = prevVisible; isLockKeyboard = prevKeyboard; isLockMouse = prevMouse; }
 
         public bool IsEventRunning => runningCoroutines.Count > 0 || runningEventPairs.Count > 0;
 

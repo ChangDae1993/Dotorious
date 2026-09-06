@@ -96,14 +96,14 @@ namespace JYW.Game.ObjectMaker.Tests
                 result = ObjectMakerPrefabBuilder.Make(data);
 
                 Assert.AreEqual("Assets/FrameWork/2DObjectMaker", ObjectMakerPaths.Root);
-                Assert.AreEqual("Assets/2DObjectMaker", ObjectMakerPaths.GeneratedRoot);
+                Assert.AreEqual("Assets/Resources", ObjectMakerPaths.GeneratedRoot);
                 Assert.IsNotNull(result.Definition);
                 Assert.IsNotNull(result.Prefab);
                 Assert.IsNotNull(result.AnimatorController);
                 Assert.AreSame(result.Prefab, result.Definition.GeneratedPrefab);
                 Assert.AreSame(result.AnimatorController, result.Definition.Data.animatorController);
                 StringAssert.StartsWith(ObjectMakerPaths.GeneratedDefinitions + "/", result.DefinitionPath);
-                StringAssert.StartsWith(ObjectMakerPaths.GeneratedPrefabs + "/", result.PrefabPath);
+                StringAssert.StartsWith(ObjectMakerPaths.GeneratedEnemyPrefabs + "/", result.PrefabPath);
                 StringAssert.StartsWith(ObjectMakerPaths.GeneratedAnimators + "/",
                     result.AnimatorControllerPath);
                 Assert.IsNotNull(result.Prefab.GetComponent<ObjectActor2D>());
@@ -217,6 +217,7 @@ namespace JYW.Game.ObjectMaker.Tests
                 result = ObjectMakerPrefabBuilder.Make(data);
 
                 Assert.IsNotNull(result.Prefab.GetComponent<ObjectPlayerController2D>());
+                StringAssert.StartsWith(ObjectMakerPaths.GeneratedPlayerPrefabs + "/", result.PrefabPath);
                 Assert.IsNull(result.Prefab.GetComponent<ObjectMonsterBrain2D>());
                 Assert.AreEqual(1f, result.Prefab.GetComponent<Rigidbody2D>().gravityScale,
                     "Player는 이전 Enemy 지상 이동 설정과 관계없이 점프용 중력을 사용해야 합니다.");
@@ -438,6 +439,40 @@ namespace JYW.Game.ObjectMaker.Tests
                     AssetDatabase.DeleteAsset(clipPath);
                 if (!string.IsNullOrEmpty(spritePath))
                     AssetDatabase.DeleteAsset(spritePath);
+            }
+        }
+
+        [Test]
+        public void ModifyPreservesLegacyAnimatorAfterOutputFolderChange()
+        {
+            ObjectMakerBuildResult result = default;
+            string legacyController = null;
+            bool createdLegacyRoot = !AssetDatabase.IsValidFolder("Assets/2DObjectMaker");
+            try
+            {
+                var data = ObjectDefinitionData.CreateSG001();
+                data.displayName = "ObjectMaker_LegacyFolderTest";
+                result = ObjectMakerPrefabBuilder.Make(data);
+                if (createdLegacyRoot) AssetDatabase.CreateFolder("Assets", "2DObjectMaker");
+                legacyController = AssetDatabase.GenerateUniqueAssetPath(
+                    "Assets/2DObjectMaker/ObjectMaker_LegacyFolderTest.controller");
+                string guid = AssetDatabase.AssetPathToGUID(result.AnimatorControllerPath);
+                Assert.IsEmpty(AssetDatabase.MoveAsset(result.AnimatorControllerPath, legacyController));
+                var modified = ObjectMakerPrefabBuilder.Make(result.Definition.Data, result.Definition);
+                Assert.AreEqual(legacyController, modified.AnimatorControllerPath);
+                Assert.AreEqual(guid, AssetDatabase.AssetPathToGUID(modified.AnimatorControllerPath));
+                Assert.AreEqual(result.PrefabPath, modified.PrefabPath);
+                Assert.AreEqual(result.DefinitionPath, modified.DefinitionPath);
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(result.PrefabPath)) AssetDatabase.DeleteAsset(result.PrefabPath);
+                if (!string.IsNullOrEmpty(result.DefinitionPath)) AssetDatabase.DeleteAsset(result.DefinitionPath);
+                if (!string.IsNullOrEmpty(legacyController)) AssetDatabase.DeleteAsset(legacyController);
+                if (!string.IsNullOrEmpty(result.AnimatorControllerPath)) AssetDatabase.DeleteAsset(result.AnimatorControllerPath);
+                if (createdLegacyRoot && Directory.Exists("Assets/2DObjectMaker") &&
+                    Directory.GetFileSystemEntries("Assets/2DObjectMaker").Length == 0)
+                    AssetDatabase.DeleteAsset("Assets/2DObjectMaker");
             }
         }
 

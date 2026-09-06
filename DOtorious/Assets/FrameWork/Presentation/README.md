@@ -65,7 +65,7 @@ Assets/Game/Resources/Presentation/Chapter1/002_Dialogue.asset
 - `Next Phase`는 현재 Step의 `EventExe.ConditionSteps`에 저장되며 현재 Phase 완료 후 순서대로 실행됩니다.
 - `Wait Until Condition`: 한 Phase 안에서 동일한 Condition Checks를 계속 평가하고, 충족될 때까지 다음 Phase 진행을 막습니다.
   `Timeout = 0`은 제한 없이 기다리고, 양수는 해당 unscaled seconds가 지나면 경고 후 진행합니다.
-- SoftSpeech, HardSpeech, Choice처럼 완료를 기다리는 연출은 완료된 뒤 다음 EventSO로 넘어갑니다.
+- SoftSpeech, HardSpeech, Speech Bubble, Choice처럼 완료를 기다리는 연출은 완료된 뒤 다음 EventSO로 넘어갑니다.
 - `Sound`: 기본값은 기존처럼 재생 시작 후 진행합니다. 비루프 Sound에서 `Wait For Completion`을 켜면 Start Delay와 클립 재생이 끝날 때까지 현재 Phase를 유지합니다.
   Loop Sound는 완료 시점이 없으므로 이 옵션을 적용하지 않습니다.
 - `Tooltip`: `MemoCanvas`와 같은 Canvas/Image/Text/IEventUI 구조로 검은 배경과 텍스트를 표시합니다.
@@ -81,6 +81,12 @@ Assets/Game/Resources/Presentation/Chapter1/002_Dialogue.asset
   - 모든 Line이 끝날 때까지 현재 Phase를 유지합니다.
   - `PortraitSpeechCanvas` 프리팹의 배경, 초상화 크기, 글꼴, 위치는 프로젝트에서 직접 꾸밀 수 있습니다.
   - 같은 이름의 UI가 이미 생성되어 있으면 기존 인스턴스를 재사용하므로 Line이나 Phase마다 중복 생성하지 않습니다.
+- `Speech Bubble`: Speeches 그룹에서 `GameObject Name`으로 지정한 오브젝트 위에 Line별 대사를 표시합니다.
+  - 이름을 비우면 EventSO를 호출한 오브젝트를 사용하며, 이름 또는 `Root/Child` 경로를 입력할 수 있습니다.
+  - 각 Line은 SoftSpeech와 같은 `Duration`, `Text` 구조를 사용하고 `Is Typing`을 지원합니다.
+  - 전체 문장 길이를 먼저 측정해 말풍선 폭과 높이를 정하므로 타이핑 중 크기가 흔들리지 않습니다. 긴 문장은 최대 폭에서 자동 줄바꿈되어 아래로 늘어납니다.
+  - 대상의 Renderer 또는 Collider 윗부분을 따라 매 프레임 이동하며, 화면 가장자리에서는 본체를 화면 안에 두고 꼬리가 대상을 가리킵니다.
+  - 모든 Line이 끝날 때까지 현재 Phase를 유지합니다. 본체는 9-slice, 꼬리는 별도 고정 이미지이므로 `SpeechBubbleCanvas` 프리팹에서 모양을 교체해도 늘어짐을 제어할 수 있습니다.
 - `Animator`: Components 그룹에서 Caller 또는 지정 오브젝트의 Animator State 재생, Cross Fade, Trigger/Bool/Int/Float Parameter, Speed를 제어합니다.
   자식 Animator까지 찾으며, `Duration` 동안 다음 Phase 진행을 막습니다. `Duration`은 애니메이션 클립 길이를 자동 추정하지 않습니다.
 - `Visual Fade`: Components 그룹에서 Caller 또는 이름/경로로 지정한 오브젝트와 자식을 목표 Alpha로 전환합니다.

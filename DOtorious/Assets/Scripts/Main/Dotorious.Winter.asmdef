@@ -1,0 +1,4 @@
+{
+  "name": "Dotorious.Winter",
+  "references": ["JYW.ObjectMaker.Runtime", "JYW.Framework", "UnityEngine.UI"]
+}

@@ -10,12 +10,12 @@
 3. Enemy는 `AI 규칙 프로그램`에 필요한 만큼 `~할 때` 규칙 카드를 추가하고, Player는 이동/점프 키와 공격 카드를 추가합니다.
 4. Player 공격마다 키, 데미지, 준비/판정/회수/재사용 시간, 범위와 콤보 수를 정합니다.
 5. 필요하면 `멀티씬 자동 배치`에 씬 이름과 위치를 추가합니다.
-6. `Make (Definition + Prefab + Animator)`를 누르면 프로젝트의 `Assets/2DObjectMaker`에 다음 에셋이 함께 생성됩니다.
+6. `Make (Definition + Prefab + Animator)`를 누르면 프로젝트의 `Assets/Resources` 아래에 종류별 에셋이 함께 생성됩니다.
 
 ```text
-Assets/2DObjectMaker/Resources/2DObjectMaker/Definitions/<이름>.asset
-Assets/2DObjectMaker/Prefabs/<이름>.prefab
-Assets/2DObjectMaker/Animators/<이름>.controller
+Assets/Resources/2DObjectMaker/Definitions/<이름>.asset
+Assets/Resources/Prefabs/Enemy/<이름>.prefab  (플레이어는 Player/)
+Assets/Resources/2DObjectMaker/Animators/<이름>.controller
 ```
 
 이미지와 Animator를 넣는 입력 칸은 없습니다. 생성된 Prefab을 열어 `Visual` 자식의
@@ -126,13 +126,29 @@ Controller가 다시 적용됩니다. 생성된 Controller 안의 Motion을 바�
 여러 씬의 생성 플레이어는 공용 Registry에 등록되므로 몬스터가 Additive 씬 구성에서도 가장 가까운
 플레이어를 감지할 수 있습니다.
 
+## JSON 가져오기 / 내보내기
+
+창 오른쪽 위 `Export JSON`은 현재 편집 중인 설정을 UTF-8 JSON으로 저장합니다.
+`Import JSON`은 설정을 편집 화면에 읽어오며, 파일을 읽는 것만으로 기존 SO나 프리팹을 변경하지 않습니다.
+신규 설정은 `Make`, 기존 Definition을 연 상태는 `Modify`로 저장합니다. 가져오기 실패/취소 시 편집 내용은 유지됩니다.
+
+JSON은 기존 ObjectDefinitionData 필드 구조를 `data`에 그대로 담습니다. 이미지·소리·Animator 등의
+Unity 에셋 참조는 `assetReferences`의 GUID/localId와 경로로 복원합니다. JSON에 이미지·소리 파일 자체를
+포함하지는 않으므로 다른 프로젝트로 옮길 때 해당 에셋과 `.meta`도 함께 복사하세요. 누락된 참조는 경고로 표시됩니다.
+
 ## 폴더 구조
 
 ```text
 Assets/FrameWork/2DObjectMaker/  배포용 프레임워크
-Assets/2DObjectMaker/            현재 프로젝트에서 만든 결과물
-  Animators/                   공용 State 구조의 오브젝트별 Controller
-  Prefabs/                     이미지 교체 대상 Prefab
-  Resources/2DObjectMaker/
+Assets/Resources/              현재 프로젝트에서 만든 결과물
+  2DObjectMaker/
+    Animators/                 공용 State 구조의 오브젝트별 Controller
     Definitions/               멀티씬 자동 배치용 Definition
+    JSON/                      JSON 예제 저장 위치
+  Prefabs/
+    Enemy/                     적 Prefab
+    Player/                    플레이어 Prefab
 ```
+
+기존 Definition을 Modify하면 연결된 Prefab/Animator의 현재 경로를 유지합니다.
+이전 Assets/2DObjectMaker 경로의 Animator도 계속 수정할 수 있습니다.

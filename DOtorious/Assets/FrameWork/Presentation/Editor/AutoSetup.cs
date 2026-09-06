@@ -37,7 +37,8 @@ namespace JYW.Game.EventPlay.Editor
             "tooltipPrefab",
             "blackLabelPrefab",
             "portraitSpeechPrefab",
-            "screenFlashPrefab"
+            "screenFlashPrefab",
+            "speechBubblePrefab"
         };
 
         private static readonly string[] ManagerPrefabGuids =
@@ -51,7 +52,8 @@ namespace JYW.Game.EventPlay.Editor
             "f95d06c07f91466d9a6407277d3eee04",
             "6f51efe14b0344adbdcf851e98a43354",
             "1db1c052f1234abb859c16ea6e733115",
-            "a4a3efac602d45659a865cef9dded39e"
+            "a4a3efac602d45659a865cef9dded39e",
+            "70dc85ec6adfcda48b20550ff528f8af"
         };
 
         private static bool isRunning;

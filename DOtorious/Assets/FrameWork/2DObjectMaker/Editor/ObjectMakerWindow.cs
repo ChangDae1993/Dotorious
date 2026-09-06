@@ -143,6 +143,14 @@ namespace JYW.Game.ObjectMaker.Editor
         private void DrawToolbar()
         {
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
+            GUILayout.Label("2DObjectMaker", EditorStyles.miniBoldLabel);
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Export JSON", EditorStyles.toolbarButton, GUILayout.Width(82f)))
+                EditorApplication.delayCall += ExportJson;
+            if (GUILayout.Button("Import JSON", EditorStyles.toolbarButton, GUILayout.Width(82f)))
+                EditorApplication.delayCall += ImportJson;
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
             GUILayout.Label("Edit Source", GUILayout.Width(68f));
             UnityEngine.Object selected = EditorGUILayout.ObjectField(
                 currentDefinition,
@@ -174,6 +182,53 @@ namespace JYW.Game.ObjectMaker.Editor
                 GUI.FocusControl(null);
             }
             EditorGUILayout.EndHorizontal();
+        }
+
+        private void ExportJson()
+        {
+            if (this == null) return;
+            try
+            {
+                ObjectMakerPaths.EnsureGeneratedStructure();
+                string path = EditorUtility.SaveFilePanel("Export 2DObjectMaker JSON",
+                    System.IO.Path.GetFullPath(ObjectMakerPaths.GeneratedJson),
+                    ObjectMakerPaths.SafeFileName(draft.displayName), "json");
+                if (string.IsNullOrEmpty(path)) return;
+                ObjectMakerJson.ExportFile(path, draft);
+                statusMessage = "JSON 내보내기: " + path;
+            }
+            catch (Exception exception)
+            {
+                statusMessage = "JSON 내보내기 실패: " + exception.Message;
+            }
+            Repaint();
+        }
+
+        private void ImportJson()
+        {
+            if (this == null) return;
+            try
+            {
+                string path = EditorUtility.OpenFilePanel("Import 2DObjectMaker JSON",
+                    System.IO.Directory.Exists(ObjectMakerPaths.GeneratedJson)
+                        ? System.IO.Path.GetFullPath(ObjectMakerPaths.GeneratedJson) : Application.dataPath, "json");
+                if (string.IsNullOrEmpty(path)) return;
+                ObjectDefinitionData imported = ObjectMakerJson.ImportFile(path, out string[] warnings);
+                Undo.RecordObject(this, "Import 2DObjectMaker JSON");
+                draft = imported;
+                PrepareDraftForRuleEditing();
+                statusMessage = "JSON 불러옴: " + path + "\n" +
+                    (currentDefinition != null
+                        ? "현재 Modify 대상에 설정을 불러왔습니다. Modify를 누르면 저장됩니다."
+                        : "Make를 누르면 새 Definition / Prefab / Animator가 생성됩니다.");
+                if (warnings.Length > 0)
+                    statusMessage += "\n연결되지 않은 에셋: " + string.Join("\n", warnings);
+            }
+            catch (Exception exception)
+            {
+                statusMessage = "JSON 가져오기 실패: " + exception.Message;
+            }
+            Repaint();
         }
 
         private void DrawDefinitionDropZone()
@@ -1242,7 +1297,7 @@ namespace JYW.Game.ObjectMaker.Editor
                     buttonLabel,
                     modify
                         ? "불러온 Definition, 같은 Prefab, 같은 Animator를 현재 설정으로 다시 정의합니다. 교체한 이미지와 노드에 넣은 모션은 유지됩니다."
-                        : "현재 설정의 Definition, Prefab, 공용 Animator를 Assets/2DObjectMaker에 생성합니다."),
+                        : "현재 설정의 Definition과 공용 Animator는 Assets/Resources/2DObjectMaker에, Prefab은 Assets/Resources/Prefabs/Enemy 또는 Player에 생성합니다."),
                 GUILayout.Height(38f)))
             {
                 if (modify)

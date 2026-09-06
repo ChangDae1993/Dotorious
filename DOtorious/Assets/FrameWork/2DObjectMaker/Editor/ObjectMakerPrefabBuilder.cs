@@ -90,7 +90,9 @@ namespace JYW.Game.ObjectMaker.Editor
             if (string.IsNullOrEmpty(prefabPath))
             {
                 prefabPath = AssetDatabase.GenerateUniqueAssetPath(
-                    ObjectMakerPaths.GeneratedPrefabs + "/" + safeName + ".prefab");
+                    (data.kind == ObjectKind.Player
+                        ? ObjectMakerPaths.GeneratedPlayerPrefabs
+                        : ObjectMakerPaths.GeneratedEnemyPrefabs) + "/" + safeName + ".prefab");
             }
 
             GameObject root = null;
@@ -172,9 +174,12 @@ namespace JYW.Game.ObjectMaker.Editor
 
             if (controller == null ||
                 string.IsNullOrEmpty(controllerPath) ||
-                !controllerPath.Replace('\\', '/').StartsWith(
-                    ObjectMakerPaths.GeneratedRoot + "/",
-                    StringComparison.Ordinal))
+                !(controllerPath.Replace('\\', '/').StartsWith(
+                    ObjectMakerPaths.GeneratedAnimators + "/",
+                    StringComparison.Ordinal) ||
+                  controllerPath.Replace('\\', '/').StartsWith(
+                    "Assets/2DObjectMaker/",
+                    StringComparison.Ordinal)))
             {
                 controllerPath = AssetDatabase.GenerateUniqueAssetPath(
                     ObjectMakerPaths.GeneratedAnimators + "/" + safeName + ".controller");

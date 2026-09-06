@@ -1,0 +1,507 @@
+fileFormatVersion: 2
+guid: e0f1385f4e6a7d240abb9513ff68a2a4
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 3045353388109755608
+    second: LanternSheet_0
+  - first:
+      213: 1153999818898084727
+    second: LanternSheet_1
+  - first:
+      213: 6292002104630971704
+    second: LanternSheet_2
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 1
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 170
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: LanternSheet_00
+      rect:
+        serializedVersion: 2
+        x: 70
+        y: 948
+        width: 171
+        height: 297
+      alignment: 9
+      pivot: {x: 0.50584793, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 709143494ac0d6f4ab9a237e76cb108a
+      internalID: 1912846162
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_01
+      rect:
+        serializedVersion: 2
+        x: 381
+        y: 949
+        width: 182
+        height: 296
+      alignment: 9
+      pivot: {x: 0.489011, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 667e4051b5400204ca1afbed0acd0c60
+      internalID: 1434486041
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_02
+      rect:
+        serializedVersion: 2
+        x: 696
+        y: 949
+        width: 178
+        height: 296
+      alignment: 9
+      pivot: {x: 0.49157304, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ff54ab229b5ebb24da0a52092dc5c2ae
+      internalID: -54324111
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_03
+      rect:
+        serializedVersion: 2
+        x: 1004
+        y: 950
+        width: 175
+        height: 294
+      alignment: 9
+      pivot: {x: 0.5314286, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: be761927f2a3f0043b780ecd615efa79
+      internalID: 653849281
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_04
+      rect:
+        serializedVersion: 2
+        x: 73
+        y: 654
+        width: 189
+        height: 279
+      alignment: 9
+      pivot: {x: 0.44179896, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8fac41115b2e28d42a2f2b683b4dfda2
+      internalID: -2101836708
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_05
+      rect:
+        serializedVersion: 2
+        x: 381
+        y: 637
+        width: 192
+        height: 284
+      alignment: 9
+      pivot: {x: 0.46354166, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 29bf4dd2c40d7ae4d8967732c3962ce0
+      internalID: -643238213
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_06
+      rect:
+        serializedVersion: 2
+        x: 688
+        y: 659
+        width: 183
+        height: 272
+      alignment: 9
+      pivot: {x: 0.5218579, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ed91fd0314e5b714d90831c020151d26
+      internalID: -675088244
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_07
+      rect:
+        serializedVersion: 2
+        x: 1004
+        y: 639
+        width: 181
+        height: 294
+      alignment: 9
+      pivot: {x: 0.5138122, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: b9cf1c260212da14d934febbf31e8a02
+      internalID: 862646697
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_08
+      rect:
+        serializedVersion: 2
+        x: 55
+        y: 314
+        width: 219
+        height: 312
+      alignment: 9
+      pivot: {x: 0.4634703, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0f8c4419acd8c024b8d7409bcf87bb27
+      internalID: -2023315047
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_09
+      rect:
+        serializedVersion: 2
+        x: 357
+        y: 314
+        width: 224
+        height: 310
+      alignment: 9
+      pivot: {x: 0.50446427, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 70999f9fca579f34c86b84e7bf22a23f
+      internalID: 1511150624
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_10
+      rect:
+        serializedVersion: 2
+        x: 636
+        y: 314
+        width: 304
+        height: 305
+      alignment: 9
+      pivot: {x: 0.48519737, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 92236874a5a741347b5f9fd14b76ffcb
+      internalID: -1382447216
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_11
+      rect:
+        serializedVersion: 2
+        x: 940
+        y: 314
+        width: 249
+        height: 311
+      alignment: 9
+      pivot: {x: 0.6305221, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4a80020fe0f1caf42b46d0a7d869c2a5
+      internalID: 2044388141
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_12
+      rect:
+        serializedVersion: 2
+        x: 51
+        y: 40
+        width: 217
+        height: 274
+      alignment: 9
+      pivot: {x: 0.48617512, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 83001aaeed12a2c45a482e0f18656d07
+      internalID: -301896978
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_13
+      rect:
+        serializedVersion: 2
+        x: 383
+        y: 32
+        width: 190
+        height: 282
+      alignment: 9
+      pivot: {x: 0.45789474, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1fd166c352b6e6c46b7396860ce81482
+      internalID: 1433336438
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_14
+      rect:
+        serializedVersion: 2
+        x: 662
+        y: 35
+        width: 226
+        height: 279
+      alignment: 9
+      pivot: {x: 0.5376106, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 98baf38fb2a532d41867800cf955eff4
+      internalID: -1561486460
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: LanternSheet_15
+      rect:
+        serializedVersion: 2
+        x: 1006
+        y: 41
+        width: 191
+        height: 273
+      alignment: 9
+      pivot: {x: 0.4764398, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: f692555e0e41a9c42918c681c271dbe0
+      internalID: -133499171
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: e03271bcf685b71419cab0e460647ac5
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      LanternSheet_00: 1912846162
+      LanternSheet_01: 1434486041
+      LanternSheet_02: -54324111
+      LanternSheet_03: 653849281
+      LanternSheet_04: -2101836708
+      LanternSheet_05: -643238213
+      LanternSheet_06: -675088244
+      LanternSheet_07: 862646697
+      LanternSheet_08: -2023315047
+      LanternSheet_09: 1511150624
+      LanternSheet_10: -1382447216
+      LanternSheet_11: 2044388141
+      LanternSheet_12: -301896978
+      LanternSheet_13: 1433336438
+      LanternSheet_14: -1561486460
+      LanternSheet_15: -133499171
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

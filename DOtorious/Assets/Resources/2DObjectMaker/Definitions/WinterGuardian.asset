@@ -1,0 +1,722 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a29a4b39b77d2849bcd628e76be3898, type: 3}
+  m_Name: WinterGuardian
+  m_EditorClassIdentifier: JYW.ObjectMaker.Runtime::JYW.Game.ObjectMaker.ObjectDefinitionSO
+  data:
+    objectId: WinterGuardian
+    displayName: WinterGuardian
+    kind: 0
+    role: "\uC5BC\uC5B4\uBD99\uC740 \uBB38\uC9C0\uAE30"
+    firstAppearance: "Main \xB7 Winter Path"
+    previewSprite: {fileID: 0}
+    animatorController: {fileID: 9100000, guid: b84755c2fd38d044f994ba44e9a9f9f8, type: 2}
+    facesRightByDefault: 1
+    core:
+      maxHealth: 10
+      attackPower: 1
+      defense: 0
+      moveSpeed: 0.65
+    movement:
+      groundWalker: 1
+      patrolMoveSeconds: {x: 1.5, y: 3}
+      idleSeconds: {x: 0.8, y: 1.8}
+      turnChanceOnMove: 0.35
+      smallStepHeight: 0.35
+      obstacleProbeDistance: 0.18
+      cliffProbeDistance: 0.6
+      groundMask:
+        serializedVersion: 2
+        m_Bits: 32768
+    detection:
+      frontDistance: 5
+      rearDistance: 1.5
+      verticalRange: 2
+      targetMask:
+        serializedVersion: 2
+        m_Bits: 4294967295
+      requireLineOfSight: 0
+      sightBlockingMask:
+        serializedVersion: 2
+        m_Bits: 4294967295
+    chase:
+      minimumChaseSeconds: 1
+      detectionMemorySeconds: 3
+      maxDistanceFromSpawn: 8
+      giveUpTargetDistance: 7
+      speedMultiplier: 1.4
+      lostSightChaseSeconds: 3
+      unreachableLookSeconds: 1.5
+      returnTolerance: 0.15
+    attack:
+      attackDamage: 1
+      attackRange: 1.2
+      contactDamage: 1
+      contactKnockback: 0.2
+      targetInvulnerabilitySeconds: 1
+      prepareSeconds: 0.5
+      activeSeconds: 0.15
+      recoverySeconds: 0.7
+      cooldownSeconds: 0.8
+      hitboxHeight: 1.2
+    hit:
+      interruptCurrentAction: 1
+      hitStopSeconds: 0.05
+      knockback: 0.2
+      blinkSeconds: 0.18
+      blinkCount: 2
+      sound:
+        delaySeconds: 0
+        audioClip: {fileID: 8300000, guid: 67efe81123024d642b7ff08219c74874, type: 3}
+        volume: 1
+        isLoop: 0
+    destruction:
+      effectPrefab: {fileID: 0}
+      disableCollisionsImmediately: 1
+      destroyDelaySeconds: 0
+      sound:
+        delaySeconds: 0
+        audioClip: {fileID: 8300000, guid: 67efe81123024d642b7ff08219c74874, type: 3}
+        volume: 1
+        isLoop: 0
+    motions:
+    - condition: 0
+      animatorState: Idle
+      crossFadeSeconds: 0.05
+      restartWhenEntered: 1
+    - condition: 8
+      animatorState: Hit
+      crossFadeSeconds: 0.05
+      restartWhenEntered: 1
+    - condition: 9
+      animatorState: Dead
+      crossFadeSeconds: 0.05
+      restartWhenEntered: 1
+    - condition: 2
+      animatorState: Enemy_Rule_01_DestroySelf
+      crossFadeSeconds: 0.05
+      restartWhenEntered: 1
+    - condition: 5
+      animatorState: Enemy_Rule_03_Attack_AttackPrepare
+      crossFadeSeconds: 0.05
+      restartWhenEntered: 1
+    - condition: 6
+      animatorState: Enemy_Rule_03_Attack_Attack
+      crossFadeSeconds: 0.05
+      restartWhenEntered: 0
+    - condition: 7
+      animatorState: Enemy_Rule_03_Attack_AttackRecover
+      crossFadeSeconds: 0.05
+      restartWhenEntered: 0
+    - condition: 3
+      animatorState: Enemy_Rule_05_FollowTarget
+      crossFadeSeconds: 0.05
+      restartWhenEntered: 1
+    - condition: 4
+      animatorState: Enemy_Rule_06_SearchLastSeenThenReturn
+      crossFadeSeconds: 0.05
+      restartWhenEntered: 1
+    - condition: 1
+      animatorState: Enemy_Rule_07_Patrol
+      crossFadeSeconds: 0.05
+      restartWhenEntered: 1
+    sceneSpawns: []
+    ai:
+      useLegacyTuning: 0
+      rules:
+      - label: "HP 0 \xB7 \uC989\uC2DC \uD30C\uAD34"
+        enabled: 1
+        when: 18
+        action: 26
+        condition:
+          detectionShape: 0
+          distance: 1.2
+          frontDistance: 6
+          rearDistance: 2
+          verticalRange: 2.7
+          healthRatio: 0.3
+          healthValue: 0
+          intervalSeconds: {x: 1, y: 2}
+          chance: 0.5
+          requireLineOfSight: 0
+          targetMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+          sightBlockingMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+        settings:
+          durationSeconds: {x: 0.8, y: 1.8}
+          moveSeconds: {x: 1.5, y: 3}
+          speedMultiplier: 1
+          distance: 1.2
+          turnChance: 0.35
+          patrolPattern: 0
+          followPattern: 0
+          minimumFollowSeconds: 1
+          memorySeconds: 3
+          maxDistanceFromSpawn: 8
+          giveUpTargetDistance: 7
+          attackPattern: 0
+          damage: 1
+          attackRange: 1.2
+          prepareSeconds: 0.5
+          activeSeconds: 0.15
+          recoverySeconds: 0.7
+          cooldownSeconds: 0.8
+          hitboxHeight: 1.2
+          targetInvulnerabilitySeconds: 1
+          knockback: 0.2
+          projectileSpeed: 6
+          projectileLifetime: 2.5
+          dashSpeedMultiplier: 3
+          jumpForce: 5
+          teleportDistance: 1
+          teleportCooldown: 2.5
+          allyAlertRadius: 4
+          groundMovement: 1
+          smallStepHeight: 0.35
+          obstacleProbeDistance: 0.18
+          cliffProbeDistance: 0.6
+          groundMask:
+            serializedVersion: 2
+            m_Bits: 32768
+          obstacleResponse: 1
+          cliffResponse: 1
+          motion: 0
+        effect: 13
+        effectSettings:
+          primaryColor: {r: 0.5, g: 0.85, b: 1, a: 1}
+          secondaryColor: {r: 1, g: 0.92, b: 0.35, a: 1}
+          scale: 1
+          duration: 0.55
+          amount: 10
+        conditionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+        actionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+      - label: "\uD53C\uACA9 \xB7 \uC7A0\uAE50 \uBA48\uCDA4"
+        enabled: 1
+        when: 10
+        action: 2
+        condition:
+          detectionShape: 0
+          distance: 1.2
+          frontDistance: 6
+          rearDistance: 2
+          verticalRange: 2.7
+          healthRatio: 0.3
+          healthValue: 0
+          intervalSeconds: {x: 1, y: 2}
+          chance: 0.5
+          requireLineOfSight: 0
+          targetMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+          sightBlockingMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+        settings:
+          durationSeconds: {x: 0.16, y: 0.16}
+          moveSeconds: {x: 1.5, y: 3}
+          speedMultiplier: 1
+          distance: 1.2
+          turnChance: 0.35
+          patrolPattern: 0
+          followPattern: 0
+          minimumFollowSeconds: 1
+          memorySeconds: 3
+          maxDistanceFromSpawn: 8
+          giveUpTargetDistance: 7
+          attackPattern: 0
+          damage: 1
+          attackRange: 1.2
+          prepareSeconds: 0.5
+          activeSeconds: 0.15
+          recoverySeconds: 0.7
+          cooldownSeconds: 0.8
+          hitboxHeight: 1.2
+          targetInvulnerabilitySeconds: 1
+          knockback: 0.2
+          projectileSpeed: 6
+          projectileLifetime: 2.5
+          dashSpeedMultiplier: 3
+          jumpForce: 5
+          teleportDistance: 1
+          teleportCooldown: 2.5
+          allyAlertRadius: 4
+          groundMovement: 1
+          smallStepHeight: 0.35
+          obstacleProbeDistance: 0.18
+          cliffProbeDistance: 0.6
+          groundMask:
+            serializedVersion: 2
+            m_Bits: 32768
+          obstacleResponse: 1
+          cliffResponse: 1
+          motion: 8
+        effect: 15
+        effectSettings:
+          primaryColor: {r: 1, g: 0.32, b: 0.12, a: 1}
+          secondaryColor: {r: 1, g: 0.92, b: 0.35, a: 1}
+          scale: 1
+          duration: 0.55
+          amount: 10
+        conditionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+        actionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+      - label: "\uADFC\uC811 \xB7 \uACF5\uACA9"
+        enabled: 1
+        when: 9
+        action: 18
+        condition:
+          detectionShape: 0
+          distance: 1.65
+          frontDistance: 6
+          rearDistance: 2
+          verticalRange: 2.7
+          healthRatio: 0.3
+          healthValue: 0
+          intervalSeconds: {x: 1, y: 2}
+          chance: 0.5
+          requireLineOfSight: 0
+          targetMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+          sightBlockingMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+        settings:
+          durationSeconds: {x: 0.8, y: 1.8}
+          moveSeconds: {x: 1.5, y: 3}
+          speedMultiplier: 1
+          distance: 1.2
+          turnChance: 0.35
+          patrolPattern: 0
+          followPattern: 0
+          minimumFollowSeconds: 1
+          memorySeconds: 3
+          maxDistanceFromSpawn: 8
+          giveUpTargetDistance: 7
+          attackPattern: 1
+          damage: 2
+          attackRange: 1.65
+          prepareSeconds: 0.75
+          activeSeconds: 0.2
+          recoverySeconds: 0.7
+          cooldownSeconds: 1.1
+          hitboxHeight: 2.8
+          targetInvulnerabilitySeconds: 1
+          knockback: 0.35
+          projectileSpeed: 4
+          projectileLifetime: 2.4
+          dashSpeedMultiplier: 3
+          jumpForce: 5
+          teleportDistance: 1
+          teleportCooldown: 2.5
+          allyAlertRadius: 4
+          groundMovement: 1
+          smallStepHeight: 0.35
+          obstacleProbeDistance: 0.18
+          cliffProbeDistance: 0.6
+          groundMask:
+            serializedVersion: 2
+            m_Bits: 32768
+          obstacleResponse: 1
+          cliffResponse: 1
+          motion: 0
+        effect: 5
+        effectSettings:
+          primaryColor: {r: 0.5, g: 0.85, b: 1, a: 1}
+          secondaryColor: {r: 1, g: 0.92, b: 0.35, a: 1}
+          scale: 1
+          duration: 0.55
+          amount: 10
+        conditionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+        actionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 8300000, guid: 1e84889a21a70794da7be00411c012cb, type: 3}
+          volume: 1
+          isLoop: 0
+      - label: "\uCC98\uC74C \uBC1C\uACAC \xB7 \uACBD\uACC4"
+        enabled: 1
+        when: 5
+        action: 10
+        condition:
+          detectionShape: 0
+          distance: 1.2
+          frontDistance: 6
+          rearDistance: 2
+          verticalRange: 2.7
+          healthRatio: 0.3
+          healthValue: 0
+          intervalSeconds: {x: 1, y: 2}
+          chance: 0.5
+          requireLineOfSight: 0
+          targetMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+          sightBlockingMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+        settings:
+          durationSeconds: {x: 0.3, y: 0.3}
+          moveSeconds: {x: 1.5, y: 3}
+          speedMultiplier: 1
+          distance: 1.2
+          turnChance: 0.35
+          patrolPattern: 0
+          followPattern: 0
+          minimumFollowSeconds: 1
+          memorySeconds: 3
+          maxDistanceFromSpawn: 8
+          giveUpTargetDistance: 7
+          attackPattern: 0
+          damage: 1
+          attackRange: 1.2
+          prepareSeconds: 0.5
+          activeSeconds: 0.15
+          recoverySeconds: 0.7
+          cooldownSeconds: 0.8
+          hitboxHeight: 1.2
+          targetInvulnerabilitySeconds: 1
+          knockback: 0.2
+          projectileSpeed: 6
+          projectileLifetime: 2.5
+          dashSpeedMultiplier: 3
+          jumpForce: 5
+          teleportDistance: 1
+          teleportCooldown: 2.5
+          allyAlertRadius: 4
+          groundMovement: 1
+          smallStepHeight: 0.35
+          obstacleProbeDistance: 0.18
+          cliffProbeDistance: 0.6
+          groundMask:
+            serializedVersion: 2
+            m_Bits: 32768
+          obstacleResponse: 1
+          cliffResponse: 1
+          motion: 0
+        effect: 1
+        effectSettings:
+          primaryColor: {r: 1, g: 0.32, b: 0.12, a: 1}
+          secondaryColor: {r: 1, g: 0.92, b: 0.35, a: 1}
+          scale: 1
+          duration: 0.55
+          amount: 10
+        conditionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 8300000, guid: 52c2dbd14103f2f4ab6e6f300958892b, type: 3}
+          volume: 1
+          isLoop: 0
+        actionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+      - label: "\uBC1C\uACAC \xB7 \uCD94\uACA9"
+        enabled: 1
+        when: 4
+        action: 6
+        condition:
+          detectionShape: 0
+          distance: 1.2
+          frontDistance: 6
+          rearDistance: 2
+          verticalRange: 2.7
+          healthRatio: 0.3
+          healthValue: 0
+          intervalSeconds: {x: 1, y: 2}
+          chance: 0.5
+          requireLineOfSight: 0
+          targetMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+          sightBlockingMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+        settings:
+          durationSeconds: {x: 0.8, y: 1.8}
+          moveSeconds: {x: 1.5, y: 3}
+          speedMultiplier: 1.5
+          distance: 1.5
+          turnChance: 0.35
+          patrolPattern: 0
+          followPattern: 0
+          minimumFollowSeconds: 1
+          memorySeconds: 3
+          maxDistanceFromSpawn: 9
+          giveUpTargetDistance: 9
+          attackPattern: 0
+          damage: 1
+          attackRange: 1.2
+          prepareSeconds: 0.5
+          activeSeconds: 0.15
+          recoverySeconds: 0.7
+          cooldownSeconds: 0.8
+          hitboxHeight: 1.2
+          targetInvulnerabilitySeconds: 1
+          knockback: 0.2
+          projectileSpeed: 6
+          projectileLifetime: 2.5
+          dashSpeedMultiplier: 3
+          jumpForce: 5
+          teleportDistance: 1
+          teleportCooldown: 2.5
+          allyAlertRadius: 4
+          groundMovement: 1
+          smallStepHeight: 0.35
+          obstacleProbeDistance: 0.18
+          cliffProbeDistance: 0.6
+          groundMask:
+            serializedVersion: 2
+            m_Bits: 32768
+          obstacleResponse: 1
+          cliffResponse: 1
+          motion: 0
+        effect: 0
+        effectSettings:
+          primaryColor: {r: 1, g: 0.32, b: 0.12, a: 1}
+          secondaryColor: {r: 1, g: 0.92, b: 0.35, a: 1}
+          scale: 1
+          duration: 0.55
+          amount: 10
+        conditionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+        actionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+      - label: "\uB193\uCE68 \xB7 \uB3CC\uC544\uAC00\uAE30"
+        enabled: 1
+        when: 6
+        action: 8
+        condition:
+          detectionShape: 0
+          distance: 1.2
+          frontDistance: 6
+          rearDistance: 2
+          verticalRange: 2.7
+          healthRatio: 0.3
+          healthValue: 0
+          intervalSeconds: {x: 1, y: 2}
+          chance: 0.5
+          requireLineOfSight: 0
+          targetMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+          sightBlockingMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+        settings:
+          durationSeconds: {x: 0.8, y: 1.8}
+          moveSeconds: {x: 1.5, y: 3}
+          speedMultiplier: 1
+          distance: 1.2
+          turnChance: 0.35
+          patrolPattern: 0
+          followPattern: 0
+          minimumFollowSeconds: 1
+          memorySeconds: 3
+          maxDistanceFromSpawn: 8
+          giveUpTargetDistance: 7
+          attackPattern: 0
+          damage: 1
+          attackRange: 1.2
+          prepareSeconds: 0.5
+          activeSeconds: 0.15
+          recoverySeconds: 0.7
+          cooldownSeconds: 0.8
+          hitboxHeight: 1.2
+          targetInvulnerabilitySeconds: 1
+          knockback: 0.2
+          projectileSpeed: 6
+          projectileLifetime: 2.5
+          dashSpeedMultiplier: 3
+          jumpForce: 5
+          teleportDistance: 1
+          teleportCooldown: 2.5
+          allyAlertRadius: 4
+          groundMovement: 1
+          smallStepHeight: 0.35
+          obstacleProbeDistance: 0.18
+          cliffProbeDistance: 0.6
+          groundMask:
+            serializedVersion: 2
+            m_Bits: 32768
+          obstacleResponse: 1
+          cliffResponse: 1
+          motion: 0
+        effect: 0
+        effectSettings:
+          primaryColor: {r: 1, g: 0.32, b: 0.12, a: 1}
+          secondaryColor: {r: 1, g: 0.92, b: 0.35, a: 1}
+          scale: 1
+          duration: 0.55
+          amount: 10
+        conditionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+        actionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+      - label: "\uD3C9\uC0C1\uC2DC \xB7 \uC21C\uCC30"
+        enabled: 1
+        when: 2
+        action: 3
+        condition:
+          detectionShape: 0
+          distance: 1.2
+          frontDistance: 6
+          rearDistance: 2
+          verticalRange: 2.7
+          healthRatio: 0.3
+          healthValue: 0
+          intervalSeconds: {x: 1, y: 2}
+          chance: 0.5
+          requireLineOfSight: 0
+          targetMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+          sightBlockingMask:
+            serializedVersion: 2
+            m_Bits: 4294967295
+        settings:
+          durationSeconds: {x: 0.8, y: 1.8}
+          moveSeconds: {x: 1.5, y: 3}
+          speedMultiplier: 1
+          distance: 1.2
+          turnChance: 0.45
+          patrolPattern: 0
+          followPattern: 0
+          minimumFollowSeconds: 1
+          memorySeconds: 3
+          maxDistanceFromSpawn: 8
+          giveUpTargetDistance: 7
+          attackPattern: 0
+          damage: 1
+          attackRange: 1.2
+          prepareSeconds: 0.5
+          activeSeconds: 0.15
+          recoverySeconds: 0.7
+          cooldownSeconds: 0.8
+          hitboxHeight: 1.2
+          targetInvulnerabilitySeconds: 1
+          knockback: 0.2
+          projectileSpeed: 6
+          projectileLifetime: 2.5
+          dashSpeedMultiplier: 3
+          jumpForce: 5
+          teleportDistance: 1
+          teleportCooldown: 2.5
+          allyAlertRadius: 4
+          groundMovement: 1
+          smallStepHeight: 0.35
+          obstacleProbeDistance: 0.18
+          cliffProbeDistance: 0.6
+          groundMask:
+            serializedVersion: 2
+            m_Bits: 32768
+          obstacleResponse: 1
+          cliffResponse: 1
+          motion: 0
+        effect: 0
+        effectSettings:
+          primaryColor: {r: 1, g: 0.32, b: 0.12, a: 1}
+          secondaryColor: {r: 1, g: 0.92, b: 0.35, a: 1}
+          scale: 1
+          duration: 0.55
+          amount: 10
+        conditionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+        actionSound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+    player:
+      moveLeftKey: 15
+      moveRightKey: 18
+      runKey: 51
+      runSpeedMultiplier: 1.5
+      jumpKey: 1
+      jumpForce: 7
+      groundCheckRadius: 0.12
+      groundMask:
+        serializedVersion: 2
+        m_Bits: 4294967295
+      allowMovementDuringAttack: 0
+      attacks:
+      - displayName: Attack 1
+        key: 24
+        damage: 1
+        inputDelaySeconds: 0.1
+        activeSeconds: 0.15
+        recoverySeconds: 0.25
+        cooldownSeconds: 0.4
+        range: 1.2
+        hitboxHeight: 1.2
+        knockback: 0.2
+        targetInvulnerabilitySeconds: 0.1
+        comboSteps: 1
+        comboInputWindowSeconds: 0.35
+        comboResetSeconds: 0.8
+        sound:
+          delaySeconds: 0
+          audioClip: {fileID: 0}
+          volume: 1
+          isLoop: 0
+      walkSound:
+        delaySeconds: 0
+        audioClip: {fileID: 0}
+        volume: 1
+        isLoop: 1
+      runSound:
+        delaySeconds: 0
+        audioClip: {fileID: 0}
+        volume: 1
+        isLoop: 1
+      jumpSound:
+        delaySeconds: 0
+        audioClip: {fileID: 0}
+        volume: 1
+        isLoop: 0
+  generatedPrefab: {fileID: 118006513331626280, guid: d19b095be60e25840ac4710a26ed05ad, type: 3}

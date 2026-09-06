@@ -176,6 +176,10 @@ namespace JYW.Game.EventPlay
             // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
             public bool IsPortraitSpeech = false;
             public PortraitSpeechData PortraitSpeech;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsSpeechBubble = false;
+            public SpeechBubbleData SpeechBubble;
         }
 
         [System.Serializable]
@@ -482,7 +486,24 @@ namespace JYW.Game.EventPlay
         public class WaitData { public float WaitTime = 0f; }
 
         [System.Serializable]
-        public class LockData { public bool IsLockCamera = false; public bool IsLockMove = false; }
+        public class LockData
+        {
+            // 기존 EventSO YAML과 외부 코드를 보존하기 위한 직렬화 저장 필드입니다.
+            public bool IsLockCamera = false;
+            public bool IsLockMove = false;
+
+            public bool IsLockKeyboard
+            {
+                get => IsLockMove;
+                set => IsLockMove = value;
+            }
+
+            public bool IsLockMouse
+            {
+                get => IsLockCamera;
+                set => IsLockCamera = value;
+            }
+        }
 
         [System.Serializable]
         public class SpawnDatass { public SpawnData[] SpawnDatas = new SpawnData[0]; }
@@ -516,6 +537,15 @@ namespace JYW.Game.EventPlay
 
         [System.Serializable]
         public class HardSpeechData { public KeyCode HardSpeechKey = KeyCode.E; public List<string> HardSpeechTexts = new List<string>(); public bool IsTyping = false; }
+
+        [System.Serializable]
+        public class SpeechBubbleData
+        {
+            [Tooltip("비우면 이 EventSO를 호출한 오브젝트 위에 표시합니다.")]
+            public string GameObjectName = "";
+            public List<SpeechData> SpeechBubbleTexts = new List<SpeechData>();
+            public bool isTyping = false;
+        }
 
         [System.Serializable]
         public class SpawnData

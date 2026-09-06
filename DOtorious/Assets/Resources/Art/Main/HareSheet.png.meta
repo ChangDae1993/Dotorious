@@ -1,0 +1,831 @@
+fileFormatVersion: 2
+guid: a4dbd909ab4df074f8f3773557f75435
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -494077456059016539
+    second: HareSheet_0
+  - first:
+      213: -6856871688471748785
+    second: HareSheet_1
+  - first:
+      213: -6538979100910582464
+    second: HareSheet_2
+  - first:
+      213: 1884460019275180355
+    second: HareSheet_3
+  - first:
+      213: 7913259588157427729
+    second: HareSheet_4
+  - first:
+      213: -8154323161385911129
+    second: HareSheet_5
+  - first:
+      213: 8273589281387523871
+    second: HareSheet_6
+  - first:
+      213: -8232036185228119174
+    second: HareSheet_7
+  - first:
+      213: -3491466620828778662
+    second: HareSheet_8
+  - first:
+      213: -7326526426525249199
+    second: HareSheet_9
+  - first:
+      213: 4075858356126325560
+    second: HareSheet_10
+  - first:
+      213: 7677155378460947464
+    second: HareSheet_11
+  - first:
+      213: -6906640427435417543
+    second: HareSheet_12
+  - first:
+      213: 9218455102730101511
+    second: HareSheet_13
+  - first:
+      213: -318214089573572431
+    second: HareSheet_14
+  - first:
+      213: 2578317509120103643
+    second: HareSheet_15
+  - first:
+      213: -7708035584059613583
+    second: HareSheet_16
+  - first:
+      213: -6789159729002956826
+    second: HareSheet_17
+  - first:
+      213: 3807302306982264337
+    second: HareSheet_18
+  - first:
+      213: 3464418156668834305
+    second: HareSheet_19
+  - first:
+      213: -27318778919767784
+    second: HareSheet_20
+  - first:
+      213: -8388479098442836959
+    second: HareSheet_21
+  - first:
+      213: 4519039347717112326
+    second: HareSheet_22
+  - first:
+      213: -3256632246931404196
+    second: HareSheet_23
+  - first:
+      213: -8325059733530791528
+    second: HareSheet_24
+  - first:
+      213: 78841320992159699
+    second: HareSheet_25
+  - first:
+      213: -7148136128989138384
+    second: HareSheet_26
+  - first:
+      213: 2788614926030667185
+    second: HareSheet_27
+  - first:
+      213: 5964801287301238530
+    second: HareSheet_28
+  - first:
+      213: -3758919030927192697
+    second: HareSheet_29
+  - first:
+      213: -7918453031545768049
+    second: HareSheet_30
+  - first:
+      213: -5707566044644178001
+    second: HareSheet_31
+  - first:
+      213: -1581641964088109659
+    second: HareSheet_32
+  - first:
+      213: 6159807984030991232
+    second: HareSheet_33
+  - first:
+      213: 8304054570154268312
+    second: HareSheet_34
+  - first:
+      213: -1694192229399976407
+    second: HareSheet_35
+  - first:
+      213: -8605176722785977690
+    second: HareSheet_36
+  - first:
+      213: 1557460136021035033
+    second: HareSheet_37
+  - first:
+      213: 4182099970939757889
+    second: HareSheet_38
+  - first:
+      213: 3767114798792428075
+    second: HareSheet_39
+  - first:
+      213: -7384194907606282538
+    second: HareSheet_40
+  - first:
+      213: 3490860073244648219
+    second: HareSheet_41
+  - first:
+      213: 959044446056616225
+    second: HareSheet_42
+  - first:
+      213: -1457201568791363555
+    second: HareSheet_43
+  - first:
+      213: -5552607806269001876
+    second: HareSheet_44
+  - first:
+      213: -4227962548282486027
+    second: HareSheet_45
+  - first:
+      213: -2063984750510155919
+    second: HareSheet_46
+  - first:
+      213: -8938841629263552161
+    second: HareSheet_47
+  - first:
+      213: -4038743141474708839
+    second: HareSheet_48
+  - first:
+      213: 3000599674476192668
+    second: HareSheet_49
+  - first:
+      213: -6229283270626523410
+    second: HareSheet_50
+  - first:
+      213: -967760874584292703
+    second: HareSheet_51
+  - first:
+      213: -5039255149133405283
+    second: HareSheet_52
+  - first:
+      213: -6706511791378851733
+    second: HareSheet_53
+  - first:
+      213: 3539419196966905724
+    second: HareSheet_54
+  - first:
+      213: 5116552853658891299
+    second: HareSheet_55
+  - first:
+      213: -5281545709799572012
+    second: HareSheet_56
+  - first:
+      213: 3304327734550498240
+    second: HareSheet_57
+  - first:
+      213: -3869687647484876207
+    second: HareSheet_58
+  - first:
+      213: -4523520606898749289
+    second: HareSheet_59
+  - first:
+      213: 5829032182447744860
+    second: HareSheet_60
+  - first:
+      213: 3835246911585297234
+    second: HareSheet_61
+  - first:
+      213: -3187631209782753090
+    second: HareSheet_62
+  - first:
+      213: -9118164994082292801
+    second: HareSheet_63
+  - first:
+      213: 1444856985633996336
+    second: HareSheet_64
+  - first:
+      213: 6010813645143068402
+    second: HareSheet_65
+  - first:
+      213: 5744316064282212305
+    second: HareSheet_66
+  - first:
+      213: 1859537621399830255
+    second: HareSheet_67
+  - first:
+      213: -7983461682797401531
+    second: HareSheet_68
+  - first:
+      213: -760886827819156515
+    second: HareSheet_69
+  - first:
+      213: 848261985747734076
+    second: HareSheet_70
+  - first:
+      213: -1052053716796421057
+    second: HareSheet_71
+  - first:
+      213: -1751045355900839794
+    second: HareSheet_72
+  - first:
+      213: -2324197308627855964
+    second: HareSheet_73
+  - first:
+      213: 5078570762512071431
+    second: HareSheet_74
+  - first:
+      213: 7654730439239124073
+    second: HareSheet_75
+  - first:
+      213: 7272104771076135197
+    second: HareSheet_76
+  - first:
+      213: -6727444715771234101
+    second: HareSheet_77
+  - first:
+      213: -1759496852102954193
+    second: HareSheet_78
+  - first:
+      213: -6657602724195242948
+    second: HareSheet_79
+  - first:
+      213: 7172498168253217252
+    second: HareSheet_80
+  - first:
+      213: 3635203161899524088
+    second: HareSheet_81
+  - first:
+      213: -7807839409206171825
+    second: HareSheet_82
+  - first:
+      213: 6004160483661507243
+    second: HareSheet_83
+  - first:
+      213: -1588014985608691182
+    second: HareSheet_84
+  - first:
+      213: 6198036828726915756
+    second: HareSheet_85
+  - first:
+      213: 8340241487510013270
+    second: HareSheet_86
+  - first:
+      213: -1589466542277497489
+    second: HareSheet_87
+  - first:
+      213: 4624892311927838423
+    second: HareSheet_88
+  - first:
+      213: 8218532912934703230
+    second: HareSheet_89
+  - first:
+      213: -12237876693819223
+    second: HareSheet_90
+  - first:
+      213: -313507231793282213
+    second: HareSheet_91
+  - first:
+      213: 3941280088916132705
+    second: HareSheet_92
+  - first:
+      213: -1384706142319055005
+    second: HareSheet_93
+  - first:
+      213: -3352836644440815235
+    second: HareSheet_94
+  - first:
+      213: -9118489257192423438
+    second: HareSheet_95
+  - first:
+      213: -8725124486216388175
+    second: HareSheet_96
+  - first:
+      213: 5084604088155912529
+    second: HareSheet_97
+  - first:
+      213: 5020683743340915583
+    second: HareSheet_98
+  - first:
+      213: -5947430459200559757
+    second: HareSheet_99
+  - first:
+      213: -1142915069632964338
+    second: HareSheet_100
+  - first:
+      213: 4904624305079189539
+    second: HareSheet_101
+  - first:
+      213: 7668743774406470568
+    second: HareSheet_102
+  - first:
+      213: -705067482359213760
+    second: HareSheet_103
+  - first:
+      213: 7400346521922344095
+    second: HareSheet_104
+  - first:
+      213: -6471030847968241963
+    second: HareSheet_105
+  - first:
+      213: -7533487568201319968
+    second: HareSheet_106
+  - first:
+      213: 3670021684588422401
+    second: HareSheet_107
+  - first:
+      213: -6865002477470119308
+    second: HareSheet_108
+  - first:
+      213: -4748269081793950097
+    second: HareSheet_109
+  - first:
+      213: -2149594261640384128
+    second: HareSheet_110
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 1
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 160
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: HareSheet_10
+      rect:
+        serializedVersion: 2
+        x: 650
+        y: 314
+        width: 289
+        height: 283
+      alignment: 9
+      pivot: {x: 0.46193773, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83b97bf749b509830800000000000000
+      internalID: 4075858356126325560
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_11
+      rect:
+        serializedVersion: 2
+        x: 964
+        y: 380
+        width: 249
+        height: 203
+      alignment: 9
+      pivot: {x: 0.53413653, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 804f4a2342cba8a60800000000000000
+      internalID: 7677155378460947464
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_12
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 58
+        width: 257
+        height: 232
+      alignment: 9
+      pivot: {x: 0.47276264, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9302c5bcf1fa620a0800000000000000
+      internalID: -6906640427435417543
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_13
+      rect:
+        serializedVersion: 2
+        x: 372
+        y: 62
+        width: 206
+        height: 240
+      alignment: 9
+      pivot: {x: 0.47572815, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7036d1013188eef70800000000000000
+      internalID: 9218455102730101511
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_14
+      rect:
+        serializedVersion: 2
+        x: 665
+        y: 51
+        width: 249
+        height: 263
+      alignment: 9
+      pivot: {x: 0.4759036, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b06174b8f9759bf0800000000000000
+      internalID: -318214089573572431
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_15
+      rect:
+        serializedVersion: 2
+        x: 971
+        y: 50
+        width: 242
+        height: 147
+      alignment: 9
+      pivot: {x: 0.5206612, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd416413d1608c320800000000000000
+      internalID: 2578317509120103643
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_00
+      rect:
+        serializedVersion: 2
+        x: 74
+        y: 965
+        width: 180
+        height: 253
+      alignment: 9
+      pivot: {x: 0.45833334, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1dd6186db17809f4f88d6581ef6b7088
+      internalID: -380070733
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_01
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 965
+        width: 192
+        height: 240
+      alignment: 9
+      pivot: {x: 0.44791666, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 03d8e0ffd22cbae418b6547118b24628
+      internalID: 1224728793
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_02
+      rect:
+        serializedVersion: 2
+        x: 689
+        y: 965
+        width: 176
+        height: 273
+      alignment: 9
+      pivot: {x: 0.5369318, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 192290d7c7078fa4093e167f5ffdf1be
+      internalID: -2077955732
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_03
+      rect:
+        serializedVersion: 2
+        x: 982
+        y: 965
+        width: 212
+        height: 170
+      alignment: 9
+      pivot: {x: 0.5424528, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 3d8d9e17afe6cc64386b568a3f1f9cbe
+      internalID: -944778863
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_04
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 664
+        width: 254
+        height: 211
+      alignment: 9
+      pivot: {x: 0.4940945, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 83e331a3617d6f34a8b5c735dc25b1f4
+      internalID: 347727105
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_05
+      rect:
+        serializedVersion: 2
+        x: 328
+        y: 665
+        width: 288
+        height: 221
+      alignment: 9
+      pivot: {x: 0.49305555, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: b1f62d987f5cac343a758441a5ad795f
+      internalID: 803030901
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_06
+      rect:
+        serializedVersion: 2
+        x: 704
+        y: 665
+        width: 185
+        height: 251
+      alignment: 9
+      pivot: {x: 0.42972973, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: bbc486b1aec642a4bb2fe1e720f356c1
+      internalID: -1850295520
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_07
+      rect:
+        serializedVersion: 2
+        x: 947
+        y: 664
+        width: 281
+        height: 196
+      alignment: 9
+      pivot: {x: 0.5338078, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 825c3c3d8e7a51143a653f3e838d5f83
+      internalID: -1530169505
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_08
+      rect:
+        serializedVersion: 2
+        x: 46
+        y: 380
+        width: 219
+        height: 224
+      alignment: 9
+      pivot: {x: 0.5045662, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 7104a788ef8037d47b58b6ad7975fd0d
+      internalID: -1091699015
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HareSheet_09
+      rect:
+        serializedVersion: 2
+        x: 317
+        y: 381
+        width: 297
+        height: 197
+      alignment: 9
+      pivot: {x: 0.5151515, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a6b9da9203eec1143871dbe858194ecf
+      internalID: -1243838320
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: f70e5c779891ab444bd4a4e6c1f63058
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      HareSheet_00: -380070733
+      HareSheet_01: 1224728793
+      HareSheet_02: -2077955732
+      HareSheet_03: -944778863
+      HareSheet_04: 347727105
+      HareSheet_05: 803030901
+      HareSheet_06: -1850295520
+      HareSheet_07: -1530169505
+      HareSheet_08: -1091699015
+      HareSheet_09: -1243838320
+      HareSheet_10: 4075858356126325560
+      HareSheet_11: 7677155378460947464
+      HareSheet_12: -6906640427435417543
+      HareSheet_13: 9218455102730101511
+      HareSheet_14: -318214089573572431
+      HareSheet_15: 2578317509120103643
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -34,12 +34,15 @@ namespace JYW.Game.ObjectMaker.Editor
         public static string EditorTests => Tests + "/Editor";
         public static string PlayModeTests => Tests + "/PlayMode";
 
-        public const string GeneratedRoot = "Assets/2DObjectMaker";
+        public const string GeneratedRoot = "Assets/Resources";
         public const string GeneratedPrefabs = GeneratedRoot + "/Prefabs";
-        public const string GeneratedAnimators = GeneratedRoot + "/Animators";
-        public const string GeneratedResources = GeneratedRoot + "/Resources";
+        public const string GeneratedEnemyPrefabs = GeneratedPrefabs + "/Enemy";
+        public const string GeneratedPlayerPrefabs = GeneratedPrefabs + "/Player";
+        public const string GeneratedResources = GeneratedRoot;
         public const string GeneratedResourceObjectMaker = GeneratedResources + "/2DObjectMaker";
+        public const string GeneratedAnimators = GeneratedResourceObjectMaker + "/Animators";
         public const string GeneratedDefinitions = GeneratedResourceObjectMaker + "/Definitions";
+        public const string GeneratedJson = GeneratedResourceObjectMaker + "/JSON";
 
         public static void EnsureStructure()
         {
@@ -59,10 +62,13 @@ namespace JYW.Game.ObjectMaker.Editor
         {
             EnsureFolder(GeneratedRoot);
             EnsureFolder(GeneratedPrefabs);
+            EnsureFolder(GeneratedEnemyPrefabs);
+            EnsureFolder(GeneratedPlayerPrefabs);
             EnsureFolder(GeneratedAnimators);
             EnsureFolder(GeneratedResources);
             EnsureFolder(GeneratedResourceObjectMaker);
             EnsureFolder(GeneratedDefinitions);
+            EnsureFolder(GeneratedJson);
         }
 
         public static string SafeFileName(string value)
