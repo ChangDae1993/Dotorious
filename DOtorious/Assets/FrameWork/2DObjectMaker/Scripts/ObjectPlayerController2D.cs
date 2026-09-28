@@ -47,6 +47,10 @@ namespace JYW.Game.ObjectMaker
         private float[] nextAttackAt = Array.Empty<float>();
         private float hitLockUntil;
         private LocomotionSoundState locomotionSoundState;
+        private float attackDirection = 1f;
+        private GameObject skillVisual;
+        private Vector2 lastDashPosition;
+        private readonly RaycastHit2D[] dashObstacles = new RaycastHit2D[32];
 
         public bool IsGrounded => grounded;
         public bool IsAttacking => attackPhase != AttackPhase.None;
@@ -86,12 +90,16 @@ namespace JYW.Game.ObjectMaker
 
         private void OnDisable()
         {
+            if (IsAttacking && Settings != null && attackIndex >= 0 && attackIndex < Settings.attacks.Count &&
+                Settings.attacks[attackIndex].pattern == ObjectPlayerAttackPattern.Dash && body != null)
+                body.linearVelocity = new Vector2(0f, body.linearVelocity.y);
             if (actor != null)
             {
                 actor.Damaged -= OnActorDamaged;
                 actor.Died -= OnActorDied;
             }
             StopLocomotionSound();
+            CancelAttack();
         }
 
         private void OnValidate()
@@ -101,7 +109,7 @@ namespace JYW.Game.ObjectMaker
 
         private void Update()
         {
-            if (actor == null || actor.IsDead || Settings == null)
+            if (actor == null || actor.IsDead || Settings == null || Time.timeScale <= 0f)
                 return;
 
             RefreshGrounded();
@@ -115,6 +123,8 @@ namespace JYW.Game.ObjectMaker
         private void FixedUpdate()
         {
             ApplyHorizontalMovement();
+            if (IsAttacking && Settings.attacks[attackIndex].pattern == ObjectPlayerAttackPattern.Dash && attackPhase == AttackPhase.Active)
+                TickSkill(Settings.attacks[attackIndex]);
         }
 
         public void Configure(
@@ -134,7 +144,8 @@ namespace JYW.Game.ObjectMaker
         public void SetMoveInput(float horizontal)
         {
             moveInput = Mathf.Clamp(horizontal, -1f, 1f);
-            if (Mathf.Abs(moveInput) > 0.001f && actor != null)
+            if (Mathf.Abs(moveInput) > 0.001f && actor != null &&
+                (!IsAttacking || Settings.attacks[attackIndex].pattern == ObjectPlayerAttackPattern.Melee))
                 actor.SetFacing(moveInput);
             ApplyHorizontalMovement();
             if (!IsAttacking)
@@ -155,7 +166,7 @@ namespace JYW.Game.ObjectMaker
 
         public bool TryJump()
         {
-            if (actor == null || actor.IsDead || body == null || Settings == null)
+            if (actor == null || actor.IsDead || body == null || Settings == null || Time.timeScale <= 0f)
                 return false;
 
             RefreshGrounded();
@@ -176,7 +187,7 @@ namespace JYW.Game.ObjectMaker
         public bool TryStartAttack(int index)
         {
             EnsureRuntimeArrays();
-            if (actor == null || actor.IsDead || Settings == null ||
+            if (actor == null || actor.IsDead || Settings == null || Time.timeScale <= 0f ||
                 Settings.attacks == null || index < 0 || index >= Settings.attacks.Count)
                 return false;
 
@@ -310,6 +321,21 @@ namespace JYW.Game.ObjectMaker
             float horizontalVelocity = movementLocked
                 ? 0f
                 : moveInput * Data.core.moveSpeed * speedMultiplier;
+            if (IsAttacking && attackPhase == AttackPhase.Active &&
+                Settings.attacks[attackIndex].pattern == ObjectPlayerAttackPattern.Dash)
+            {
+                var attack = Settings.attacks[attackIndex];
+                float distance = attack.dashSpeed * Time.fixedDeltaTime;
+                var filter = new ContactFilter2D();
+                filter.SetLayerMask(attack.obstacleMask);
+                filter.useTriggers = false;
+                int count = body.Cast(Vector2.right * attackDirection, filter, dashObstacles, distance + 0.02f);
+                for (int i = 0; i < count; i++)
+                    if (dashObstacles[i].collider != null && Mathf.Abs(dashObstacles[i].normal.x) > 0.5f &&
+                        dashObstacles[i].collider.GetComponentInParent<ObjectActor2D>() == null)
+                        distance = Mathf.Min(distance, Mathf.Max(0f, dashObstacles[i].distance - 0.02f));
+                horizontalVelocity = attackDirection * distance / Time.fixedDeltaTime;
+            }
             body.linearVelocity = new Vector2(horizontalVelocity, body.linearVelocity.y);
             actor.SetLocomotionAnimation(Mathf.Abs(horizontalVelocity), grounded);
             actor.SetAnimatorBool(
@@ -336,6 +362,9 @@ namespace JYW.Game.ObjectMaker
             comboStep = Mathf.Clamp(step, 0, attack.comboSteps - 1);
             queuedCombo = false;
             damagedThisStep.Clear();
+            ClearSkillVisual();
+            attackDirection = actor.IsFacingRight ? 1f : -1f;
+            lastDashPosition = body.position;
             attackPhase = AttackPhase.InputDelay;
             attackStepStartedAt = Time.time;
             phaseEndsAt = Time.time + attack.inputDelaySeconds;
@@ -364,11 +393,13 @@ namespace JYW.Game.ObjectMaker
                 switch (attackPhase)
                 {
                     case AttackPhase.InputDelay:
-                        ApplyAttackHit(attack);
                         attackPhase = AttackPhase.Active;
                         phaseEndsAt += attack.activeSeconds;
+                        BeginSkill(attack);
                         break;
                     case AttackPhase.Active:
+                        TickSkill(attack, true);
+                        ClearSkillVisual();
                         attackPhase = AttackPhase.Recovery;
                         phaseEndsAt += attack.recoverySeconds;
                         break;
@@ -380,6 +411,70 @@ namespace JYW.Game.ObjectMaker
                         break;
                 }
             }
+            if (attackPhase == AttackPhase.Active) TickSkill(attack);
+        }
+
+        private Vector2 SkillOrigin(ObjectPlayerAttack attack)
+        {
+            Vector2 origin = ResolveAttackHitboxCenter(attackDirection, 0f);
+            return origin + new Vector2(attack.effectOffset.x * attackDirection, attack.effectOffset.y);
+        }
+
+        private void BeginSkill(ObjectPlayerAttack attack)
+        {
+            if (attack.pattern == ObjectPlayerAttackPattern.Melee) { ApplyAttackHit(attack); return; }
+            if (attack.pattern == ObjectPlayerAttackPattern.Projectile)
+            { ObjectPlayerProjectile2D.Spawn(actor, attack, SkillOrigin(attack), attackDirection); return; }
+            lastDashPosition = body.position;
+            if (attack.effectPrefab == null) return;
+            skillVisual = Instantiate(attack.effectPrefab, SkillOrigin(attack), Quaternion.identity);
+            Vector3 scale = skillVisual.transform.localScale;
+            scale.x = Mathf.Abs(scale.x) * attackDirection;
+            if (attack.pattern == ObjectPlayerAttackPattern.GrowingThrust)
+            {
+                var renderer = skillVisual.GetComponent<SpriteRenderer>();
+                if (renderer != null && renderer.sprite != null)
+                    scale.x *= attack.range / Mathf.Max(0.01f, renderer.sprite.bounds.size.x * Mathf.Abs(scale.x));
+            }
+            skillVisual.transform.localScale = scale;
+            skillVisual.GetComponent<ObjectSkillVisual2D>()?.Play(attack.activeSeconds);
+        }
+
+        private void TickSkill(ObjectPlayerAttack attack, bool ending = false)
+        {
+            if (skillVisual != null) skillVisual.transform.position = SkillOrigin(attack);
+            if (attack.pattern == ObjectPlayerAttackPattern.GrowingThrust)
+            {
+                float progress = ending ? 1f : Mathf.Clamp01((Time.time - (phaseEndsAt - attack.activeSeconds)) / Mathf.Max(0.01f, attack.activeSeconds * 0.65f));
+                float length = attack.range * progress;
+                if (length > 0f) DamageBox(SkillOrigin(attack) + Vector2.right * attackDirection * length * 0.5f,
+                    new Vector2(length, attack.hitboxHeight), attack);
+            }
+            else if (attack.pattern == ObjectPlayerAttackPattern.Dash)
+            {
+                Vector2 now = body.position;
+                DamageBox((now + lastDashPosition) * 0.5f + Vector2.right * attackDirection * attack.range * 0.25f,
+                    new Vector2(Mathf.Abs(now.x - lastDashPosition.x) + attack.range, attack.hitboxHeight), attack);
+                lastDashPosition = now;
+            }
+        }
+
+        private void DamageBox(Vector2 center, Vector2 size, ObjectPlayerAttack attack)
+        {
+            foreach (var hit in Physics2D.OverlapBoxAll(center, size, 0f))
+            {
+                var target = hit.GetComponentInParent<ObjectActor2D>();
+                if (target == null || target == actor || target.IsDead || target.Kind == ObjectKind.Player ||
+                    !damagedThisStep.Add(target)) continue;
+                target.TryReceiveDamage(new ObjectDamageRequest(attack.damage, gameObject, body.position,
+                    attack.targetInvulnerabilitySeconds, attack.knockback, ObjectDamageCause.Attack));
+            }
+        }
+
+        private void ClearSkillVisual()
+        {
+            if (skillVisual != null) Destroy(skillVisual);
+            skillVisual = null;
         }
 
         private void ApplyAttackHit(ObjectPlayerAttack attack)
@@ -415,6 +510,7 @@ namespace JYW.Game.ObjectMaker
 
         private void FinishAttack(ObjectPlayerAttack attack)
         {
+            ClearSkillVisual();
             int finishedIndex = attackIndex;
             if (finishedIndex >= 0 && finishedIndex < nextAttackAt.Length)
                 nextAttackAt[finishedIndex] = Time.time + attack.cooldownSeconds;
@@ -429,6 +525,7 @@ namespace JYW.Game.ObjectMaker
 
         private void CancelAttack()
         {
+            ClearSkillVisual();
             attackPhase = AttackPhase.None;
             attackIndex = -1;
             comboStep = -1;

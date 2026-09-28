@@ -1,0 +1,358 @@
+fileFormatVersion: 2
+guid: 59c36c9ca423b544aa50802d37153697
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 5492534853158212797
+    second: WoodThrust_0
+  - first:
+      213: -5445002648353763254
+    second: WoodThrust_1
+  - first:
+      213: -6382539266149221404
+    second: WoodThrust_2
+  - first:
+      213: -7882065979816812226
+    second: WoodThrust_3
+  - first:
+      213: -7680553163980287741
+    second: WoodThrust_4
+  - first:
+      213: -5978159809551313479
+    second: WoodThrust_5
+  - first:
+      213: -7477041383041287099
+    second: WoodThrust_6
+  - first:
+      213: 3156610850688739885
+    second: WoodThrust_7
+  - first:
+      213: -412678767813090914
+    second: WoodThrust_8
+  - first:
+      213: 6227224601446612485
+    second: WoodThrust_9
+  - first:
+      213: 5786654378243271970
+    second: WoodThrust_10
+  - first:
+      213: -4112288729130367427
+    second: WoodThrust_11
+  - first:
+      213: 1286247363337281440
+    second: WoodThrust_12
+  - first:
+      213: 3432662807578553416
+    second: WoodThrust_13
+  - first:
+      213: -2660465746805860220
+    second: WoodThrust_14
+  - first:
+      213: -3438242155987272666
+    second: WoodThrust_15
+  - first:
+      213: 3183498064220356673
+    second: WoodThrust_16
+  - first:
+      213: -3717356470056392172
+    second: WoodThrust_17
+  - first:
+      213: -5723230063114917681
+    second: WoodThrust_18
+  - first:
+      213: 642392241030286238
+    second: WoodThrust_19
+  - first:
+      213: 1588210032726049396
+    second: WoodThrust_20
+  - first:
+      213: -4811747265184703826
+    second: WoodThrust_21
+  - first:
+      213: 611553540559143629
+    second: WoodThrust_22
+  - first:
+      213: 2920743775087021384
+    second: WoodThrust_23
+  - first:
+      213: 2313985734284281562
+    second: WoodThrust_24
+  - first:
+      213: -2008299796131135686
+    second: WoodThrust_25
+  - first:
+      213: 306900487176975589
+    second: WoodThrust_26
+  - first:
+      213: -2810644007576188005
+    second: WoodThrust_27
+  - first:
+      213: -1186489568161814812
+    second: WoodThrust_28
+  - first:
+      213: -7246569515001238127
+    second: WoodThrust_29
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 1
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 4096
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: WoodThrust_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 512
+        width: 512
+        height: 512
+      alignment: 9
+      pivot: {x: 0.09, y: 0.48}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 92fe3308a533b7943b5755b6aaa66920
+      internalID: 851694938
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WoodThrust_01
+      rect:
+        serializedVersion: 2
+        x: 512
+        y: 512
+        width: 512
+        height: 512
+      alignment: 9
+      pivot: {x: 0.09, y: 0.48}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: b7f7a942ee664764ebaf6a6d1c075942
+      internalID: 2146652294
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WoodThrust_02
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 512
+        width: 512
+        height: 512
+      alignment: 9
+      pivot: {x: 0.09, y: 0.48}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9736a3a24c18c1e4dbe25bc1ea3e0bd6
+      internalID: 1470601790
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WoodThrust_03
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 512
+        height: 512
+      alignment: 9
+      pivot: {x: 0.09, y: 0.48}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 2b02e2c3414188346a88003adb6600cd
+      internalID: 80435485
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WoodThrust_04
+      rect:
+        serializedVersion: 2
+        x: 512
+        y: 0
+        width: 512
+        height: 512
+      alignment: 9
+      pivot: {x: 0.09, y: 0.48}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9af6730b3295d734e9a534a65184fb36
+      internalID: 1794735797
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: WoodThrust_05
+      rect:
+        serializedVersion: 2
+        x: 1024
+        y: 0
+        width: 512
+        height: 512
+      alignment: 9
+      pivot: {x: 0.09, y: 0.48}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 6501f4b765e06484983b18b9cf754498
+      internalID: -1170783471
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 4e20e7cfd9a69d143852e24fe8acd69b
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      WoodThrust_00: 851694938
+      WoodThrust_01: 2146652294
+      WoodThrust_02: 1470601790
+      WoodThrust_03: 80435485
+      WoodThrust_04: 1794735797
+      WoodThrust_05: -1170783471
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

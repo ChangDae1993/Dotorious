@@ -438,6 +438,8 @@ namespace JYW.Game.EventPlay
             public float ParabolaPeakHeight = 3f;
             public bool isDrawer = false;
             public Vector3 drawerOffset = Vector3.zero;
+            public bool ShowLoadingScreen = false;
+            [Min(0f)] public float LoadingDuration = 2f;
         }
 
         [Serializable]

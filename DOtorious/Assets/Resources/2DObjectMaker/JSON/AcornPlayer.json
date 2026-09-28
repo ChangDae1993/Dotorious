@@ -1,0 +1,1172 @@
+{
+    "format": "2DObjectMaker",
+    "version": 1,
+    "data": {
+        "objectId": "AcornPlayer",
+        "displayName": "AcornPlayer",
+        "kind": 1,
+        "role": "플레이어",
+        "firstAppearance": "전체",
+        "previewSprite": {
+            "instanceID": 0
+        },
+        "animatorController": {
+            "instanceID": 0
+        },
+        "facesRightByDefault": true,
+        "core": {
+            "maxHealth": 12,
+            "attackPower": 1,
+            "defense": 0,
+            "moveSpeed": 4.0
+        },
+        "movement": {
+            "groundWalker": true,
+            "patrolMoveSeconds": {
+                "x": 1.5,
+                "y": 3.0
+            },
+            "idleSeconds": {
+                "x": 0.800000011920929,
+                "y": 1.7999999523162842
+            },
+            "turnChanceOnMove": 0.3499999940395355,
+            "smallStepHeight": 0.3499999940395355,
+            "obstacleProbeDistance": 0.18000000715255738,
+            "cliffProbeDistance": 0.6000000238418579,
+            "groundMask": {
+                "serializedVersion": "2",
+                "m_Bits": 4294967295
+            }
+        },
+        "detection": {
+            "frontDistance": 5.0,
+            "rearDistance": 1.5,
+            "verticalRange": 2.0,
+            "targetMask": {
+                "serializedVersion": "2",
+                "m_Bits": 4294967295
+            },
+            "requireLineOfSight": false,
+            "sightBlockingMask": {
+                "serializedVersion": "2",
+                "m_Bits": 4294967295
+            }
+        },
+        "chase": {
+            "minimumChaseSeconds": 1.0,
+            "detectionMemorySeconds": 3.0,
+            "maxDistanceFromSpawn": 8.0,
+            "giveUpTargetDistance": 7.0,
+            "speedMultiplier": 1.399999976158142,
+            "lostSightChaseSeconds": 3.0,
+            "unreachableLookSeconds": 1.5,
+            "returnTolerance": 0.15000000596046449
+        },
+        "attack": {
+            "attackDamage": 1,
+            "attackRange": 1.2000000476837159,
+            "contactDamage": 1,
+            "contactKnockback": 0.20000000298023225,
+            "targetInvulnerabilitySeconds": 1.0,
+            "prepareSeconds": 0.5,
+            "activeSeconds": 0.15000000596046449,
+            "recoverySeconds": 0.699999988079071,
+            "cooldownSeconds": 0.800000011920929,
+            "hitboxHeight": 1.2000000476837159
+        },
+        "hit": {
+            "interruptCurrentAction": true,
+            "hitStopSeconds": 0.05000000074505806,
+            "knockback": 0.20000000298023225,
+            "blinkSeconds": 0.18000000715255738,
+            "blinkCount": 2,
+            "sound": {
+                "delaySeconds": 0.0,
+                "audioClip": {
+                    "instanceID": 0
+                },
+                "volume": 0.4000000059604645,
+                "isLoop": false
+            }
+        },
+        "destruction": {
+            "effectPrefab": {
+                "instanceID": 0
+            },
+            "disableCollisionsImmediately": true,
+            "destroyDelaySeconds": 0.0,
+            "sound": {
+                "delaySeconds": 0.0,
+                "audioClip": {
+                    "instanceID": 0
+                },
+                "volume": 1.0,
+                "isLoop": false
+            }
+        },
+        "motions": [
+            {
+                "condition": 0,
+                "animatorState": "Idle",
+                "crossFadeSeconds": 0.05000000074505806,
+                "restartWhenEntered": true
+            },
+            {
+                "condition": 8,
+                "animatorState": "Hit",
+                "crossFadeSeconds": 0.05000000074505806,
+                "restartWhenEntered": true
+            },
+            {
+                "condition": 9,
+                "animatorState": "Dead",
+                "crossFadeSeconds": 0.05000000074505806,
+                "restartWhenEntered": true
+            },
+            {
+                "condition": 1,
+                "animatorState": "Walk",
+                "crossFadeSeconds": 0.05000000074505806,
+                "restartWhenEntered": true
+            },
+            {
+                "condition": 3,
+                "animatorState": "Run",
+                "crossFadeSeconds": 0.05000000074505806,
+                "restartWhenEntered": true
+            },
+            {
+                "condition": 4,
+                "animatorState": "Walk",
+                "crossFadeSeconds": 0.05000000074505806,
+                "restartWhenEntered": true
+            },
+            {
+                "condition": 10,
+                "animatorState": "Jump",
+                "crossFadeSeconds": 0.05000000074505806,
+                "restartWhenEntered": true
+            },
+            {
+                "condition": 5,
+                "animatorState": "Player_Attack_01_Combo_01",
+                "crossFadeSeconds": 0.05000000074505806,
+                "restartWhenEntered": true
+            },
+            {
+                "condition": 6,
+                "animatorState": "Player_Attack_01_Combo_01",
+                "crossFadeSeconds": 0.05000000074505806,
+                "restartWhenEntered": false
+            },
+            {
+                "condition": 7,
+                "animatorState": "Player_Attack_01_Combo_01",
+                "crossFadeSeconds": 0.05000000074505806,
+                "restartWhenEntered": false
+            }
+        ],
+        "sceneSpawns": [],
+        "ai": {
+            "useLegacyTuning": false,
+            "rules": [
+                {
+                    "label": "HP 도달",
+                    "enabled": true,
+                    "when": 18,
+                    "action": 0,
+                    "condition": {
+                        "detectionShape": 0,
+                        "distance": 1.2000000476837159,
+                        "frontDistance": 5.0,
+                        "rearDistance": 1.5,
+                        "verticalRange": 2.0,
+                        "healthRatio": 0.30000001192092898,
+                        "healthValue": 0,
+                        "intervalSeconds": {
+                            "x": 1.0,
+                            "y": 2.0
+                        },
+                        "chance": 0.5,
+                        "requireLineOfSight": false,
+                        "targetMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        },
+                        "sightBlockingMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        }
+                    },
+                    "settings": {
+                        "durationSeconds": {
+                            "x": 0.800000011920929,
+                            "y": 1.7999999523162842
+                        },
+                        "moveSeconds": {
+                            "x": 1.5,
+                            "y": 3.0
+                        },
+                        "speedMultiplier": 1.0,
+                        "distance": 1.2000000476837159,
+                        "turnChance": 0.3499999940395355,
+                        "patrolPattern": 0,
+                        "followPattern": 0,
+                        "minimumFollowSeconds": 1.0,
+                        "memorySeconds": 3.0,
+                        "maxDistanceFromSpawn": 8.0,
+                        "giveUpTargetDistance": 7.0,
+                        "attackPattern": 0,
+                        "damage": 1,
+                        "attackRange": 1.2000000476837159,
+                        "prepareSeconds": 0.5,
+                        "activeSeconds": 0.15000000596046449,
+                        "recoverySeconds": 0.699999988079071,
+                        "cooldownSeconds": 0.800000011920929,
+                        "hitboxHeight": 1.2000000476837159,
+                        "targetInvulnerabilitySeconds": 1.0,
+                        "knockback": 0.20000000298023225,
+                        "projectileSpeed": 6.0,
+                        "projectileLifetime": 2.5,
+                        "dashSpeedMultiplier": 3.0,
+                        "jumpForce": 5.0,
+                        "teleportDistance": 1.0,
+                        "teleportCooldown": 2.5,
+                        "allyAlertRadius": 4.0,
+                        "groundMovement": true,
+                        "smallStepHeight": 0.3499999940395355,
+                        "obstacleProbeDistance": 0.18000000715255738,
+                        "cliffProbeDistance": 0.6000000238418579,
+                        "groundMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        },
+                        "obstacleResponse": 1,
+                        "cliffResponse": 1,
+                        "motion": 0
+                    },
+                    "effect": 20,
+                    "effectSettings": {
+                        "primaryColor": {
+                            "r": 1.0,
+                            "g": 0.3199999928474426,
+                            "b": 0.11999999731779099,
+                            "a": 1.0
+                        },
+                        "secondaryColor": {
+                            "r": 1.0,
+                            "g": 0.9200000166893005,
+                            "b": 0.3499999940395355,
+                            "a": 1.0
+                        },
+                        "scale": 1.0,
+                        "duration": 0.550000011920929,
+                        "amount": 10
+                    },
+                    "conditionSound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 1.0,
+                        "isLoop": false
+                    },
+                    "actionSound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 1.0,
+                        "isLoop": false
+                    }
+                },
+                {
+                    "label": "피격했을 때",
+                    "enabled": true,
+                    "when": 10,
+                    "action": 7,
+                    "condition": {
+                        "detectionShape": 0,
+                        "distance": 1.2000000476837159,
+                        "frontDistance": 5.0,
+                        "rearDistance": 1.5,
+                        "verticalRange": 2.0,
+                        "healthRatio": 0.30000001192092898,
+                        "healthValue": 0,
+                        "intervalSeconds": {
+                            "x": 1.0,
+                            "y": 2.0
+                        },
+                        "chance": 0.5,
+                        "requireLineOfSight": false,
+                        "targetMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        },
+                        "sightBlockingMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        }
+                    },
+                    "settings": {
+                        "durationSeconds": {
+                            "x": 1.5,
+                            "y": 1.5
+                        },
+                        "moveSeconds": {
+                            "x": 1.5,
+                            "y": 3.0
+                        },
+                        "speedMultiplier": 1.399999976158142,
+                        "distance": 1.2000000476837159,
+                        "turnChance": 0.3499999940395355,
+                        "patrolPattern": 0,
+                        "followPattern": 0,
+                        "minimumFollowSeconds": 1.0,
+                        "memorySeconds": 3.0,
+                        "maxDistanceFromSpawn": 8.0,
+                        "giveUpTargetDistance": 7.0,
+                        "attackPattern": 0,
+                        "damage": 1,
+                        "attackRange": 1.2000000476837159,
+                        "prepareSeconds": 0.5,
+                        "activeSeconds": 0.15000000596046449,
+                        "recoverySeconds": 0.699999988079071,
+                        "cooldownSeconds": 0.800000011920929,
+                        "hitboxHeight": 1.2000000476837159,
+                        "targetInvulnerabilitySeconds": 1.0,
+                        "knockback": 0.20000000298023225,
+                        "projectileSpeed": 6.0,
+                        "projectileLifetime": 2.5,
+                        "dashSpeedMultiplier": 3.0,
+                        "jumpForce": 5.0,
+                        "teleportDistance": 1.0,
+                        "teleportCooldown": 2.5,
+                        "allyAlertRadius": 4.0,
+                        "groundMovement": true,
+                        "smallStepHeight": 0.3499999940395355,
+                        "obstacleProbeDistance": 0.18000000715255738,
+                        "cliffProbeDistance": 0.6000000238418579,
+                        "groundMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 65535
+                        },
+                        "obstacleResponse": 4,
+                        "cliffResponse": 4,
+                        "motion": 0
+                    },
+                    "effect": 15,
+                    "effectSettings": {
+                        "primaryColor": {
+                            "r": 1.0,
+                            "g": 0.3199999928474426,
+                            "b": 0.11999999731779099,
+                            "a": 1.0
+                        },
+                        "secondaryColor": {
+                            "r": 1.0,
+                            "g": 0.9200000166893005,
+                            "b": 0.3499999940395355,
+                            "a": 1.0
+                        },
+                        "scale": 1.0,
+                        "duration": 0.550000011920929,
+                        "amount": 10
+                    },
+                    "conditionSound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 1.0,
+                        "isLoop": false
+                    },
+                    "actionSound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 1.0,
+                        "isLoop": false
+                    }
+                },
+                {
+                    "label": "공격 거리 안일 때",
+                    "enabled": true,
+                    "when": 9,
+                    "action": 18,
+                    "condition": {
+                        "detectionShape": 0,
+                        "distance": 1.2000000476837159,
+                        "frontDistance": 5.0,
+                        "rearDistance": 1.5,
+                        "verticalRange": 2.0,
+                        "healthRatio": 0.30000001192092898,
+                        "healthValue": 0,
+                        "intervalSeconds": {
+                            "x": 1.0,
+                            "y": 2.0
+                        },
+                        "chance": 0.5,
+                        "requireLineOfSight": false,
+                        "targetMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        },
+                        "sightBlockingMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        }
+                    },
+                    "settings": {
+                        "durationSeconds": {
+                            "x": 0.800000011920929,
+                            "y": 1.7999999523162842
+                        },
+                        "moveSeconds": {
+                            "x": 1.5,
+                            "y": 3.0
+                        },
+                        "speedMultiplier": 1.0,
+                        "distance": 1.2000000476837159,
+                        "turnChance": 0.3499999940395355,
+                        "patrolPattern": 0,
+                        "followPattern": 0,
+                        "minimumFollowSeconds": 1.0,
+                        "memorySeconds": 3.0,
+                        "maxDistanceFromSpawn": 8.0,
+                        "giveUpTargetDistance": 7.0,
+                        "attackPattern": 0,
+                        "damage": 1,
+                        "attackRange": 1.2000000476837159,
+                        "prepareSeconds": 0.5,
+                        "activeSeconds": 0.15000000596046449,
+                        "recoverySeconds": 0.699999988079071,
+                        "cooldownSeconds": 0.800000011920929,
+                        "hitboxHeight": 1.2000000476837159,
+                        "targetInvulnerabilitySeconds": 1.0,
+                        "knockback": 0.0,
+                        "projectileSpeed": 6.0,
+                        "projectileLifetime": 2.5,
+                        "dashSpeedMultiplier": 3.0,
+                        "jumpForce": 5.0,
+                        "teleportDistance": 1.0,
+                        "teleportCooldown": 2.5,
+                        "allyAlertRadius": 4.0,
+                        "groundMovement": true,
+                        "smallStepHeight": 0.3499999940395355,
+                        "obstacleProbeDistance": 0.18000000715255738,
+                        "cliffProbeDistance": 0.6000000238418579,
+                        "groundMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        },
+                        "obstacleResponse": 1,
+                        "cliffResponse": 1,
+                        "motion": 0
+                    },
+                    "effect": 5,
+                    "effectSettings": {
+                        "primaryColor": {
+                            "r": 1.0,
+                            "g": 0.3199999928474426,
+                            "b": 0.11999999731779099,
+                            "a": 1.0
+                        },
+                        "secondaryColor": {
+                            "r": 1.0,
+                            "g": 0.9200000166893005,
+                            "b": 0.3499999940395355,
+                            "a": 1.0
+                        },
+                        "scale": 1.0,
+                        "duration": 0.550000011920929,
+                        "amount": 10
+                    },
+                    "conditionSound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 1.0,
+                        "isLoop": false
+                    },
+                    "actionSound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 1.0,
+                        "isLoop": false
+                    }
+                },
+                {
+                    "label": "플레이어를 놓쳤을 때",
+                    "enabled": true,
+                    "when": 6,
+                    "action": 8,
+                    "condition": {
+                        "detectionShape": 0,
+                        "distance": 1.2000000476837159,
+                        "frontDistance": 5.0,
+                        "rearDistance": 1.5,
+                        "verticalRange": 2.0,
+                        "healthRatio": 0.30000001192092898,
+                        "healthValue": 0,
+                        "intervalSeconds": {
+                            "x": 1.0,
+                            "y": 2.0
+                        },
+                        "chance": 0.5,
+                        "requireLineOfSight": false,
+                        "targetMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        },
+                        "sightBlockingMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        }
+                    },
+                    "settings": {
+                        "durationSeconds": {
+                            "x": 3.0,
+                            "y": 3.0
+                        },
+                        "moveSeconds": {
+                            "x": 1.5,
+                            "y": 3.0
+                        },
+                        "speedMultiplier": 1.399999976158142,
+                        "distance": 1.2000000476837159,
+                        "turnChance": 0.3499999940395355,
+                        "patrolPattern": 0,
+                        "followPattern": 0,
+                        "minimumFollowSeconds": 1.0,
+                        "memorySeconds": 3.0,
+                        "maxDistanceFromSpawn": 8.0,
+                        "giveUpTargetDistance": 7.0,
+                        "attackPattern": 0,
+                        "damage": 1,
+                        "attackRange": 1.2000000476837159,
+                        "prepareSeconds": 0.5,
+                        "activeSeconds": 0.15000000596046449,
+                        "recoverySeconds": 0.699999988079071,
+                        "cooldownSeconds": 0.800000011920929,
+                        "hitboxHeight": 1.2000000476837159,
+                        "targetInvulnerabilitySeconds": 1.0,
+                        "knockback": 0.20000000298023225,
+                        "projectileSpeed": 6.0,
+                        "projectileLifetime": 2.5,
+                        "dashSpeedMultiplier": 3.0,
+                        "jumpForce": 5.0,
+                        "teleportDistance": 1.0,
+                        "teleportCooldown": 2.5,
+                        "allyAlertRadius": 4.0,
+                        "groundMovement": true,
+                        "smallStepHeight": 0.3499999940395355,
+                        "obstacleProbeDistance": 0.18000000715255738,
+                        "cliffProbeDistance": 0.6000000238418579,
+                        "groundMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 65535
+                        },
+                        "obstacleResponse": 1,
+                        "cliffResponse": 4,
+                        "motion": 0
+                    },
+                    "effect": 2,
+                    "effectSettings": {
+                        "primaryColor": {
+                            "r": 1.0,
+                            "g": 0.3199999928474426,
+                            "b": 0.11999999731779099,
+                            "a": 1.0
+                        },
+                        "secondaryColor": {
+                            "r": 1.0,
+                            "g": 0.9200000166893005,
+                            "b": 0.3499999940395355,
+                            "a": 1.0
+                        },
+                        "scale": 1.0,
+                        "duration": 0.550000011920929,
+                        "amount": 10
+                    },
+                    "conditionSound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 1.0,
+                        "isLoop": false
+                    },
+                    "actionSound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 1.0,
+                        "isLoop": false
+                    }
+                },
+                {
+                    "label": "플레이어를 감지했을 때",
+                    "enabled": true,
+                    "when": 4,
+                    "action": 6,
+                    "condition": {
+                        "detectionShape": 0,
+                        "distance": 1.2000000476837159,
+                        "frontDistance": 5.0,
+                        "rearDistance": 1.5,
+                        "verticalRange": 2.0,
+                        "healthRatio": 0.30000001192092898,
+                        "healthValue": 0,
+                        "intervalSeconds": {
+                            "x": 1.0,
+                            "y": 2.0
+                        },
+                        "chance": 0.5,
+                        "requireLineOfSight": false,
+                        "targetMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 65535
+                        },
+                        "sightBlockingMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        }
+                    },
+                    "settings": {
+                        "durationSeconds": {
+                            "x": 1.5,
+                            "y": 1.5
+                        },
+                        "moveSeconds": {
+                            "x": 1.5,
+                            "y": 3.0
+                        },
+                        "speedMultiplier": 1.399999976158142,
+                        "distance": 1.2000000476837159,
+                        "turnChance": 0.3499999940395355,
+                        "patrolPattern": 0,
+                        "followPattern": 0,
+                        "minimumFollowSeconds": 1.0,
+                        "memorySeconds": 3.0,
+                        "maxDistanceFromSpawn": 8.0,
+                        "giveUpTargetDistance": 7.0,
+                        "attackPattern": 0,
+                        "damage": 1,
+                        "attackRange": 1.2000000476837159,
+                        "prepareSeconds": 0.5,
+                        "activeSeconds": 0.15000000596046449,
+                        "recoverySeconds": 0.699999988079071,
+                        "cooldownSeconds": 0.800000011920929,
+                        "hitboxHeight": 1.2000000476837159,
+                        "targetInvulnerabilitySeconds": 1.0,
+                        "knockback": 0.20000000298023225,
+                        "projectileSpeed": 6.0,
+                        "projectileLifetime": 2.5,
+                        "dashSpeedMultiplier": 3.0,
+                        "jumpForce": 5.0,
+                        "teleportDistance": 1.0,
+                        "teleportCooldown": 2.5,
+                        "allyAlertRadius": 4.0,
+                        "groundMovement": true,
+                        "smallStepHeight": 0.3499999940395355,
+                        "obstacleProbeDistance": 0.18000000715255738,
+                        "cliffProbeDistance": 0.6000000238418579,
+                        "groundMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 65535
+                        },
+                        "obstacleResponse": 4,
+                        "cliffResponse": 4,
+                        "motion": 0
+                    },
+                    "effect": 1,
+                    "effectSettings": {
+                        "primaryColor": {
+                            "r": 1.0,
+                            "g": 0.3199999928474426,
+                            "b": 0.11999999731779099,
+                            "a": 1.0
+                        },
+                        "secondaryColor": {
+                            "r": 1.0,
+                            "g": 0.9200000166893005,
+                            "b": 0.3499999940395355,
+                            "a": 1.0
+                        },
+                        "scale": 1.0,
+                        "duration": 0.550000011920929,
+                        "amount": 10
+                    },
+                    "conditionSound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 1.0,
+                        "isLoop": false
+                    },
+                    "actionSound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 1.0,
+                        "isLoop": false
+                    }
+                },
+                {
+                    "label": "타겟이 없을 때",
+                    "enabled": true,
+                    "when": 2,
+                    "action": 3,
+                    "condition": {
+                        "detectionShape": 0,
+                        "distance": 1.2000000476837159,
+                        "frontDistance": 5.0,
+                        "rearDistance": 1.5,
+                        "verticalRange": 2.0,
+                        "healthRatio": 0.30000001192092898,
+                        "healthValue": 0,
+                        "intervalSeconds": {
+                            "x": 1.0,
+                            "y": 2.0
+                        },
+                        "chance": 0.5,
+                        "requireLineOfSight": false,
+                        "targetMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        },
+                        "sightBlockingMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 4294967295
+                        }
+                    },
+                    "settings": {
+                        "durationSeconds": {
+                            "x": 0.800000011920929,
+                            "y": 1.7999999523162842
+                        },
+                        "moveSeconds": {
+                            "x": 1.5,
+                            "y": 3.0
+                        },
+                        "speedMultiplier": 1.0,
+                        "distance": 1.2000000476837159,
+                        "turnChance": 0.3499999940395355,
+                        "patrolPattern": 0,
+                        "followPattern": 0,
+                        "minimumFollowSeconds": 1.0,
+                        "memorySeconds": 3.0,
+                        "maxDistanceFromSpawn": 8.0,
+                        "giveUpTargetDistance": 7.0,
+                        "attackPattern": 0,
+                        "damage": 1,
+                        "attackRange": 1.2000000476837159,
+                        "prepareSeconds": 0.5,
+                        "activeSeconds": 0.15000000596046449,
+                        "recoverySeconds": 0.699999988079071,
+                        "cooldownSeconds": 0.800000011920929,
+                        "hitboxHeight": 1.2000000476837159,
+                        "targetInvulnerabilitySeconds": 1.0,
+                        "knockback": 0.20000000298023225,
+                        "projectileSpeed": 6.0,
+                        "projectileLifetime": 2.5,
+                        "dashSpeedMultiplier": 3.0,
+                        "jumpForce": 5.0,
+                        "teleportDistance": 1.0,
+                        "teleportCooldown": 2.5,
+                        "allyAlertRadius": 4.0,
+                        "groundMovement": true,
+                        "smallStepHeight": 0.3499999940395355,
+                        "obstacleProbeDistance": 0.18000000715255738,
+                        "cliffProbeDistance": 0.6000000238418579,
+                        "groundMask": {
+                            "serializedVersion": "2",
+                            "m_Bits": 65535
+                        },
+                        "obstacleResponse": 1,
+                        "cliffResponse": 1,
+                        "motion": 0
+                    },
+                    "effect": 0,
+                    "effectSettings": {
+                        "primaryColor": {
+                            "r": 1.0,
+                            "g": 0.3199999928474426,
+                            "b": 0.11999999731779099,
+                            "a": 1.0
+                        },
+                        "secondaryColor": {
+                            "r": 1.0,
+                            "g": 0.9200000166893005,
+                            "b": 0.3499999940395355,
+                            "a": 1.0
+                        },
+                        "scale": 1.0,
+                        "duration": 0.550000011920929,
+                        "amount": 10
+                    },
+                    "conditionSound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 1.0,
+                        "isLoop": false
+                    },
+                    "actionSound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 1.0,
+                        "isLoop": false
+                    }
+                }
+            ]
+        },
+        "player": {
+            "moveLeftKey": 61,
+            "moveRightKey": 62,
+            "runKey": 51,
+            "runSpeedMultiplier": 1.5,
+            "jumpKey": 17,
+            "jumpForce": 7.5,
+            "groundCheckRadius": 0.11999999731779099,
+            "groundMask": {
+                "serializedVersion": "2",
+                "m_Bits": 32768
+            },
+            "allowMovementDuringAttack": false,
+            "attacks": [
+                {
+                    "displayName": "가벼운 주먹",
+                    "key": 40,
+                    "damage": 1,
+                    "inputDelaySeconds": 0.10000000149011612,
+                    "activeSeconds": 0.15000000596046449,
+                    "recoverySeconds": 0.20000000298023225,
+                    "cooldownSeconds": 0.1599999964237213,
+                    "range": 1.100000023841858,
+                    "hitboxHeight": 1.100000023841858,
+                    "knockback": 0.20000000298023225,
+                    "targetInvulnerabilitySeconds": 0.10000000149011612,
+                    "comboSteps": 1,
+                    "comboInputWindowSeconds": 0.3499999940395355,
+                    "comboResetSeconds": 0.800000011920929,
+                    "sound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 0.30000001192092898,
+                        "isLoop": false
+                    },
+                    "pattern": 0,
+                    "effectPrefab": {
+                        "instanceID": 0
+                    },
+                    "effectOffset": {
+                        "x": 0.0,
+                        "y": 0.0
+                    },
+                    "projectileSpeed": 10.0,
+                    "projectileLifetime": 2.0,
+                    "projectileRadius": 0.15000000596046449,
+                    "projectileGravity": 0.0,
+                    "dashSpeed": 15.0,
+                    "obstacleMask": {
+                        "serializedVersion": "2",
+                        "m_Bits": 32768
+                    }
+                },
+                {
+                    "displayName": "나무 망치",
+                    "key": 38,
+                    "damage": 3,
+                    "inputDelaySeconds": 0.25,
+                    "activeSeconds": 0.20000000298023225,
+                    "recoverySeconds": 0.30000001192092898,
+                    "cooldownSeconds": 0.550000011920929,
+                    "range": 1.5499999523162842,
+                    "hitboxHeight": 1.100000023841858,
+                    "knockback": 0.20000000298023225,
+                    "targetInvulnerabilitySeconds": 0.10000000149011612,
+                    "comboSteps": 1,
+                    "comboInputWindowSeconds": 0.3499999940395355,
+                    "comboResetSeconds": 0.800000011920929,
+                    "sound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 0.30000001192092898,
+                        "isLoop": false
+                    },
+                    "pattern": 0,
+                    "effectPrefab": {
+                        "instanceID": 0
+                    },
+                    "effectOffset": {
+                        "x": 0.0,
+                        "y": 0.0
+                    },
+                    "projectileSpeed": 10.0,
+                    "projectileLifetime": 2.0,
+                    "projectileRadius": 0.15000000596046449,
+                    "projectileGravity": 0.0,
+                    "dashSpeed": 15.0,
+                    "obstacleMask": {
+                        "serializedVersion": "2",
+                        "m_Bits": 32768
+                    }
+                },
+                {
+                    "displayName": "뿌리 꿰뚫기",
+                    "key": 15,
+                    "damage": 3,
+                    "inputDelaySeconds": 0.18000000715255738,
+                    "activeSeconds": 0.47999998927116396,
+                    "recoverySeconds": 0.18000000715255738,
+                    "cooldownSeconds": 1.0,
+                    "range": 5.0,
+                    "hitboxHeight": 1.100000023841858,
+                    "knockback": 0.20000000298023225,
+                    "targetInvulnerabilitySeconds": 0.10000000149011612,
+                    "comboSteps": 1,
+                    "comboInputWindowSeconds": 0.3499999940395355,
+                    "comboResetSeconds": 0.800000011920929,
+                    "sound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 0.30000001192092898,
+                        "isLoop": false
+                    },
+                    "pattern": 1,
+                    "effectPrefab": {
+                        "instanceID": 0
+                    },
+                    "effectOffset": {
+                        "x": 0.0,
+                        "y": 0.03999999910593033
+                    },
+                    "projectileSpeed": 10.0,
+                    "projectileLifetime": 2.0,
+                    "projectileRadius": 0.15000000596046449,
+                    "projectileGravity": 0.0,
+                    "dashSpeed": 15.0,
+                    "obstacleMask": {
+                        "serializedVersion": "2",
+                        "m_Bits": 32768
+                    }
+                },
+                {
+                    "displayName": "도토리 던지기",
+                    "key": 33,
+                    "damage": 2,
+                    "inputDelaySeconds": 0.2199999988079071,
+                    "activeSeconds": 0.11999999731779099,
+                    "recoverySeconds": 0.2199999988079071,
+                    "cooldownSeconds": 0.5,
+                    "range": 1.0,
+                    "hitboxHeight": 1.100000023841858,
+                    "knockback": 0.20000000298023225,
+                    "targetInvulnerabilitySeconds": 0.10000000149011612,
+                    "comboSteps": 1,
+                    "comboInputWindowSeconds": 0.3499999940395355,
+                    "comboResetSeconds": 0.800000011920929,
+                    "sound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 0.30000001192092898,
+                        "isLoop": false
+                    },
+                    "pattern": 2,
+                    "effectPrefab": {
+                        "instanceID": 0
+                    },
+                    "effectOffset": {
+                        "x": 0.0,
+                        "y": 0.0
+                    },
+                    "projectileSpeed": 11.0,
+                    "projectileLifetime": 1.7999999523162842,
+                    "projectileRadius": 0.18000000715255738,
+                    "projectileGravity": 0.0,
+                    "dashSpeed": 15.0,
+                    "obstacleMask": {
+                        "serializedVersion": "2",
+                        "m_Bits": 32768
+                    }
+                },
+                {
+                    "displayName": "도토리 돌진",
+                    "key": 18,
+                    "damage": 2,
+                    "inputDelaySeconds": 0.10000000149011612,
+                    "activeSeconds": 0.23999999463558198,
+                    "recoverySeconds": 0.20000000298023225,
+                    "cooldownSeconds": 1.0,
+                    "range": 1.2999999523162842,
+                    "hitboxHeight": 1.100000023841858,
+                    "knockback": 0.20000000298023225,
+                    "targetInvulnerabilitySeconds": 0.10000000149011612,
+                    "comboSteps": 1,
+                    "comboInputWindowSeconds": 0.3499999940395355,
+                    "comboResetSeconds": 0.800000011920929,
+                    "sound": {
+                        "delaySeconds": 0.0,
+                        "audioClip": {
+                            "instanceID": 0
+                        },
+                        "volume": 0.30000001192092898,
+                        "isLoop": false
+                    },
+                    "pattern": 3,
+                    "effectPrefab": {
+                        "instanceID": 0
+                    },
+                    "effectOffset": {
+                        "x": -1.0499999523162842,
+                        "y": 0.0
+                    },
+                    "projectileSpeed": 10.0,
+                    "projectileLifetime": 2.0,
+                    "projectileRadius": 0.15000000596046449,
+                    "projectileGravity": 0.0,
+                    "dashSpeed": 17.0,
+                    "obstacleMask": {
+                        "serializedVersion": "2",
+                        "m_Bits": 32768
+                    }
+                }
+            ],
+            "walkSound": {
+                "delaySeconds": 0.0,
+                "audioClip": {
+                    "instanceID": 0
+                },
+                "volume": 1.0,
+                "isLoop": true
+            },
+            "runSound": {
+                "delaySeconds": 0.0,
+                "audioClip": {
+                    "instanceID": 0
+                },
+                "volume": 1.0,
+                "isLoop": true
+            },
+            "jumpSound": {
+                "delaySeconds": 0.0,
+                "audioClip": {
+                    "instanceID": 0
+                },
+                "volume": 0.30000001192092898,
+                "isLoop": false
+            }
+        }
+    },
+    "assetReferences": [
+        {
+            "field": "animatorController",
+            "guid": "032c2fd59ac85b14981de9b4157cb086",
+            "localId": 9100000,
+            "assetPath": "Assets/Resources/2DObjectMaker/Animators/AcornPlayer.controller",
+            "assetName": "AcornPlayer",
+            "type": "UnityEditor.Animations.AnimatorController"
+        },
+        {
+            "field": "hit.sound.audioClip",
+            "guid": "67efe81123024d642b7ff08219c74874",
+            "localId": 8300000,
+            "assetPath": "Assets/Resources/Audio/Main/MetalHit.wav",
+            "assetName": "MetalHit",
+            "type": "UnityEngine.AudioClip"
+        },
+        {
+            "field": "player.attacks[0].sound.audioClip",
+            "guid": "1e84889a21a70794da7be00411c012cb",
+            "localId": 8300000,
+            "assetPath": "Assets/Resources/Audio/Main/IceSlash.wav",
+            "assetName": "IceSlash",
+            "type": "UnityEngine.AudioClip"
+        },
+        {
+            "field": "player.attacks[1].sound.audioClip",
+            "guid": "1e84889a21a70794da7be00411c012cb",
+            "localId": 8300000,
+            "assetPath": "Assets/Resources/Audio/Main/IceSlash.wav",
+            "assetName": "IceSlash",
+            "type": "UnityEngine.AudioClip"
+        },
+        {
+            "field": "player.attacks[2].sound.audioClip",
+            "guid": "1e84889a21a70794da7be00411c012cb",
+            "localId": 8300000,
+            "assetPath": "Assets/Resources/Audio/Main/IceSlash.wav",
+            "assetName": "IceSlash",
+            "type": "UnityEngine.AudioClip"
+        },
+        {
+            "field": "player.attacks[2].effectPrefab",
+            "guid": "81a008aeb43f42441a214abf7edc5c5d",
+            "localId": 5841110909042122845,
+            "assetPath": "Assets/Resources/Prefabs/Skills/AcornWoodThrust.prefab",
+            "assetName": "AcornWoodThrust",
+            "type": "UnityEngine.GameObject"
+        },
+        {
+            "field": "player.attacks[3].sound.audioClip",
+            "guid": "1e84889a21a70794da7be00411c012cb",
+            "localId": 8300000,
+            "assetPath": "Assets/Resources/Audio/Main/IceSlash.wav",
+            "assetName": "IceSlash",
+            "type": "UnityEngine.AudioClip"
+        },
+        {
+            "field": "player.attacks[3].effectPrefab",
+            "guid": "09b53b6a095f431429ef527b3a14d06e",
+            "localId": 5406314685379861049,
+            "assetPath": "Assets/Resources/Prefabs/Skills/AcornThrow.prefab",
+            "assetName": "AcornThrow",
+            "type": "UnityEngine.GameObject"
+        },
+        {
+            "field": "player.attacks[4].sound.audioClip",
+            "guid": "1e84889a21a70794da7be00411c012cb",
+            "localId": 8300000,
+            "assetPath": "Assets/Resources/Audio/Main/IceSlash.wav",
+            "assetName": "IceSlash",
+            "type": "UnityEngine.AudioClip"
+        },
+        {
+            "field": "player.attacks[4].effectPrefab",
+            "guid": "e59846252a0a6b640a0676ce3543c84d",
+            "localId": 3258412728806366893,
+            "assetPath": "Assets/Resources/Prefabs/Skills/AcornDashTrail.prefab",
+            "assetName": "AcornDashTrail",
+            "type": "UnityEngine.GameObject"
+        },
+        {
+            "field": "player.jumpSound.audioClip",
+            "guid": "ee8b39f58f9f6bf479075f99415c9695",
+            "localId": 8300000,
+            "assetPath": "Assets/Resources/Audio/Main/Jump.wav",
+            "assetName": "Jump",
+            "type": "UnityEngine.AudioClip"
+        }
+    ]
+}

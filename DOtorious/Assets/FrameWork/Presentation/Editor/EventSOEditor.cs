@@ -2197,6 +2197,13 @@ public class EventSOEditor : Editor
             EditorGUI.indentLevel++;
             var objNameProp = elem.FindPropertyRelative("objectName");
             if (objNameProp != null) { EditorGUILayout.LabelField("Object Name (Empty = Caller)"); EditorGUILayout.PropertyField(objNameProp, GUIContent.none); }
+            var loadingProp = elem.FindPropertyRelative("ShowLoadingScreen");
+            if (loadingProp != null)
+            {
+                EditorGUILayout.PropertyField(loadingProp, new GUIContent("맵 이동 로딩"));
+                if (loadingProp.boolValue)
+                    EditorGUILayout.PropertyField(elem.FindPropertyRelative("LoadingDuration"), new GUIContent("로딩 화면 시간 (초)"));
+            }
             var isRelativeProp = elem.FindPropertyRelative("isRelative");
             bool isRelativePrecheck = isRelativeProp != null && isRelativeProp.boolValue;
             if (!isRelativePrecheck)

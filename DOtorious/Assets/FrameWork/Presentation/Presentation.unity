@@ -177,6 +177,7 @@ MonoBehaviour:
   portraitSpeechPrefab: {fileID: 1000, guid: 1db1c052f1234abb859c16ea6e733115, type: 3}
   screenFlashPrefab: {fileID: 6000, guid: a4a3efac602d45659a865cef9dded39e, type: 3}
   speechBubblePrefab: {fileID: 8057697975183847726, guid: 70dc85ec6adfcda48b20550ff528f8af, type: 3}
+  loadingScreenPrefab: {fileID: 100000, guid: b8cf08137fd947a8bccdf66c357fd352, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

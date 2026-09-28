@@ -26,6 +26,7 @@ namespace Dotorious.Winter
         public Transform enemyRoot;
         public Vector3 checkpoint;
         public int defeated;
+        [SerializeField] private MainMapArea2D currentMap;
         private bool started;
         private bool respawning;
         private bool finished;
@@ -35,6 +36,7 @@ namespace Dotorious.Winter
         public bool HasStarted => started;
         public bool IsFinished => finished;
         public string CheckpointName => checkpointName;
+        public MainMapArea2D CurrentMap => currentMap;
 
         private void Awake()
         {
@@ -73,7 +75,7 @@ namespace Dotorious.Winter
                 if (hud != null) hud.SetActive(true);
             }
             if (player == null || respawning) return;
-            if (!finished && player.transform.position.y < -6f)
+            if (!finished && Time.timeScale > 0f && player.transform.position.y < (currentMap != null ? currentMap.FallY : -6f))
                 StartCoroutine(Respawn(false));
             float x = Mathf.Clamp(player.transform.position.x, 0f, 300f);
             if (healthText != null) healthText.text = "HP  " + player.CurrentHealth + " / " + player.MaxHealth;
@@ -81,6 +83,22 @@ namespace Dotorious.Winter
             if (healthFill != null) healthFill.fillAmount = player.CurrentHealthRatio;
             if (progressFill != null) progressFill.fillAmount = x / 300f;
             if (areaText != null) areaText.text = AreaName(x);
+            if (currentMap != null && currentMap.gameObject != gameObject)
+            {
+                Bounds bounds = currentMap.GroundBounds;
+                float length = Mathf.Max(1f, bounds.size.x);
+                float distance = Mathf.Clamp(player.transform.position.x - bounds.min.x, 0f, length);
+                if (distanceText != null) distanceText.text = Mathf.FloorToInt(distance) + " / " + Mathf.CeilToInt(length) + " m";
+                if (progressFill != null) progressFill.fillAmount = distance / length;
+                if (areaText != null) areaText.text = currentMap.displayName;
+            }
+        }
+
+        public void EnterMap(MainMapArea2D map)
+        {
+            if (map == null || map.entryPoint == null) return;
+            currentMap = map;
+            SetCheckpoint(map.entryPoint.position, map.displayName);
         }
 
         public void SetCheckpoint(Vector3 position, string label)
@@ -154,4 +172,3 @@ namespace Dotorious.Winter
         }
     }
 }
-

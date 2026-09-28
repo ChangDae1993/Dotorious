@@ -46,6 +46,7 @@ namespace JYW.Game.EventPlay
         [SerializeField] private GameObject portraitSpeechPrefab;
         [SerializeField] private GameObject screenFlashPrefab;
         [SerializeField] private GameObject speechBubblePrefab;
+        [SerializeField] private GameObject loadingScreenPrefab;
 
         private GameObject fadeCanvas = null;
         private CanvasGroup fadeCanvasGroup = null;
@@ -1471,6 +1472,21 @@ namespace JYW.Game.EventPlay
                         GameObject go = string.IsNullOrEmpty(move.objectName) ? caller : ResolveByName(move.objectName);
                         if (go == null && !string.IsNullOrEmpty(move.objectName)) { go = ResolveByName(move.objectName); if (go != null) AddToCacheIfNeeded(go); }
                         if (go == null) continue;
+
+                        if (move.ShowLoadingScreen && !move.isDrawer)
+                        {
+                            GameObject loadingInstance = loadingScreenPrefab != null ? Instantiate(loadingScreenPrefab) : null;
+                            if (loadingInstance == null)
+                                Debug.LogWarning("맵 이동 로딩: LoadingScreen 프리팹이 연결되지 않았습니다.", this);
+                            Action cleanup = () =>
+                            {
+                                if (loadingInstance == null) return;
+                                loadingInstance.GetComponent<LoadingScreenCanvas>()?.ReleasePause();
+                                Destroy(loadingInstance);
+                            };
+                            StartCoroutine(RunRoutine(MapMoveWithLoading(go, move, cleanup), cleanup));
+                            continue;
+                        }
 
                         if (move.isDrawer)
                         {
@@ -4207,7 +4223,43 @@ namespace JYW.Game.EventPlay
             actionMap.Remove(actionName);
         }
 
-        private IEnumerator MoveRoutineCustom(GameObject target, Vector3 startPos, Vector3 goalPos, float duration, MoveObjectSubData move, bool useLocal)
+        private IEnumerator MapMoveWithLoading(GameObject target, MoveObjectSubData move, Action cleanup)
+        {
+            try
+            {
+                // Real time: loading is visible even while gameplay is paused. The next Phase waits for this routine.
+                if (target == null) yield break;
+                float began = Time.realtimeSinceStartup;
+                Vector3 start = target.transform.position;
+                if (move.IsAnotherStartPosition)
+                {
+                    var basis = move.startIsRelative ? ResolveByName(move.startTargetName) : null;
+                    Transform relativeStart = basis != null ? basis.transform : target.transform;
+                    start = move.startIsRelative
+                        ? relativeStart.position + relativeStart.right * move.startPosition.x + relativeStart.up * move.startPosition.y + relativeStart.forward * move.startPosition.z
+                        : move.startPosition;
+                }
+                var goalBasis = move.isRelative ? ResolveByName(move.targetName) : null;
+                Transform relative = goalBasis != null ? goalBasis.transform : target.transform;
+                Vector3 goal = move.isRelative
+                    ? relative.position + relative.right * move.targetPosition.x + relative.up * move.targetPosition.y + relative.forward * move.targetPosition.z
+                    : move.targetPosition;
+                var body = target.GetComponent<Rigidbody2D>();
+                if (body != null) { body.linearVelocity = Vector2.zero; body.angularVelocity = 0f; }
+                // A map transfer is performed while the screen is opaque; ordinary MoveObject is unchanged.
+                if (move.Duration > 0f)
+                    yield return MoveRoutineCustom(target, start, goal, move.Duration, move, false, true);
+                if (target == null) yield break;
+                target.transform.position = goal;
+                if (body != null) body.position = goal;
+                Physics2D.SyncTransforms();
+                float remaining = Mathf.Max(0f, move.LoadingDuration) - (Time.realtimeSinceStartup - began);
+                if (remaining > 0f) yield return new WaitForSecondsRealtime(remaining);
+            }
+            finally { cleanup(); }
+        }
+
+        private IEnumerator MoveRoutineCustom(GameObject target, Vector3 startPos, Vector3 goalPos, float duration, MoveObjectSubData move, bool useLocal, bool unscaled = false)
         {
             if (target == null) yield break;
             duration = Mathf.Max(0f, duration);
@@ -4222,7 +4274,8 @@ namespace JYW.Game.EventPlay
                     float t = 0f;
                     while (t < duration)
                     {
-                        t += Time.deltaTime; float k = Mathf.Clamp01(t / duration);
+                        if (target == null) yield break;
+                        t += unscaled ? Time.unscaledDeltaTime : Time.deltaTime; float k = Mathf.Clamp01(t / duration);
                         Vector3 pos = Vector3.Lerp(startPos, goalPos, k);
                         if (useLocal) target.transform.localPosition = pos; else target.transform.position = pos;
                         yield return null;
@@ -4241,7 +4294,8 @@ namespace JYW.Game.EventPlay
                     float t = 0f;
                     while (t < duration)
                     {
-                        t += Time.deltaTime; float k = Mathf.Clamp01(t / duration);
+                        if (target == null) yield break;
+                        t += unscaled ? Time.unscaledDeltaTime : Time.deltaTime; float k = Mathf.Clamp01(t / duration);
                         float angle = 2f * Mathf.PI * turns * k;
                         float r = radius * (1f - k);
                         Vector3 pos = Vector3.Lerp(startPos, goalPos, k) + right * Mathf.Cos(angle) * r + up * Mathf.Sin(angle) * r;
@@ -4261,7 +4315,8 @@ namespace JYW.Game.EventPlay
                     float t = 0f;
                     while (t < duration)
                     {
-                        t += Time.deltaTime; float k = Mathf.Clamp01(t / duration);
+                        if (target == null) yield break;
+                        t += unscaled ? Time.unscaledDeltaTime : Time.deltaTime; float k = Mathf.Clamp01(t / duration);
                         float phase = 2f * Mathf.PI * freq * t;
                         Vector3 pos = Vector3.Lerp(startPos, goalPos, k) + perp * Mathf.Sin(phase) * amp;
                         if (useLocal) target.transform.localPosition = pos; else target.transform.position = pos;
@@ -4276,7 +4331,8 @@ namespace JYW.Game.EventPlay
                     float t = 0f;
                     while (t < duration)
                     {
-                        t += Time.deltaTime; float k = Mathf.Clamp01(t / duration);
+                        if (target == null) yield break;
+                        t += unscaled ? Time.unscaledDeltaTime : Time.deltaTime; float k = Mathf.Clamp01(t / duration);
                         float bouncePhase = k * bounces;
                         float frac = bouncePhase - Mathf.Floor(bouncePhase);
                         float h = 4f * frac * (1f - frac) * height * (1f - k);
@@ -4292,7 +4348,8 @@ namespace JYW.Game.EventPlay
                     float t = 0f;
                     while (t < duration)
                     {
-                        t += Time.deltaTime; float k = Mathf.Clamp01(t / duration);
+                        if (target == null) yield break;
+                        t += unscaled ? Time.unscaledDeltaTime : Time.deltaTime; float k = Mathf.Clamp01(t / duration);
                         float eased = k < 0.5f
                             ? Mathf.Pow(2f * k, exp) * 0.5f
                             : 1f - Mathf.Pow(2f * (1f - k), exp) * 0.5f;
@@ -4308,7 +4365,8 @@ namespace JYW.Game.EventPlay
                     float t = 0f;
                     while (t < duration)
                     {
-                        t += Time.deltaTime; float k = Mathf.Clamp01(t / duration);
+                        if (target == null) yield break;
+                        t += unscaled ? Time.unscaledDeltaTime : Time.deltaTime; float k = Mathf.Clamp01(t / duration);
                         float h = 4f * k * (1f - k) * arcH;
                         Vector3 pos = Vector3.Lerp(startPos, goalPos, k) + Vector3.up * h;
                         if (useLocal) target.transform.localPosition = pos; else target.transform.position = pos;
@@ -4324,7 +4382,8 @@ namespace JYW.Game.EventPlay
                     float t = 0f;
                     while (t < duration)
                     {
-                        t += Time.deltaTime; float k = Mathf.Clamp01(t / duration);
+                        if (target == null) yield break;
+                        t += unscaled ? Time.unscaledDeltaTime : Time.deltaTime; float k = Mathf.Clamp01(t / duration);
                         float baseY = Mathf.Lerp(startY, endY, k);
                         float parabolaY = baseY + 4f * peakH * k * (1f - k);
                         Vector3 pos = Vector3.Lerp(startPos, goalPos, k);

@@ -47,5 +47,23 @@ namespace JYW.Game.ObjectMaker.Editor.Tests
             var imported=ObjectMakerJson.ImportFile(path,out var warnings);
             Assert.That(imported.displayName,Is.EqualTo(data.displayName));Assert.That(warnings,Is.Empty);
         }
+        [Test] public void SkillPatternAndEffectPrefabRoundTrip()
+        {
+            var go=new GameObject("SkillVisual");
+            var prefab=PrefabUtility.SaveAsPrefabAsset(go,Folder+"/SkillVisual.prefab");
+            UnityEngine.Object.DestroyImmediate(go);
+            var data=new ObjectDefinitionData();
+            data.player.attacks[0].pattern=ObjectPlayerAttackPattern.Projectile;
+            data.player.attacks[0].effectPrefab=prefab;
+            data.player.attacks[0].projectileSpeed=12.5f;
+            data.player.attacks[0].projectileRadius=.23f;
+            var imported=ObjectMakerJson.Import(ObjectMakerJson.Export(data),out var warnings);
+            Assert.That(warnings,Is.Empty);
+            Assert.AreEqual(ObjectPlayerAttackPattern.Projectile,imported.player.attacks[0].pattern);
+            Assert.AreSame(prefab,imported.player.attacks[0].effectPrefab);
+            Assert.AreEqual(12.5f,imported.player.attacks[0].projectileSpeed);
+            Assert.AreEqual(.23f,imported.player.attacks[0].projectileRadius);
+            Assert.AreSame(prefab,data.player.attacks[0].effectPrefab);
+        }
     }
 }

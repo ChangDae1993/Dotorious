@@ -445,9 +445,29 @@ namespace JYW.Game.ObjectMaker.Editor
                         "공격 후 딜레이", attack.recoverySeconds);
                     attack.cooldownSeconds = EditorGUILayout.FloatField(
                         "재사용 대기시간", attack.cooldownSeconds);
-                    attack.range = EditorGUILayout.FloatField("공격 거리", attack.range);
-                    attack.hitboxHeight = EditorGUILayout.FloatField(
-                        "공격 판정 높이", attack.hitboxHeight);
+                    attack.pattern = (ObjectPlayerAttackPattern)EditorGUILayout.EnumPopup("공격 방식", attack.pattern);
+                    if (attack.pattern != ObjectPlayerAttackPattern.Melee)
+                    {
+                        attack.effectPrefab = (GameObject)EditorGUILayout.ObjectField("스킬 연출 프리팹", attack.effectPrefab, typeof(GameObject), false);
+                        attack.effectOffset = EditorGUILayout.Vector2Field("연출 위치 (전방 / 높이)", attack.effectOffset);
+                        if (attack.pattern == ObjectPlayerAttackPattern.Projectile)
+                        {
+                            attack.projectileSpeed = EditorGUILayout.FloatField("투사체 속도", attack.projectileSpeed);
+                            attack.projectileLifetime = EditorGUILayout.FloatField("투사체 수명", attack.projectileLifetime);
+                            attack.projectileRadius = EditorGUILayout.FloatField("투사체 반경", attack.projectileRadius);
+                            attack.projectileGravity = EditorGUILayout.FloatField("투사체 중력", attack.projectileGravity);
+                        }
+                        if (attack.pattern == ObjectPlayerAttackPattern.Dash)
+                            attack.dashSpeed = EditorGUILayout.FloatField("돌진 속도", attack.dashSpeed);
+                        if (attack.pattern == ObjectPlayerAttackPattern.Dash || attack.pattern == ObjectPlayerAttackPattern.Projectile)
+                            attack.obstacleMask = DrawLayerMask("지형/장애물 레이어", attack.obstacleMask);
+                        EditorGUILayout.HelpBox("투사체/돌진은 지형에 막힙니다. 연출 프리팹은 SpriteRenderer + ObjectSkillVisual2D로 교체할 수 있습니다.", MessageType.None);
+                    }
+                    if (attack.pattern != ObjectPlayerAttackPattern.Projectile)
+                    {
+                        attack.range = EditorGUILayout.FloatField("공격 거리", attack.range);
+                        attack.hitboxHeight = EditorGUILayout.FloatField("공격 판정 높이", attack.hitboxHeight);
+                    }
                     attack.knockback = EditorGUILayout.FloatField("넉백", attack.knockback);
                     attack.targetInvulnerabilitySeconds = EditorGUILayout.FloatField(
                         "대상 피격 무적", attack.targetInvulnerabilitySeconds);

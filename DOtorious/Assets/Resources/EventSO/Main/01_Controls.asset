@@ -96,10 +96,8 @@ MonoBehaviour:
       SpeechBubble:
         GameObjectName: Player
         SpeechBubbleTexts:
-        - Duration: 3.5
-          Text: "\uC624\uB978\uCABD\uC73C\uB85C \uAC00 \uBCF4\uC790.\n\u2190 \u2192
-            \uC774\uB3D9 \xB7 Shift \uB2EC\uB9AC\uAE30 \xB7 Space \uC810\uD504 \xB7
-            A \uACF5\uACA9"
+          - Duration: 3.5
+            Text: "오른쪽으로 가 보자.\n← → 이동 · Shift 달리기 · C 점프\nZ 약공격 · X 강공격 · A 뿌리 · S 던지기 · D 돌진"
         isTyping: 1
     Scenes:
       IsSetActiveScene: 0

@@ -115,6 +115,11 @@ MonoBehaviour:
         AdvanceKey: 0
         IsTyping: 0
         Lines: []
+      IsSpeechBubble: 0
+      SpeechBubble:
+        GameObjectName: 
+        SpeechBubbleTexts: []
+        isTyping: 0
     Scenes:
       IsSetActiveScene: 0
       IsSceneChange: 0
@@ -231,6 +236,8 @@ MonoBehaviour:
           ParabolaPeakHeight: 0
           isDrawer: 0
           drawerOffset: {x: 0, y: 0, z: 0}
+          ShowLoadingScreen: 1
+          LoadingDuration: 2
       RotateObject:
         ObjectName: 
         isLookAt: 0

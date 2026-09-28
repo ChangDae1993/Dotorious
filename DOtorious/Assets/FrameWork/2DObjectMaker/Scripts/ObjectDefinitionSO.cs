@@ -123,6 +123,8 @@ namespace JYW.Game.ObjectMaker
         Jump
     }
 
+    public enum ObjectPlayerAttackPattern { Melee, GrowingThrust, Projectile, Dash }
+
     [Serializable]
     public sealed class ObjectPlayerAttack
     {
@@ -143,6 +145,17 @@ namespace JYW.Game.ObjectMaker
 
         // 새 필드는 기존 Object Definition 직렬화 순서를 보존하기 위해 끝에 추가합니다.
         public ObjectSoundCue2D sound = new ObjectSoundCue2D();
+
+        // Melee = 0 preserves existing definitions. Visuals are optional; damage never depends on them.
+        public ObjectPlayerAttackPattern pattern;
+        public GameObject effectPrefab;
+        public Vector2 effectOffset;
+        [Min(0.01f)] public float projectileSpeed = 10f;
+        [Min(0.01f)] public float projectileLifetime = 2f;
+        [Min(0.01f)] public float projectileRadius = 0.15f;
+        [Min(0f)] public float projectileGravity;
+        [Min(0f)] public float dashSpeed = 15f;
+        public LayerMask obstacleMask = ~0;
 
         public ObjectPlayerAttack Clone()
         {
@@ -170,6 +183,11 @@ namespace JYW.Game.ObjectMaker
             comboResetSeconds = Mathf.Max(0f, comboResetSeconds);
             sound = sound ?? new ObjectSoundCue2D();
             sound.Sanitize();
+            projectileSpeed = Mathf.Max(0.01f, projectileSpeed);
+            projectileLifetime = Mathf.Max(0.01f, projectileLifetime);
+            projectileRadius = Mathf.Max(0.01f, projectileRadius);
+            projectileGravity = Mathf.Max(0f, projectileGravity);
+            dashSpeed = Mathf.Max(0f, dashSpeed);
         }
     }
 
