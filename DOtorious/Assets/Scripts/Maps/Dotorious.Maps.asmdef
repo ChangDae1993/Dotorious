@@ -1,0 +1,4 @@
+{
+  "name": "Dotorious.Maps",
+  "references": ["JYW.ObjectMaker.Runtime", "UnityEngine.UI", "Unity.InputSystem"]
+}

@@ -1,0 +1,617 @@
+fileFormatVersion: 2
+guid: 0ce770efffeb9ca47847a4f4f4e533fd
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -3196099646598507696
+    second: SeasonalSceneryAtlas_0
+  - first:
+      213: 2356809935013355042
+    second: SeasonalSceneryAtlas_1
+  - first:
+      213: -4401068081408557987
+    second: SeasonalSceneryAtlas_2
+  - first:
+      213: -5438346483345333230
+    second: SeasonalSceneryAtlas_3
+  - first:
+      213: -4750070260824434985
+    second: SeasonalSceneryAtlas_4
+  - first:
+      213: 425647288613157460
+    second: SeasonalSceneryAtlas_5
+  - first:
+      213: -4112960215110555808
+    second: SeasonalSceneryAtlas_6
+  - first:
+      213: 9176196206575070891
+    second: SeasonalSceneryAtlas_7
+  - first:
+      213: 3184812982728560302
+    second: SeasonalSceneryAtlas_8
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 4096
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Scenery_v01
+      rect:
+        serializedVersion: 2
+        x: 2
+        y: 398
+        width: 393
+        height: 393
+      alignment: 9
+      pivot: {x: 0.5, y: 0.07}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 477c4e4c5736c874781873fa1b1bab6c
+      internalID: -1370217949
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Decoration_v01
+      rect:
+        serializedVersion: 2
+        x: 273.93
+        y: 415.85
+        width: 119.100006
+        height: 95.28
+      alignment: 9
+      pivot: {x: 0.5, y: 0.05}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1e48f0ddeaaf45b46ad6317df588c3ed
+      internalID: -1005080430
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scenery_v02
+      rect:
+        serializedVersion: 2
+        x: 399
+        y: 398
+        width: 392
+        height: 393
+      alignment: 9
+      pivot: {x: 0.5, y: 0.07}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 425c8589cdc21924f94f026f240b5b87
+      internalID: 614474569
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Decoration_v02
+      rect:
+        serializedVersion: 2
+        x: 670.24
+        y: 415.85
+        width: 118.8
+        height: 95.28
+      alignment: 9
+      pivot: {x: 0.5, y: 0.05}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: fb9947b7168ace942858d21e3576ecb4
+      internalID: -1953619237
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scenery_v03
+      rect:
+        serializedVersion: 2
+        x: 795
+        y: 398
+        width: 393
+        height: 393
+      alignment: 9
+      pivot: {x: 0.5, y: 0.07}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 764a88c5f672d4e4988e98e21b2e6b4c
+      internalID: -836441640
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Decoration_v03
+      rect:
+        serializedVersion: 2
+        x: 1066.93
+        y: 415.85
+        width: 119.100006
+        height: 95.28
+      alignment: 9
+      pivot: {x: 0.5, y: 0.05}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 973b007ed6bb0494987adfb0339b83dd
+      internalID: -1018262370
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scenery_v04
+      rect:
+        serializedVersion: 2
+        x: 1192
+        y: 398
+        width: 392
+        height: 393
+      alignment: 9
+      pivot: {x: 0.5, y: 0.07}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d2690befe96c2c243a5f7dbc87dea019
+      internalID: -373115696
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Decoration_v04
+      rect:
+        serializedVersion: 2
+        x: 1463.24
+        y: 415.85
+        width: 118.8
+        height: 95.28
+      alignment: 9
+      pivot: {x: 0.5, y: 0.05}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5a8387e56e669cb4982cfa9cf1106a09
+      internalID: 300450101
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scenery_v05
+      rect:
+        serializedVersion: 2
+        x: 1588
+        y: 398
+        width: 393
+        height: 393
+      alignment: 9
+      pivot: {x: 0.5, y: 0.07}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 70618f112b8050842bc7e0836224eb6b
+      internalID: -2047768675
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Decoration_v05
+      rect:
+        serializedVersion: 2
+        x: 1859.93
+        y: 415.85
+        width: 119.100006
+        height: 95.28
+      alignment: 9
+      pivot: {x: 0.5, y: 0.05}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: dbed0d7d7b314db40a3691b29d47ce15
+      internalID: -147181529
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scenery_v06
+      rect:
+        serializedVersion: 2
+        x: 2
+        y: 2
+        width: 393
+        height: 392
+      alignment: 9
+      pivot: {x: 0.5, y: 0.07}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: b238d71add1e1a94ebd367887db64ecf
+      internalID: 966721331
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Decoration_v06
+      rect:
+        serializedVersion: 2
+        x: 273.93
+        y: 19.800001
+        width: 119.100006
+        height: 95.04
+      alignment: 9
+      pivot: {x: 0.5, y: 0.05}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 799b23142baed8947bc884f31538e9da
+      internalID: 186831387
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scenery_v07
+      rect:
+        serializedVersion: 2
+        x: 399
+        y: 2
+        width: 392
+        height: 392
+      alignment: 9
+      pivot: {x: 0.5, y: 0.07}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8c369f347a16ec34c896d1424ded18a5
+      internalID: 4883543
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Decoration_v07
+      rect:
+        serializedVersion: 2
+        x: 670.24
+        y: 19.800001
+        width: 118.8
+        height: 95.04
+      alignment: 9
+      pivot: {x: 0.5, y: 0.05}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 7f16e84f06b0c514eb1f0c8ef3a1f8f1
+      internalID: 969851042
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scenery_v08
+      rect:
+        serializedVersion: 2
+        x: 795
+        y: 2
+        width: 393
+        height: 392
+      alignment: 9
+      pivot: {x: 0.5, y: 0.07}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 552aa56160e4e8042a04a6fceacca45e
+      internalID: 178358043
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Decoration_v08
+      rect:
+        serializedVersion: 2
+        x: 1066.93
+        y: 19.800001
+        width: 119.100006
+        height: 95.04
+      alignment: 9
+      pivot: {x: 0.5, y: 0.05}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1b314efe145ec2b41a8eb47c18ee97c5
+      internalID: -880613432
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scenery_v09
+      rect:
+        serializedVersion: 2
+        x: 1192
+        y: 2
+        width: 392
+        height: 392
+      alignment: 9
+      pivot: {x: 0.5, y: 0.07}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 3073e52bbd2090d40b0d9ff70149a99b
+      internalID: -965197860
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Decoration_v09
+      rect:
+        serializedVersion: 2
+        x: 1463.24
+        y: 19.800001
+        width: 118.8
+        height: 95.04
+      alignment: 9
+      pivot: {x: 0.5, y: 0.05}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: af7b8e1a95e8578418b6b97728f2d94f
+      internalID: 89301908
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Scenery_v10
+      rect:
+        serializedVersion: 2
+        x: 1588
+        y: 2
+        width: 393
+        height: 392
+      alignment: 9
+      pivot: {x: 0.5, y: 0.07}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: cf1fe629d090c1d4992b0122b0ffe7cb
+      internalID: -1255512881
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Decoration_v10
+      rect:
+        serializedVersion: 2
+        x: 1859.93
+        y: 19.800001
+        width: 119.100006
+        height: 95.04
+      alignment: 9
+      pivot: {x: 0.5, y: 0.05}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 35edb1070e3aa3e4296299fe8c18d13b
+      internalID: 1716046189
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: e37bddc5dbca6b74aa688e1a45e85f80
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Decoration_v01: -1005080430
+      Decoration_v02: -1953619237
+      Decoration_v03: -1018262370
+      Decoration_v04: 300450101
+      Decoration_v05: -147181529
+      Decoration_v06: 186831387
+      Decoration_v07: 969851042
+      Decoration_v08: -880613432
+      Decoration_v09: 89301908
+      Decoration_v10: 1716046189
+      Scenery_v01: -1370217949
+      Scenery_v02: 614474569
+      Scenery_v03: -836441640
+      Scenery_v04: -373115696
+      Scenery_v05: -2047768675
+      Scenery_v06: 966721331
+      Scenery_v07: 4883543
+      Scenery_v08: 178358043
+      Scenery_v09: -965197860
+      Scenery_v10: -1255512881
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

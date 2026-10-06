@@ -2,10 +2,14 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!78 &1
 TagManager:
-  serializedVersion: 2
+  serializedVersion: 3
   tags:
   - Ground_Grass
   - BG
+  - Ground
+  - Background1
+  - Background2
+  - Background3
   layers:
   - Default
   - TransparentFX
@@ -23,7 +27,7 @@ TagManager:
   - BG_Front_Middle
   - BG_Front_Front
   - Ground
-  - 
+  - MinimapPreview
   - 
   - 
   - 
@@ -46,3 +50,6 @@ TagManager:
   - name: BG_Front_Front
     uniqueID: 164253935
     locked: 0
+  m_RenderingLayers:
+  - Default
+  m_MigratedRenderPipelines: []

@@ -1,0 +1,6 @@
+{
+  "name": "MapIngredients.IntegrationTests",
+  "references": ["Dotorious.Maps", "JYW.ObjectMaker.Runtime", "JYW.Framework", "UnityEngine.UI", "Unity.InputSystem", "Unity.InputSystem.TestFramework"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false
+}

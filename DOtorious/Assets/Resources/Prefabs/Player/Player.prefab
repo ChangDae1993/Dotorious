@@ -252,6 +252,7 @@ GameObject:
   - component: {fileID: 6035889375392001713}
   - component: {fileID: 4143602917504661685}
   - component: {fileID: 9039421880906557198}
+  - component: {fileID: -9194262196718075060}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -359,6 +360,7 @@ MonoBehaviour:
   visualRoot: {fileID: 1528645886252858400}
   spriteRenderer: {fileID: 8854767242808814955}
   animator: {fileID: 3408538603753742776}
+  audioController: {fileID: -9194262196718075060}
 --- !u!114 &4143602917504661685
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -389,3 +391,18 @@ MonoBehaviour:
   body: {fileID: 2443432504963128604}
   bodyCollider: {fileID: 7981398307556237467}
   groundProbe: {fileID: 7421110562962520401}
+  audioController: {fileID: -9194262196718075060}
+--- !u!114 &-9194262196718075060
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4534141118517750441}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61ef25a51a034dbaafd14432f0d12c9d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JYW.ObjectMaker.Runtime::JYW.Game.ObjectMaker.ObjectAudioController2D
+  oneShotSource: {fileID: 0}
+  behaviorLoopSource: {fileID: 0}
