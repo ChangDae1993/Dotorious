@@ -216,6 +216,10 @@ namespace JYW.Game.EventPlay
             // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
             public bool IsCameraLens = false;
             public CameraLensData CameraLens;
+
+            // 새 기능은 기존 직렬화 필드 순서를 보존하기 위해 항상 끝에 추가합니다.
+            public bool IsCameraFix = false;
+            public CameraFixData CameraFix;
         }
 
         [System.Serializable]
@@ -851,6 +855,15 @@ namespace JYW.Game.EventPlay
             public ParticleCommand Command = ParticleCommand.Play;
             [Min(0f), Tooltip("명령 적용 후 다음 Phase를 막는 unscaled seconds입니다.")]
             public float Duration = 0f;
+        }
+
+        public enum CameraFixMode { Enable = 0, Disable = 1 }
+
+        [System.Serializable]
+        public class CameraFixData
+        {
+            public CameraFixMode Mode = CameraFixMode.Enable;
+            public Vector3 Position = new Vector3(0f, 0f, -10f);
         }
     }
 }

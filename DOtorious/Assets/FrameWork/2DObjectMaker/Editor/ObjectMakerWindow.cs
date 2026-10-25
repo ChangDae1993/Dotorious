@@ -445,6 +445,9 @@ namespace JYW.Game.ObjectMaker.Editor
                         "공격 후 딜레이", attack.recoverySeconds);
                     attack.cooldownSeconds = EditorGUILayout.FloatField(
                         "재사용 대기시간", attack.cooldownSeconds);
+                    attack.animationSpeed = EditorGUILayout.FloatField(
+                        new GUIContent("공격 모션 배속", "1은 기본 속도입니다. 공격 Animator State에만 적용하며 이동·점프 속도와 공격 판정시간은 바꾸지 않습니다."),
+                        attack.animationSpeed);
                     attack.pattern = (ObjectPlayerAttackPattern)EditorGUILayout.EnumPopup("공격 방식", attack.pattern);
                     if (attack.pattern != ObjectPlayerAttackPattern.Melee)
                     {

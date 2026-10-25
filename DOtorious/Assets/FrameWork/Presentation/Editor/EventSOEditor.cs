@@ -34,6 +34,29 @@ public class EventSOEditor : Editor
     private static readonly StringBuilder sb = new StringBuilder(64);
 
     private readonly HashSet<string> drawnDataKeys = new HashSet<string>();
+    private string pendingFeatureFocus;
+    private float? featureScrollY;
+    private bool workspaceDrawing;
+    private string workspaceEntryArrayPath;
+    private int workspaceEntryIndex = -1;
+
+    internal bool TryConsumeFeatureScroll(out float y)
+    {
+        y = featureScrollY ?? 0;
+        bool available = featureScrollY.HasValue;
+        featureScrollY = null;
+        return available;
+    }
+
+    internal void FocusFeature(string propertyPath)
+    {
+        pendingFeatureFocus = propertyPath;
+        UpdateTargetsKeyCache();
+        if (string.IsNullOrEmpty(propertyPath)) return;
+        // Reopen an existing section when navigating here from the list or timeline.
+        foreach (string key in new List<string>(masterFoldouts.Keys))
+            if (key.StartsWith(cachedTargetsKey, StringComparison.Ordinal)) masterFoldouts[key] = true;
+    }
 
     [Serializable]
     private class StepArrayWrapper
@@ -79,7 +102,7 @@ public class EventSOEditor : Editor
 
         EditorGUILayout.HelpBox(
             selected == 1
-                ? "Condition: Resources에서 자동 감시하며, 설정한 조건이 충족되면 이 EventSO를 한 번 실행합니다."
+                ? "Condition: 호출 시 위에서 처음 맞은 조건 분기를 실행합니다. Resources/Presentation/{씬 이름}/에 등록하면 해당 씬의 조건을 자동 감시합니다."
                 : "None: 자동 실행하지 않습니다. 기존처럼 EventPlayManager.PlayEvent(...)로 호출해야 합니다.",
             selected == 1 ? MessageType.Info : MessageType.None);
         if (selected == 1)
@@ -172,95 +195,467 @@ public class EventSOEditor : Editor
     private string BuildKey(string s1, string s2) { sb.Clear(); sb.Append(cachedTargetsKey); sb.Append(s1); sb.Append(s2); return sb.ToString(); }
 
 
+    // The workspace and Inspector share every field drawer and serialized edit path.
+    internal void DrawSelectedStep(string propertyPath)
+    {
+        serializedObject.Update();
+        UpdateTargetsKeyCache();
+        var phase = serializedObject.FindProperty(propertyPath ?? string.Empty);
+        if (phase == null)
+        {
+            EditorGUILayout.HelpBox("선택한 스텝을 찾을 수 없습니다. 왼쪽에서 다시 선택하세요.", MessageType.Info);
+            return;
+        }
+        DrawStepContent(phase);
+        serializedObject.ApplyModifiedProperties();
+    }
+
+    /// <summary>Draws the selected feature, or the selected element of its primary list, in the workspace inspector.</summary>
+    internal void DrawWorkspaceFeature(string phasePath, string featurePath)
+    {
+        serializedObject.Update();
+        UpdateTargetsKeyCache();
+        if (!TryResolveWorkspaceFeature(phasePath, featurePath, out var phase, out var feature,
+            out var data, out var entries, out int entryIndex))
+        {
+            EditorGUILayout.HelpBox("선택한 기능을 찾을 수 없습니다. 목록에서 다시 선택하세요.", MessageType.Info);
+            return;
+        }
+        bool oldWorkspace = workspaceDrawing;
+        string oldArray = workspaceEntryArrayPath;
+        int oldIndex = workspaceEntryIndex;
+        workspaceDrawing = true;
+        workspaceEntryArrayPath = entryIndex >= 0 ? entries.propertyPath : null;
+        workspaceEntryIndex = entryIndex;
+        drawnDataKeys.Clear();
+        try
+        {
+            var flags = phase.FindPropertyRelative("Flags");
+            string key = data.propertyPath;
+            switch (feature.DataPath)
+            {
+                case "SetGlobals": DrawSetGlobalsCustom(flags, phase, feature.TopFlag, "SetGlobals"); break;
+                case "Lock": DrawLockCustom(flags, phase, feature.TopFlag, "Lock"); break;
+                case "Choice": DrawChoiceCustom(flags, phase, feature.TopFlag, "Choice"); break;
+                case "Tooltip": DrawTooltipCustom(flags, phase); break;
+                case "Sound": DrawSoundCustom(flags, phase); break;
+                case "TimeScale": DrawTimeScaleCustom(flags, phase); break;
+                case "ScreenFlash": DrawScreenFlashCustom(flags, phase); break;
+                case "WaitUntilCondition": DrawWaitUntilConditionCustom(flags, phase); break;
+                case "Objects.SpawnObject": DrawSpawnObjectDirect(data, key); break;
+                case "Objects.DestroyObject": DrawStringArrayDirect(data, "DestroyObjectNames", feature.Title, "대상 이름 / 경로 (비우면 Caller)", key); break;
+                case "Objects.EnableObject": DrawStringArrayDirect(data, "EnableObjectNames", feature.Title, "대상 이름 / 경로 (비우면 Caller)", key); break;
+                case "Objects.DisableObject": DrawStringArrayDirect(data, "DisableObjectNames", feature.Title, "대상 이름 / 경로 (비우면 Caller)", key); break;
+                case "Transforms.MoveObject": DrawMoveObjectDirect(data, key); break;
+                case "Transforms.RotateObject": DrawRotateObjectDirect(data, key); break;
+                case "Transforms.AttachObject": DrawAttachObjectDirect(data, key); break;
+                case "Cameras.CameraMovement": DrawCameraMovementDirect(data, key); break;
+                case "Cameras.CameraShake": DrawCameraShakeDirect(data, key); break;
+                case "Cameras.CameraLens": DrawCameraLensDirect(data, key); break;
+                case "Cameras.CameraFix": DrawCameraFixDirect(data, key); break;
+                case "Components.EnableComponent":
+                case "Components.DisableComponent": DrawComponentDataDirect(data, feature.Title, "ComponentDatas", key); break;
+                case "Components.DisableColliderObject": DrawStringArrayDirect(data, "DisableColliderObjectNames", feature.Title, "대상 이름 / 경로 (비우면 Caller)", key); break;
+                case "Components.UpdateComponent": DrawUpdateComponentDirect(data, key); break;
+                case "Components.AnimatorEvent": DrawAnimatorEventDirect(data, key); break;
+                case "Components.VisualFade": DrawVisualFadeDirect(data, key); break;
+                case "Components.LightTween": DrawLightTweenDirect(data, key); break;
+                case "Components.ParticleEvent": DrawParticleEventDirect(data, key); break;
+                case "Speeches.PortraitSpeech": DrawPortraitSpeechDirect(data, key); break;
+                case "Speeches.SpeechBubble": DrawSpeechBubbleDirect(data, key); break;
+                default: DrawGenericDataDirect(data, feature.Title, key); break;
+            }
+            serializedObject.ApplyModifiedProperties();
+        }
+        finally
+        {
+            workspaceDrawing = oldWorkspace;
+            workspaceEntryArrayPath = oldArray;
+            workspaceEntryIndex = oldIndex;
+        }
+    }
+
+    /// <summary>Shows only this Phase's incoming condition and outgoing connection settings.</summary>
+    internal void DrawWorkspacePhaseSettings(string phasePath)
+    {
+        serializedObject.Update();
+        UpdateTargetsKeyCache();
+        var phase = serializedObject.FindProperty(phasePath ?? "");
+        if (phase == null)
+        { EditorGUILayout.HelpBox("선택한 Phase를 찾을 수 없습니다.", MessageType.Info); return; }
+        var document = EventStepListModel.Build(target as EventSO);
+        var node = document.Phases.Find(item => item.Path == phasePath);
+        if (node != null)
+        {
+            EditorGUILayout.LabelField("이 Phase의 실행 조건", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(node.Condition, node.Reachable ? MessageType.None : MessageType.Warning);
+            string context = node.ContextPath;
+            var use = string.IsNullOrEmpty(context) ? serializedObject.FindProperty("UseCondition") : serializedObject.FindProperty(context + ".UseCondition");
+            var conditions = string.IsNullOrEmpty(context) ? serializedObject.FindProperty("Conditions") : serializedObject.FindProperty(context + ".Conditions");
+            string arrayPath = string.IsNullOrEmpty(context) ? "ConditionSteps" : context + ".ConditionSteps";
+            int branch = WorkspacePathIndex(phasePath, arrayPath);
+            if (branch < 0 && string.IsNullOrEmpty(context)) branch = WorkspacePathIndex(phasePath, "stepsGroups");
+            if (use?.boolValue == true && conditions != null && branch >= 0 && branch < conditions.arraySize)
+            {
+                bool oldWorkspace = workspaceDrawing;
+                workspaceDrawing = true;
+                try { DrawConditionGroupElement(conditions.GetArrayElementAtIndex(branch), conditions.propertyPath + "." + branch); }
+                finally { workspaceDrawing = oldWorkspace; }
+            }
+        }
+        EditorGUILayout.Space(8);
+        EditorGUILayout.LabelField("다음 Phase 연결", EditorStyles.boldLabel);
+        var nextFlag = phase.FindPropertyRelative("Flags.IsEventExe");
+        EditorGUI.BeginChangeCheck();
+        if (nextFlag != null) EditorGUILayout.PropertyField(nextFlag, new GUIContent("다음 Phase 사용", "꺼도 저장된 다음 Phase와 조건은 보존합니다."));
+        if (EditorGUI.EndChangeCheck())
+        { serializedObject.ApplyModifiedProperties(); GUIUtility.ExitGUI(); }
+        var next = phase.FindPropertyRelative("EventExe");
+        bool drawNext = nextFlag?.boolValue == true && next?.FindPropertyRelative("UseCondition") != null;
+        // DrawExecutionSettings updates its SerializedObject. Commit incoming-condition edits first.
+        serializedObject.ApplyModifiedProperties();
+        if (drawNext)
+        {
+            bool oldWorkspace = workspaceDrawing;
+            workspaceDrawing = true;
+            try { DrawExecutionSettings(phasePath + ".EventExe"); }
+            finally { workspaceDrawing = oldWorkspace; }
+        }
+    }
+
+    internal bool TryGetWorkspaceFeatureInfo(string phasePath, string featurePath, out string title, out bool enabled, out bool isEntry)
+    {
+        serializedObject.Update();
+        title = null; enabled = false; isEntry = false;
+        if (!TryResolveWorkspaceFeature(phasePath, featurePath, out var phase, out var feature, out _, out _, out int index)) return false;
+        title = feature.Title; isEntry = index >= 0;
+        enabled = phase.FindPropertyRelative("Flags." + feature.TopFlag)?.boolValue == true;
+        if (feature.Group != null) enabled &= phase.FindPropertyRelative(feature.Group + "." + feature.SubFlag)?.boolValue == true;
+        return true;
+    }
+
+    /// <summary>Enables/disables the feature as a whole. All authored values and sibling flags are preserved.</summary>
+    internal bool SetWorkspaceFeatureEnabled(string phasePath, string featurePath, bool enabled)
+    {
+        serializedObject.Update();
+        if (!TryResolveWorkspaceFeature(phasePath, featurePath, out var phase, out var feature, out _, out _, out _)) return false;
+        var top = phase.FindPropertyRelative("Flags." + feature.TopFlag);
+        var sub = feature.Group == null ? null : phase.FindPropertyRelative(feature.Group + "." + feature.SubFlag);
+        if (top == null || feature.Group != null && sub == null) return false;
+        Undo.IncrementCurrentGroup();
+        Undo.SetCurrentGroupName(feature.Title + (enabled ? " 사용" : " 사용 해제"));
+        if (enabled) top.boolValue = true;
+        if (sub != null) sub.boolValue = enabled; else top.boolValue = enabled;
+        return serializedObject.ApplyModifiedProperties();
+    }
+
+    /// <summary>Removes one explicitly selected list entry; a feature-root selection is disabled without erasing its values.</summary>
+    internal bool RemoveWorkspaceFeature(string phasePath, string featurePath)
+    {
+        serializedObject.Update();
+        if (!TryResolveWorkspaceFeature(phasePath, featurePath, out _, out var feature, out _, out var entries, out int index)) return false;
+        if (index < 0) return SetWorkspaceFeatureEnabled(phasePath, featurePath, false);
+        Undo.IncrementCurrentGroup();
+        Undo.SetCurrentGroupName(feature.Title + " 항목 삭제");
+        int oldSize = entries.arraySize;
+        entries.DeleteArrayElementAtIndex(index);
+        if (entries.arraySize == oldSize) entries.DeleteArrayElementAtIndex(index);
+        return serializedObject.ApplyModifiedProperties();
+    }
+
+    private bool TryResolveWorkspaceFeature(string phasePath, string featurePath, out SerializedProperty phase,
+        out EventAuthoring.Feature feature, out SerializedProperty data, out SerializedProperty entries, out int entryIndex)
+    {
+        phase = null; feature = null; data = entries = null; entryIndex = -1;
+        if (string.IsNullOrEmpty(phasePath) || string.IsNullOrEmpty(featurePath)) return false;
+        phase = serializedObject.FindProperty(phasePath);
+        if (phase == null || phase.propertyType == SerializedPropertyType.ManagedReference && phase.managedReferenceValue == null) return false;
+        string prefix = phasePath + ".";
+        if (!featurePath.StartsWith(prefix, StringComparison.Ordinal)) return false;
+        string relative = featurePath.Substring(prefix.Length);
+        foreach (var candidate in EventAuthoring.Features)
+            if (relative == candidate.DataPath || relative.StartsWith(candidate.DataPath + ".", StringComparison.Ordinal))
+            { if (feature == null || candidate.DataPath.Length > feature.DataPath.Length) feature = candidate; }
+        if (feature == null || serializedObject.FindProperty(featurePath) == null) return false;
+        data = phase.FindPropertyRelative(feature.DataPath);
+        if (data == null) return false;
+        if (!string.IsNullOrEmpty(feature.EntriesPath))
+        {
+            entries = phase.FindPropertyRelative(feature.EntriesPath);
+            if (entries?.isArray == true)
+            {
+                entryIndex = WorkspacePathIndex(featurePath, entries.propertyPath);
+                if (entryIndex >= entries.arraySize) return false;
+            }
+        }
+        return true;
+    }
+
+    private static int WorkspacePathIndex(string propertyPath, string arrayPath)
+    {
+        string prefix = arrayPath + ".Array.data[";
+        if (propertyPath == null || !propertyPath.StartsWith(prefix, StringComparison.Ordinal)) return -1;
+        int close = propertyPath.IndexOf(']', prefix.Length);
+        return close > prefix.Length && int.TryParse(propertyPath.Substring(prefix.Length, close - prefix.Length), out int index) && index >= 0 ? index : -1;
+    }
+
+    private bool WorkspaceSingleEntry(SerializedProperty array) => workspaceDrawing && workspaceEntryIndex >= 0 && array?.propertyPath == workspaceEntryArrayPath;
+    private int WorkspaceStart(SerializedProperty array) => WorkspaceSingleEntry(array) ? Mathf.Min(workspaceEntryIndex, array.arraySize) : 0;
+    private int WorkspaceEnd(SerializedProperty array) => WorkspaceSingleEntry(array) ? Mathf.Min(workspaceEntryIndex + 1, array.arraySize) : array.arraySize;
+    private bool DrawFeatureFoldout(bool value, string label, bool toggleOnLabelClick) => workspaceDrawing || EditorGUILayout.Foldout(value, label, toggleOnLabelClick);
+    private void BeginFeatureBlock(string style) { if (workspaceDrawing) EditorGUILayout.BeginVertical(); else EditorGUILayout.BeginVertical(style); }
+    private void BeginFeatureBlock(GUIStyle style) { if (workspaceDrawing) EditorGUILayout.BeginVertical(); else EditorGUILayout.BeginVertical(style); }
+
+    private static readonly Dictionary<string, string> WorkspaceCaptions = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        { "Use Main Camera", "메인 카메라" }, { "Target FOV (Perspective)", "원근 시야각" },
+        { "Target Size (Orthographic)", "직교 크기" }, { "Duration (Unscaled Seconds)", "실제 시간(초)" },
+        { "Duration", "시간(초)" }, { "Wait Time", "대기 시간(초)" }, { "Ease In Out", "부드러운 전환" },
+        { "Start Delay (Scaled Seconds)", "시작 지연(초)" }, { "Timeout (Unscaled Seconds)", "제한 시간(초)" },
+        { "Wait For Completion", "재생 완료 대기" }, { "Restore After Duration", "시간 후 복구" },
+        { "Target Scale", "시간 배율" }, { "Audio Clip", "오디오" }, { "Volume", "음량" }, { "Loop", "반복" },
+        { "Flash Color", "플래시 색" }, { "Peak Alpha", "최대 불투명도" }, { "Fade In Duration", "나타나는 시간" },
+        { "Hold Duration", "유지 시간" }, { "Fade Out Duration", "사라지는 시간" }, { "Fade In", "나타남" },
+        { "Position", "위치" }, { "Start Time", "시작 시각(초)" }, { "End Time", "종료 시각(초)" },
+        { "Start Position (World)", "시작 위치" }, { "End Position (World)", "도착 위치" },
+        { "Start Offset (Right=X, Up=Y, Front=Z)", "시작 오프셋" }, { "End Offset (Right=X, Up=Y, Front=Z)", "도착 오프셋" },
+        { "Center Object Name (기준 오브젝트)", "기준 대상" }, { "Is Relative", "기준 대상 사용" },
+        { "Is Camera Aiming Use Main", "메인 카메라" }, { "Target Local Offset", "시선 오프셋" }, { "Init Duration", "초기 전환 시간" },
+        { "Position Strength", "위치 진동" }, { "Rotation Strength", "회전 진동" }, { "Frequency", "진동 빈도" }, { "Fade Out", "사라짐" },
+        { "Object Name (Empty = Caller)", "대상 (빈칸=Caller)" }, { "GameObject Name (Empty = Caller)", "대상 (빈칸=Caller)" },
+        { "Object (Name / Path, Empty = Caller)", "대상 이름/경로" }, { "Object Name", "대상 이름" }, { "GameObject Name", "대상 이름" },
+        { "Object (Name / Path)", "대상 이름/경로" }, { "Target Name", "기준 대상" }, { "Aimed Target Name", "시선 대상" },
+        { "Parent (Name / Path, Empty = Detach)", "부모 (빈칸=분리)" }, { "World Position Stays", "월드 배치 유지" },
+        { "Apply Local Transform", "로컬 배치 적용" }, { "Local Position", "로컬 위치" }, { "Local Euler Angles", "로컬 회전" }, { "Local Scale", "로컬 크기" },
+        { "Use Custom Start Position", "시작 위치 지정" }, { "Start Is Relative", "시작 기준 사용" },
+        { "Start Target Name (Empty = Self)", "시작 기준 대상" }, { "Start Offset (Relative)", "시작 오프셋" },
+        { "Start World Position", "시작 위치" }, { "Goal Is Relative", "도착 기준 사용" },
+        { "Goal Target Name (Empty = Self)", "도착 기준 대상" }, { "Goal Offset (Relative)", "도착 오프셋" },
+        { "Goal World Position", "도착 위치" }, { "Movement Type", "이동 방식" },
+        { "Is Drawer", "서랍 이동" }, { "Drawer Offset (Right=X, Up=Y, Front=Z)", "서랍 이동량" },
+        { "Is LookAt", "대상 바라보기" }, { "Look At Name", "바라볼 대상" }, { "Is Door", "문 회전" },
+        { "Door Offset (Right=X, Up=Y, Front=Z)", "문 회전량" }, { "Is Delta", "회전량 더하기" }, { "Is Local", "로컬 좌표" },
+        { "Relative Euler", "더할 회전" }, { "Absolute Euler", "목표 회전" },
+        { "Spiral Radius", "나선 반지름" }, { "Spiral Turns", "나선 회전 수" }, { "Zig Zag Amplitude", "지그재그 폭" },
+        { "Zig Zag Frequency", "지그재그 빈도" }, { "Bounce Count", "튕김 횟수" }, { "Bounce Height", "튕김 높이" },
+        { "Ease Exponent (2=Quad, 3=Cubic...)", "전환 곡률" }, { "Arc Height", "원호 높이" }, { "Peak Height", "포물선 높이" },
+        { "Prefab", "프리팹" }, { "Naming", "생성 이름" }, { "Rotation", "회전" }, { "Is UI", "UI 생성" },
+        { "World Position", "월드 위치" }, { "Parent Name (Empty = Root)", "부모 (빈칸=루트)" },
+        { "Scene Name (Empty = Caller's Scene)", "생성 씬" }, { "Local Center Name", "로컬 기준" },
+        { "Offset (Right=X, Up=Y, Front=Z)", "로컬 오프셋" }, { "Anchored Position", "UI 위치" },
+        { "Anchor Min", "최소 앵커" }, { "Anchor Max", "최대 앵커" }, { "Pivot", "피벗" },
+        { "Advance Mode", "대사 진행" }, { "Advance Key", "다음 대사 키" }, { "Is Typing", "타이핑 효과" },
+        { "Portrait", "초상화" }, { "Speaker Name", "화자" }, { "Text", "대사" }, { "Content", "내용" },
+        { "Soft Speech Texts", "대사 목록" }, { "Hard Speech Texts", "대사 목록" }, { "Hard Speech Key", "다음 대사 키" },
+        { "Speech Bubble Texts", "말풍선 목록" }, { "Lines", "대사 목록" }, { "Is Blocked", "입력까지 대기" },
+        { "Offset (World Right=X, Up=Y)", "화면 오프셋" }, { "Position (Canvas X/Y, Center = 0,0)", "화면 위치" },
+        { "Lock Keyboard", "키보드 잠금" }, { "Lock Mouse", "마우스 잠금" }, { "Use PlayerPrefs", "저장 값 사용" },
+        { "Operation", "변경 방식" }, { "Key", "키" }, { "Value Type", "값 형식" }, { "Value Name", "값 이름" },
+        { "Value (Int)", "정수 값" }, { "Value (Float)", "실수 값" }, { "Value (Bool)", "참/거짓 값" },
+        { "Value (String)", "문자 값" }, { "Value (GameObject)", "오브젝트 값" },
+        { "Component Name", "컴포넌트" }, { "Property/Field Name", "필드/속성" }, { "Include Children", "자식 포함" },
+        { "Target Alpha", "목표 투명도" }, { "Affect Color", "색 변경" }, { "Target Color", "목표 색" },
+        { "Affect Intensity", "밝기 변경" }, { "Target Intensity", "목표 밝기" }, { "Affect Range", "범위 변경" }, { "Target Range", "목표 범위" },
+        { "Command", "명령" }, { "State Name", "상태 이름" }, { "Parameter Name", "파라미터" }, { "Layer", "레이어" },
+        { "Start Normalized Time", "시작 진행률" }, { "Transition (Normalized)", "전환 비율" }, { "Value", "값" }, { "Animator Speed", "재생 속도" },
+        { "Scene", "씬 이름" }, { "Scene Name", "씬 이름" }, { "Scenes", "씬 목록" }, { "Is Cursor Visible", "커서 표시" },
+        { "Action Name", "액션 이름" }, { "New Name", "새 이름" }, { "Completion Normalized Time", "완료 진행률" },
+        { "Global Key", "전역 키" }, { "Check Type", "비교 방식" }, { "Expected Int", "예상 정수" },
+        { "Expected Float", "예상 실수" }, { "Expected Bool", "예상 참/거짓" }, { "Expected String", "예상 문자" },
+        { "Expected GameObject", "예상 오브젝트" },
+        { "Object A (Name / Path)", "A 이름/경로" }, { "Object B (Name / Path)", "B 이름/경로" },
+        { "Seconds After Game Start", "게임 경과(초)" }, { "Required State", "필요 상태" }, { "Comparison", "비교 방식" },
+        { "Distance", "거리" }, { "Use 2D Distance (X/Y)", "2D 거리 사용" }, { "Input State", "입력 상태" }
+    };
+
+    private GUIContent FeatureContent(string original, string tooltip = null)
+    {
+        if (!workspaceDrawing) return new GUIContent(original, tooltip);
+        string caption = WorkspaceCaptions.TryGetValue(original, out string translated) ? translated : original;
+        return new GUIContent(caption, string.IsNullOrEmpty(tooltip) ? original : original + "\n" + tooltip);
+    }
+
+    private void DrawFocusedProperty(SerializedProperty property)
+    {
+        if (property == null) return;
+        if (workspaceDrawing) EditorGUILayout.PropertyField(property, FeatureContent(property.displayName), true);
+        else EditorGUILayout.PropertyField(property);
+    }
+
+    private void DrawArraySizeControls(SerializedProperty array)
+    {
+        if (WorkspaceSingleEntry(array)) return;
+        EditorGUILayout.BeginHorizontal();
+        EditorGUILayout.LabelField("Size", GUILayout.Width(40));
+        int size = EditorGUILayout.IntField(array.arraySize, GUILayout.Width(60));
+        if (size != array.arraySize) array.arraySize = Mathf.Max(0, size);
+        if (GUILayout.Button("+", GUILayout.Width(22))) array.arraySize++;
+        if (GUILayout.Button("-", GUILayout.Width(22)) && array.arraySize > 0) array.arraySize--;
+        EditorGUILayout.EndHorizontal();
+    }
+
+    private void DrawWorkspaceProperty(SerializedProperty property)
+    {
+        if (!WorkspaceSingleEntry(property))
+        {
+            if (workspaceDrawing) EditorGUILayout.PropertyField(property, FeatureContent(property.displayName), true);
+            else EditorGUILayout.PropertyField(property, true);
+            return;
+        }
+        var entry = property.GetArrayElementAtIndex(workspaceEntryIndex);
+        if (entry.propertyType != SerializedPropertyType.Generic && entry.propertyType != SerializedPropertyType.ManagedReference)
+        { EditorGUILayout.PropertyField(entry, new GUIContent("내용"), true); return; }
+        var iterator = entry.Copy();
+        var end = iterator.GetEndProperty();
+        if (iterator.NextVisible(true))
+            while (!SerializedProperty.EqualContents(iterator, end))
+            { DrawFocusedProperty(iterator); if (!iterator.NextVisible(false)) break; }
+    }
+
+    internal void DrawExecutionSettings(string contextPath = null)
+    {
+        serializedObject.Update();
+        UpdateTargetsKeyCache();
+        bool root = string.IsNullOrEmpty(contextPath);
+        var context = root ? null : serializedObject.FindProperty(contextPath);
+        SerializedProperty Find(string field) => root ? serializedObject.FindProperty(field) : context?.FindPropertyRelative(field);
+        var use = Find("UseCondition");
+        if (use == null) return;
+        EditorGUILayout.LabelField(root ? "이벤트 실행 방식" : "다음 스텝으로 가는 분기", EditorStyles.boldLabel);
+        int selected = GUILayout.Toolbar(use.boolValue ? 1 : 0,
+            root ? new[] { "호출 시 실행", "조건으로 분기" } : new[] { "바로 다음 스텝", "조건으로 분기" }, GUILayout.Height(26));
+        if (selected != (use.boolValue ? 1 : 0))
+        {
+            use.boolValue = selected == 1;
+            serializedObject.ApplyModifiedProperties();
+            GUIUtility.ExitGUI();
+        }
+        if (!use.boolValue)
+        {
+            EditorGUILayout.HelpBox(root
+                ? "씬의 트리거 또는 PlayEvent 호출로 시작합니다. 실제 호출 위치는 이벤트 목록의 실행 정보에서 확인하세요."
+                : "현재 Phase가 끝나면 다음 Phase를 실행합니다.", MessageType.None);
+            return;
+        }
+        EditorGUILayout.HelpBox("각 분기 안의 조건은 모두 만족해야 합니다(AND). 위에서 처음 참인 분기를 실행합니다. " +
+            (root ? "Else는 직접 호출 시 어떤 분기도 참이 아닐 때의 경로입니다. 자동 감시로 Else를 시작하지 않습니다."
+                : "이전 Phase가 끝난 뒤 어떤 분기도 참이 아니면 Else로 진행합니다."), MessageType.Info);
+        var conditions = Find("Conditions");
+        var steps = Find("ConditionSteps");
+        if (conditions == null) return;
+        if (steps != null && steps.arraySize != conditions.arraySize + 1)
+            EditorGUILayout.HelpBox("조건과 스텝 수가 맞지 않습니다. 기존 에셋 편집에서 분기 연결을 확인하세요. 자동으로 데이터를 바꾸지 않습니다.", MessageType.Warning);
+        for (int i = 0; i < conditions.arraySize; i++)
+        {
+            using (new EditorGUILayout.VerticalScope(workspaceDrawing ? GUIStyle.none : EditorStyles.helpBox))
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    GUILayout.Label("분기 " + (i + 1), EditorStyles.boldLabel);
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button(new GUIContent("분기 삭제", "이 조건과 연결된 스텝을 함께 삭제합니다. Else와 다른 분기는 보존합니다."), GUILayout.Width(80)))
+                    {
+                        serializedObject.ApplyModifiedProperties();
+                        EventAuthoring.RemoveConditionBranch((EventSO)target, contextPath, i);
+                        serializedObject.Update();
+                        GUIUtility.ExitGUI();
+                    }
+                }
+                DrawConditionGroupElement(conditions.GetArrayElementAtIndex(i), conditions.propertyPath + "." + i);
+            }
+        }
+        if (GUILayout.Button("+ 조건 분기 추가", GUILayout.Height(25)))
+        {
+            serializedObject.ApplyModifiedProperties();
+            EventAuthoring.AddConditionBranch((EventSO)target, contextPath, out _);
+            serializedObject.Update();
+            GUIUtility.ExitGUI();
+        }
+        serializedObject.ApplyModifiedProperties();
+    }
+
     private void DrawStepContent(SerializedProperty stepProp)
     {
         var flagsProp = stepProp.FindPropertyRelative("Flags");
         if (flagsProp == null) return;
         drawnDataKeys.Clear();
-
-        // 최상위 플래그 (그룹 + 독립) ? IsEventExe는 Phase 체인 UI로 별도 관리
-        string[] topFlagNames = {
-            "IsSetGlobals",
-            "IsObjects",
-            "IsComponents",
-            "IsTransforms",
-            "IsWait","IsLock",
-            "IsSpeeches",
-            "IsScenes",
-            "IsSound","IsFadePlay",
-            "IsCameras",
-            "IsCursorVisible","IsChoice","IsAction",
-            "IsTooltip",
-            "IsBlackLabel",
-            "IsTimeScale",
-            "IsScreenFlash",
-            "IsWaitUntilCondition"
-        };
-        string[] topFlagLabels = {
-            "Set Globals",
-            "Objects (Spawn/Destroy/Enable/Disable/Rename)",
-            "Components (Enable/Disable/Animator/Fade/Light/Particle)",
-            "Transforms (Move/Rotate/Attach)",
-            "Wait","Lock",
-            "Speeches (Soft/Hard/Portrait/Bubble)",
-            "Scenes (Active/Change/Add/Off/Pause/UnPause)",
-            "Sound","Fade Play",
-            "Cameras (Move/Aim/Shake/Lens)",
-            "Cursor","Choice","Action",
-            "Tooltip",
-            "Black Label",
-            "Time Scale",
-            "Screen Flash",
-            "Wait Until Condition"
-        };
-
-        int mask = 0;
-        for (int fi = 0; fi < topFlagNames.Length; fi++)
+        using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
         {
-            var p = flagsProp.FindPropertyRelative(topFlagNames[fi]);
-            if (p != null && p.boolValue) mask |= (1 << fi);
-        }
-        int newMask = EditorGUILayout.MaskField("Step Flags", mask, topFlagLabels);
-        if (newMask != mask)
-        {
-            for (int fi = 0; fi < topFlagNames.Length; fi++)
+            GUILayout.Label("PHASE CONTENT", EditorStyles.miniBoldLabel);
+            GUILayout.FlexibleSpace();
+            Rect addRect = GUILayoutUtility.GetRect(new GUIContent("+ 기능 추가"), EditorStyles.toolbarButton, GUILayout.Width(100));
+            if (GUI.Button(addRect, "+ 기능 추가", EditorStyles.toolbarButton))
             {
-                var p = flagsProp.FindPropertyRelative(topFlagNames[fi]);
-                if (p == null) continue;
-                p.boolValue = (newMask & (1 << fi)) != 0;
+                serializedObject.ApplyModifiedProperties();
+                EventFeaturePicker.Show(addRect, (EventSO)target, stepProp.propertyPath, (phase, feature) => { FocusFeature(feature); Repaint(); });
             }
-            flagsProp.serializedObject.ApplyModifiedProperties();
-            Repaint();
-            GUIUtility.ExitGUI();
-            return;
         }
-
-        DrawSetGlobalsCustom(flagsProp, stepProp, "IsSetGlobals", "SetGlobals");
-        DrawObjectsGroup(flagsProp, stepProp);
-        DrawComponentsGroup(flagsProp, stepProp);
-        DrawTransformsGroup(flagsProp, stepProp);
-        DrawFlagAndData(flagsProp, stepProp, "IsWait", "Wait");
-        DrawLockCustom(flagsProp, stepProp, "IsLock", "Lock");
-        DrawSpeechesGroup(flagsProp, stepProp);
-        DrawScenesGroup(flagsProp, stepProp);
-        DrawSoundCustom(flagsProp, stepProp);
-        DrawFlagAndData(flagsProp, stepProp, "IsFadePlay", "FadeInfo");
-        DrawCamerasGroup(flagsProp, stepProp);
-        DrawFlagAndData(flagsProp, stepProp, "IsCursorVisible", "Cursor");
-        DrawChoiceCustom(flagsProp, stepProp, "IsChoice", "Choice");
-        DrawFlagAndData(flagsProp, stepProp, "IsAction", "Action");
-        DrawTooltipCustom(flagsProp, stepProp);
-        DrawFlagAndData(flagsProp, stepProp, "IsBlackLabel", "BlackLabel");
-        DrawTimeScaleCustom(flagsProp, stepProp);
-        DrawScreenFlashCustom(flagsProp, stepProp);
-        DrawWaitUntilConditionCustom(flagsProp, stepProp);
-        // IsEventExe는 DrawStepContent에서 직접 그리지 않음 ? Phase 체인 UI가 처리
+        EditorGUILayout.LabelField("기능은 같은 Phase에서 함께 시작합니다. 선택지와 Action은 앞의 연출이 끝난 후 실행됩니다.", EditorStyles.wordWrappedMiniLabel);
+        int visible = 0;
+        void Card(string flagName, string title, string description, Action draw)
+        {
+            var flag = flagsProp.FindPropertyRelative(flagName);
+            if (flag == null || !flag.boolValue) return;
+            visible++;
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            {
+                Rect header = GUILayoutUtility.GetRect(1, 29, GUILayout.ExpandWidth(true));
+                EditorGUI.DrawRect(header, EditorGUIUtility.isProSkin ? new Color(.16f,.20f,.25f) : new Color(.78f,.84f,.90f));
+                EditorGUI.DrawRect(new Rect(header.x,header.y,3,header.height), new Color(.25f,.64f,.87f));
+                GUI.Label(new Rect(header.x+10,header.y,Mathf.Max(0,header.width-80),header.height), title, EditorStyles.boldLabel);
+                if (!string.IsNullOrEmpty(pendingFeatureFocus) && Event.current.type == EventType.Repaint)
+                {
+                    foreach (var feature in EventAuthoring.Features)
+                        if (feature.TopFlag == flagName && (pendingFeatureFocus == stepProp.propertyPath + "." + feature.DataPath ||
+                            pendingFeatureFocus.StartsWith(stepProp.propertyPath + "." + feature.DataPath + ".", StringComparison.Ordinal)))
+                        {
+                            featureScrollY = header.y;
+                            pendingFeatureFocus = null;
+                            break;
+                        }
+                }
+                if (GUI.Button(new Rect(header.xMax-65,header.y+4,60,21), new GUIContent("사용 해제", "입력한 값은 보관하고 이 Phase의 실행만 끕니다."), EditorStyles.miniButton))
+                {
+                    flag.boolValue = false;
+                    serializedObject.ApplyModifiedProperties();
+                    GUIUtility.ExitGUI();
+                }
+                EditorGUILayout.LabelField(description, EditorStyles.wordWrappedMiniLabel);
+                draw();
+            }
+            GUILayout.Space(6);
+        }
+        Card("IsSetGlobals", "전역 값", "퀘스트·진행 상태에 사용할 값을 설정합니다.", () => DrawSetGlobalsCustom(flagsProp, stepProp, "IsSetGlobals", "SetGlobals"));
+        Card("IsObjects", "오브젝트", "생성·제거·표시·숨김·이름을 설정합니다.", () => DrawObjectsGroup(flagsProp, stepProp));
+        Card("IsComponents", "컴포넌트와 효과", "컴포넌트·Animator·투명도·조명·파티클을 제어합니다.", () => DrawComponentsGroup(flagsProp, stepProp));
+        Card("IsTransforms", "오브젝트 이동", "위치·회전·부모 연결을 설정합니다.", () => DrawTransformsGroup(flagsProp, stepProp));
+        Card("IsWait", "시간 대기", "설정한 시간이 지나야 다음 Phase로 진행합니다.", () => DrawFlagAndData(flagsProp, stepProp, "IsWait", "Wait"));
+        Card("IsLock", "입력 잠금", "이 이벤트 동안 키보드·마우스 입력을 제어합니다.", () => DrawLockCustom(flagsProp, stepProp, "IsLock", "Lock"));
+        Card("IsSpeeches", "대사", "일반·인물·말풍선 대사를 구성합니다.", () => DrawSpeechesGroup(flagsProp, stepProp));
+        Card("IsJustText", "화면 텍스트", "화면에 텍스트를 표시합니다.", () => DrawFlagAndData(flagsProp, stepProp, "IsJustText", "JustText"));
+        Card("IsScenes", "씬", "씬을 전환하거나 추가·해제합니다.", () => DrawScenesGroup(flagsProp, stepProp));
+        Card("IsSound", "소리", "효과음과 음악의 지연·반복·완료 대기를 설정합니다.", () => DrawSoundCustom(flagsProp, stepProp));
+        Card("IsFadePlay", "화면 페이드", "화면의 밝고 어두운 전환을 구성합니다.", () => DrawFlagAndData(flagsProp, stepProp, "IsFadePlay", "FadeInfo"));
+        Card("IsCameras", "카메라", "이동·시선·흔들림·렌즈·고정을 설정합니다.", () => DrawCamerasGroup(flagsProp, stepProp));
+        Card("IsCursorVisible", "커서", "커서 표시 상태를 설정합니다.", () => DrawFlagAndData(flagsProp, stepProp, "IsCursorVisible", "Cursor"));
+        Card("IsChoice", "선택지", "앞의 연출 완료 후 선택 입력을 기다립니다.", () => DrawChoiceCustom(flagsProp, stepProp, "IsChoice", "Choice"));
+        Card("IsAction", "Action 호출", "앞의 연출과 선택 완료 후 등록된 Action을 호출합니다.", () => DrawFlagAndData(flagsProp, stepProp, "IsAction", "Action"));
+        Card("IsTooltip", "안내문", "화면의 안내와 입력 대기를 구성합니다.", () => DrawTooltipCustom(flagsProp, stepProp));
+        Card("IsBlackLabel", "레터박스", "화면 상하단 검은 띠를 표시합니다.", () => DrawFlagAndData(flagsProp, stepProp, "IsBlackLabel", "BlackLabel"));
+        Card("IsTimeScale", "게임 시간", "시간 배율과 복구 여부를 설정합니다.", () => DrawTimeScaleCustom(flagsProp, stepProp));
+        Card("IsScreenFlash", "화면 플래시", "색상과 밝기, 유지·사라지는 시간을 설정합니다.", () => DrawScreenFlashCustom(flagsProp, stepProp));
+        Card("IsWaitUntilCondition", "조건 대기", "조건이 참이 되거나 제한 시간이 지날 때까지 기다립니다.", () => DrawWaitUntilConditionCustom(flagsProp, stepProp));
+        if (visible == 0)
+        {
+            GUILayout.Space(15);
+            EditorGUILayout.HelpBox("아직 기능이 없습니다. ‘+ 기능 추가’에서 대사·카메라·이동 등을 선택하세요.", MessageType.Info);
+        }
     }
 
     private void DrawTooltipCustom(SerializedProperty flagsProp, SerializedProperty stepProp)
     {
         SerializedProperty flag = flagsProp.FindPropertyRelative("IsTooltip");
-        if (flag == null || !flag.boolValue) return;
+        if (flag == null || !workspaceDrawing && !flag.boolValue) return;
 
         const string dataName = "Tooltip";
         string dataKey = stepProp.propertyPath + "." + dataName;
@@ -272,7 +667,7 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(stepProp.propertyPath, "." + dataName);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], dataName, true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], dataName, true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty contentProp = dataProp.FindPropertyRelative("Content");
@@ -282,17 +677,17 @@ public class EventSOEditor : Editor
         SerializedProperty centerObjectProp = dataProp.FindPropertyRelative("CenterObject");
         SerializedProperty positionProp = dataProp.FindPropertyRelative("Position");
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         if (contentProp != null)
-            EditorGUILayout.PropertyField(contentProp, new GUIContent("Content"));
+            EditorGUILayout.PropertyField(contentProp, FeatureContent("Content"));
 
         if (isRelativeProp != null)
-            EditorGUILayout.PropertyField(isRelativeProp, new GUIContent("Is Relative"));
+            EditorGUILayout.PropertyField(isRelativeProp, FeatureContent("Is Relative"));
 
         bool isRelative = isRelativeProp != null && isRelativeProp.boolValue;
         if (isRelative && centerObjectProp != null)
         {
-            EditorGUILayout.LabelField("Center Object Name (기준 오브젝트)");
+            EditorGUILayout.LabelField(FeatureContent("Center Object Name (기준 오브젝트)"));
             EditorGUILayout.PropertyField(centerObjectProp, GUIContent.none);
         }
 
@@ -301,7 +696,7 @@ public class EventSOEditor : Editor
             string positionLabel = isRelative
                 ? "Offset (World Right=X, Up=Y)"
                 : "Position (Canvas X/Y, Center = 0,0)";
-            EditorGUILayout.PropertyField(positionProp, new GUIContent(positionLabel));
+            EditorGUILayout.PropertyField(positionProp, FeatureContent(positionLabel));
         }
 
         EditorGUILayout.HelpBox(
@@ -313,14 +708,14 @@ public class EventSOEditor : Editor
         if (blockedProp != null)
             EditorGUILayout.PropertyField(
                 blockedProp,
-                new GUIContent("Is Blocked", "켜면 시간 제한 없이 다음 키보드 키 또는 마우스 버튼 입력까지 기다립니다."));
+                FeatureContent("Is Blocked", "켜면 시간 제한 없이 다음 키보드 키 또는 마우스 버튼 입력까지 기다립니다."));
 
         bool isBlocked = blockedProp != null && blockedProp.boolValue;
         EditorGUI.BeginDisabledGroup(isBlocked);
         if (durationProp != null)
             EditorGUILayout.PropertyField(
                 durationProp,
-                new GUIContent("Duration", "Is Blocked가 꺼져 있을 때 Tooltip을 표시할 시간입니다."));
+                FeatureContent("Duration", "Is Blocked가 꺼져 있을 때 Tooltip을 표시할 시간입니다."));
         EditorGUI.EndDisabledGroup();
 
         EditorGUILayout.HelpBox(
@@ -334,7 +729,7 @@ public class EventSOEditor : Editor
     private void DrawSoundCustom(SerializedProperty flagsProp, SerializedProperty stepProp)
     {
         SerializedProperty flag = flagsProp.FindPropertyRelative("IsSound");
-        if (flag == null || !flag.boolValue) return;
+        if (flag == null || !workspaceDrawing && !flag.boolValue) return;
 
         const string dataName = "Sound";
         string dataKey = stepProp.propertyPath + "." + dataName;
@@ -346,7 +741,7 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(stepProp.propertyPath, "." + dataName);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], dataName, true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], dataName, true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty delayProp = dataProp.FindPropertyRelative("time");
@@ -355,22 +750,22 @@ public class EventSOEditor : Editor
         SerializedProperty loopProp = dataProp.FindPropertyRelative("isLoop");
         SerializedProperty waitProp = dataProp.FindPropertyRelative("WaitForCompletion");
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("SOUND", EditorStyles.boldLabel);
         if (delayProp != null)
-            EditorGUILayout.PropertyField(delayProp, new GUIContent("Start Delay (Scaled Seconds)"));
+            EditorGUILayout.PropertyField(delayProp, FeatureContent("Start Delay (Scaled Seconds)"));
         if (audioClipProp != null)
-            EditorGUILayout.PropertyField(audioClipProp, new GUIContent("Audio Clip", "비우면 현재 Event AudioSource를 정지합니다."));
+            EditorGUILayout.PropertyField(audioClipProp, FeatureContent("Audio Clip", "비우면 현재 Event AudioSource를 정지합니다."));
         if (volumeProp != null)
         {
-            EditorGUILayout.PropertyField(volumeProp, new GUIContent("Volume"));
+            EditorGUILayout.PropertyField(volumeProp, FeatureContent("Volume"));
             if (volumeProp.floatValue < 0f || volumeProp.floatValue > 1f)
                 EditorGUILayout.HelpBox("Volume은 런타임에서 0~1 범위로 제한됩니다.", MessageType.Info);
         }
         if (loopProp != null)
-            EditorGUILayout.PropertyField(loopProp, new GUIContent("Loop"));
+            EditorGUILayout.PropertyField(loopProp, FeatureContent("Loop"));
         if (waitProp != null)
-            EditorGUILayout.PropertyField(waitProp, new GUIContent("Wait For Completion"));
+            EditorGUILayout.PropertyField(waitProp, FeatureContent("Wait For Completion"));
 
         bool isLoop = loopProp != null && loopProp.boolValue;
         bool waitsForCompletion = waitProp != null && waitProp.boolValue;
@@ -386,7 +781,7 @@ public class EventSOEditor : Editor
     private void DrawTimeScaleCustom(SerializedProperty flagsProp, SerializedProperty stepProp)
     {
         SerializedProperty flag = flagsProp.FindPropertyRelative("IsTimeScale");
-        if (flag == null || !flag.boolValue) return;
+        if (flag == null || !workspaceDrawing && !flag.boolValue) return;
 
         const string dataName = "TimeScale";
         string dataKey = stepProp.propertyPath + "." + dataName;
@@ -397,20 +792,20 @@ public class EventSOEditor : Editor
         if (dataProp == null) return;
         string foldKey = BuildKey(stepProp.propertyPath, "." + dataName);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "Time Scale", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "Time Scale", true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty targetScaleProp = dataProp.FindPropertyRelative("TargetScale");
         SerializedProperty durationProp = dataProp.FindPropertyRelative("Duration");
         SerializedProperty restoreProp = dataProp.FindPropertyRelative("RestoreAfterDuration");
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("TIME SCALE", EditorStyles.boldLabel);
         if (targetScaleProp != null)
-            EditorGUILayout.PropertyField(targetScaleProp, new GUIContent("Target Scale"));
+            EditorGUILayout.PropertyField(targetScaleProp, FeatureContent("Target Scale"));
         if (durationProp != null)
-            EditorGUILayout.PropertyField(durationProp, new GUIContent("Duration (Unscaled Seconds)"));
+            EditorGUILayout.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
         if (restoreProp != null)
-            EditorGUILayout.PropertyField(restoreProp, new GUIContent("Restore After Duration"));
+            EditorGUILayout.PropertyField(restoreProp, FeatureContent("Restore After Duration"));
 
         bool restores = restoreProp == null || restoreProp.boolValue;
         float targetScale = targetScaleProp != null ? targetScaleProp.floatValue : 1f;
@@ -430,7 +825,7 @@ public class EventSOEditor : Editor
     private void DrawScreenFlashCustom(SerializedProperty flagsProp, SerializedProperty stepProp)
     {
         SerializedProperty flag = flagsProp.FindPropertyRelative("IsScreenFlash");
-        if (flag == null || !flag.boolValue) return;
+        if (flag == null || !workspaceDrawing && !flag.boolValue) return;
 
         const string dataName = "ScreenFlash";
         string dataKey = stepProp.propertyPath + "." + dataName;
@@ -441,7 +836,7 @@ public class EventSOEditor : Editor
         if (dataProp == null) return;
         string foldKey = BuildKey(stepProp.propertyPath, "." + dataName);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "Screen Flash", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "Screen Flash", true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty colorProp = dataProp.FindPropertyRelative("FlashColor");
@@ -449,13 +844,13 @@ public class EventSOEditor : Editor
         SerializedProperty fadeInProp = dataProp.FindPropertyRelative("FadeInDuration");
         SerializedProperty holdProp = dataProp.FindPropertyRelative("Duration");
         SerializedProperty fadeOutProp = dataProp.FindPropertyRelative("FadeOutDuration");
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("SCREEN FLASH", EditorStyles.boldLabel);
-        if (colorProp != null) EditorGUILayout.PropertyField(colorProp, new GUIContent("Flash Color"));
-        if (peakAlphaProp != null) EditorGUILayout.PropertyField(peakAlphaProp, new GUIContent("Peak Alpha"));
-        if (fadeInProp != null) EditorGUILayout.PropertyField(fadeInProp, new GUIContent("Fade In"));
-        if (holdProp != null) EditorGUILayout.PropertyField(holdProp, new GUIContent("Hold Duration"));
-        if (fadeOutProp != null) EditorGUILayout.PropertyField(fadeOutProp, new GUIContent("Fade Out"));
+        if (colorProp != null) EditorGUILayout.PropertyField(colorProp, FeatureContent("Flash Color"));
+        if (peakAlphaProp != null) EditorGUILayout.PropertyField(peakAlphaProp, FeatureContent("Peak Alpha"));
+        if (fadeInProp != null) EditorGUILayout.PropertyField(fadeInProp, FeatureContent("Fade In"));
+        if (holdProp != null) EditorGUILayout.PropertyField(holdProp, FeatureContent("Hold Duration"));
+        if (fadeOutProp != null) EditorGUILayout.PropertyField(fadeOutProp, FeatureContent("Fade Out"));
 
         float totalDuration =
             Mathf.Max(0f, fadeInProp != null ? fadeInProp.floatValue : 0f) +
@@ -474,7 +869,7 @@ public class EventSOEditor : Editor
     private void DrawWaitUntilConditionCustom(SerializedProperty flagsProp, SerializedProperty stepProp)
     {
         SerializedProperty flag = flagsProp.FindPropertyRelative("IsWaitUntilCondition");
-        if (flag == null || !flag.boolValue) return;
+        if (flag == null || !workspaceDrawing && !flag.boolValue) return;
 
         const string dataName = "WaitUntilCondition";
         string dataKey = stepProp.propertyPath + "." + dataName;
@@ -486,16 +881,16 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(stepProp.propertyPath, "." + dataName);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "Wait Until Condition", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "Wait Until Condition", true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty conditionProp = dataProp.FindPropertyRelative("Condition");
         SerializedProperty timeoutProp = dataProp.FindPropertyRelative("Timeout");
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("WAIT UNTIL CONDITION", EditorStyles.boldLabel);
         if (timeoutProp != null)
-            EditorGUILayout.PropertyField(timeoutProp, new GUIContent("Timeout (Unscaled Seconds)"));
+            EditorGUILayout.PropertyField(timeoutProp, FeatureContent("Timeout (Unscaled Seconds)"));
         EditorGUILayout.HelpBox(
             timeoutProp == null || timeoutProp.floatValue <= 0f
                 ? "조건이 충족될 때까지 현재 Phase를 제한 없이 유지합니다."
@@ -515,7 +910,7 @@ public class EventSOEditor : Editor
 
         if (!useCondition)
         {
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            BeginFeatureBlock(EditorStyles.helpBox);
             DrawSectionBanner("EVENT", "수동 PlayEvent 호출 시 실행할 연출입니다.", new Color(0.18f, 0.46f, 0.29f, 1f));
             if (stepsArrayProp.arraySize < 1)
             {
@@ -548,14 +943,14 @@ public class EventSOEditor : Editor
         // Condition과 Event Step을 서로 다른 카드로 분리하여 매핑 관계를 명확히 표시한다.
         string key = BuildKey(string.IsNullOrEmpty(keySuffix) ? "ConditionStepsArray" : $"ConditionStepsArray_{keySuffix}");
 
-        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        BeginFeatureBlock(EditorStyles.helpBox);
         DrawSectionBanner("WHEN · CONDITIONS", "어떤 조건에서 실행할지 설정합니다. 각 Condition은 같은 번호의 Event Step과 연결됩니다.", new Color(0.18f, 0.39f, 0.68f, 1f));
         if (conditionsArrayProp != null)
             DrawConditionsArrayTop(conditionsArrayProp, keySuffix);
         EditorGUILayout.EndVertical();
 
         EditorGUILayout.Space(8);
-        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        BeginFeatureBlock(EditorStyles.helpBox);
         DrawSectionBanner("THEN · EVENT STEPS", "조건이 참일 때 실행할 연출입니다. 이 영역은 위 Condition 카드의 자식이 아닙니다.", new Color(0.18f, 0.50f, 0.30f, 1f));
 
         int conditionCount = conditionsArrayProp != null ? conditionsArrayProp.arraySize : 0;
@@ -616,7 +1011,7 @@ public class EventSOEditor : Editor
             GUI.backgroundColor = i < conditionCount
                 ? new Color(0.72f, 1f, 0.78f, 1f)
                 : new Color(1f, 0.88f, 0.62f, 1f);
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            BeginFeatureBlock(EditorStyles.helpBox);
             GUI.backgroundColor = oldBackground;
             Rect headerRect = GUILayoutUtility.GetRect(1, EditorGUIUtility.singleLineHeight);
             float rightButtonsWidth = 170f; float handleW = 18f; float pad = 6f;
@@ -699,7 +1094,7 @@ public class EventSOEditor : Editor
             string phaseKey = BuildKey(node.StepProp.propertyPath, $".PhaseList{pi}_{keySuffix}");
             if (!masterFoldouts.TryGetValue(phaseKey, out _)) masterFoldouts[phaseKey] = true;
 
-            EditorGUILayout.BeginVertical("box");
+            BeginFeatureBlock("box");
             Rect headerRect = EditorGUILayout.GetControlRect(
                 false,
                 EditorGUIUtility.singleLineHeight);
@@ -752,7 +1147,7 @@ public class EventSOEditor : Editor
                 Color prevBg = GUI.backgroundColor;
                 GUI.backgroundColor = new Color(1f, 0.5f, 0.5f, 1f);
                 EditorGUI.BeginDisabledGroup(isFirst && serializedObject.isEditingMultipleObjects);
-                bool removeClicked = GUI.Button(removeRect, new GUIContent("X", isFirst
+                bool removeClicked = GUI.Button(removeRect, FeatureContent("X", isFirst
                     ? "첫 Phase를 삭제하고 다음 Phase를 앞으로 당깁니다. 마지막 Phase는 내용을 비우며, Condition 분기 연결은 보존합니다."
                     : "이 Phase의 연결을 해제합니다."));
                 EditorGUI.EndDisabledGroup();
@@ -786,7 +1181,7 @@ public class EventSOEditor : Editor
                                         !isConditionRouter;
             EditorGUI.BeginDisabledGroup(!canUsePhaseClipboard);
             if (GUILayout.Button(
-                    new GUIContent("Copy", "현재 Phase의 연출만 복사합니다. Next Phase 연결은 포함하지 않습니다."),
+                    FeatureContent("Copy", "현재 Phase의 연출만 복사합니다. Next Phase 연결은 포함하지 않습니다."),
                     GUILayout.Width(60)))
             {
                 CopyPhase(assetInstance, node.ContainerArrayProp, node.ContainerIndex);
@@ -794,7 +1189,7 @@ public class EventSOEditor : Editor
             EditorGUI.EndDisabledGroup();
             EditorGUI.BeginDisabledGroup(!canUsePhaseClipboard || string.IsNullOrEmpty(phaseClipboardJson));
             if (GUILayout.Button(
-                    new GUIContent("Paste", "현재 Phase의 연출만 교체하며, 이 위치의 Next Phase 연결은 그대로 보존합니다."),
+                    FeatureContent("Paste", "현재 Phase의 연출만 교체하며, 이 위치의 Next Phase 연결은 그대로 보존합니다."),
                     GUILayout.Width(60)))
             {
                 if (PastePhase(assetInstance, node.ContainerArrayProp, node.ContainerIndex))
@@ -997,10 +1392,10 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(stepProp.propertyPath, ".ObjectsGroup");
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "▼ Objects", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "▼ Objects", true);
         if (!masterFoldouts[foldKey]) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
 
         var objectsProp = stepProp.FindPropertyRelative("Objects");
         if (objectsProp == null) { EditorGUILayout.LabelField("Objects is null"); EditorGUILayout.EndVertical(); return; }
@@ -1048,10 +1443,10 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(stepProp.propertyPath, ".SpeechesGroup");
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "▼ Speeches", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "▼ Speeches", true);
         if (!masterFoldouts[foldKey]) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
 
         var speechesProp = stepProp.FindPropertyRelative("Speeches");
         if (speechesProp == null) { EditorGUILayout.LabelField("Speeches is null"); EditorGUILayout.EndVertical(); return; }
@@ -1094,10 +1489,10 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(stepProp.propertyPath, ".ScenesGroup");
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "▼ Scenes", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "▼ Scenes", true);
         if (!masterFoldouts[foldKey]) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
 
         var scenesProp = stepProp.FindPropertyRelative("Scenes");
         if (scenesProp == null) { EditorGUILayout.LabelField("Scenes is null"); EditorGUILayout.EndVertical(); return; }
@@ -1126,22 +1521,32 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(stepProp.propertyPath, ".CamerasGroup");
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "▼ Cameras", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "▼ Cameras", true);
         if (!masterFoldouts[foldKey]) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
 
         var camerasProp = stepProp.FindPropertyRelative("Cameras");
         if (camerasProp == null) { EditorGUILayout.LabelField("Cameras is null"); EditorGUILayout.EndVertical(); return; }
 
-        string[] subFlags = { "IsCameraMove", "IsCameraAiming", "IsCameraShake", "IsCameraLens" };
-        string[] subLabels = { "Camera Move", "Camera Aim", "Screen Shake", "Camera Lens" };
+        string[] subFlags = { "IsCameraMove", "IsCameraAiming", "IsCameraShake", "IsCameraLens", "IsCameraFix" };
+        string[] subLabels = { "Camera Move", "Camera Aim", "Screen Shake", "Camera Lens", "Camera Fix" };
+        EditorGUI.BeginChangeCheck();
         DrawSubFlagTogglesOnProp(camerasProp, subFlags, subLabels);
+        if (EditorGUI.EndChangeCheck())
+        {
+            camerasProp.serializedObject.ApplyModifiedProperties();
+            EditorGUILayout.EndVertical();
+            Repaint();
+            GUIUtility.ExitGUI();
+            return;
+        }
 
         if (GetBoolProp(camerasProp, "IsCameraMove")) { var p = camerasProp.FindPropertyRelative("CameraMovement"); if (p != null) DrawCameraMovementDirect(p, stepProp.propertyPath + ".Cameras.CameraMovement"); }
         if (GetBoolProp(camerasProp, "IsCameraAiming")) { var p = camerasProp.FindPropertyRelative("CameraAim"); if (p != null) DrawGenericDataDirect(p, "CameraAim", stepProp.propertyPath + ".Cameras.CameraAim"); }
         if (GetBoolProp(camerasProp, "IsCameraShake")) { var p = camerasProp.FindPropertyRelative("CameraShake"); if (p != null) DrawCameraShakeDirect(p, stepProp.propertyPath + ".Cameras.CameraShake"); }
         if (GetBoolProp(camerasProp, "IsCameraLens")) { var p = camerasProp.FindPropertyRelative("CameraLens"); if (p != null) DrawCameraLensDirect(p, stepProp.propertyPath + ".Cameras.CameraLens"); }
+        if (GetBoolProp(camerasProp, "IsCameraFix")) { var p = camerasProp.FindPropertyRelative("CameraFix"); if (p != null) DrawCameraFixDirect(p, stepProp.propertyPath + ".Cameras.CameraFix"); }
 
         EditorGUILayout.EndVertical();
     }
@@ -1156,10 +1561,10 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(stepProp.propertyPath, ".ComponentsGroup");
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "▼ Components", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "▼ Components", true);
         if (!masterFoldouts[foldKey]) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
 
         var compsProp = stepProp.FindPropertyRelative("Components");
         if (compsProp == null) { EditorGUILayout.LabelField("Components is null"); EditorGUILayout.EndVertical(); return; }
@@ -1190,10 +1595,10 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(stepProp.propertyPath, ".TransformsGroup");
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "▼ Transforms", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "▼ Transforms", true);
         if (!masterFoldouts[foldKey]) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
 
         var transformsProp = stepProp.FindPropertyRelative("Transforms");
         if (transformsProp == null) { EditorGUILayout.LabelField("Transforms is null"); EditorGUILayout.EndVertical(); return; }
@@ -1279,17 +1684,17 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], label, true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], label, true);
         if (!masterFoldouts[foldKey]) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         var iterator = dataProp.Copy();
         var end = iterator.GetEndProperty();
         if (iterator.NextVisible(true))
         {
             while (!SerializedProperty.EqualContents(iterator, end))
             {
-                EditorGUILayout.PropertyField(iterator, true);
+                DrawWorkspaceProperty(iterator);
                 if (!iterator.NextVisible(false)) break;
             }
         }
@@ -1303,7 +1708,7 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "Portrait Speech", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "Portrait Speech", true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty advanceModeProp = dataProp.FindPropertyRelative("AdvanceMode");
@@ -1311,22 +1716,22 @@ public class EventSOEditor : Editor
         SerializedProperty isTypingProp = dataProp.FindPropertyRelative("IsTyping");
         SerializedProperty linesProp = dataProp.FindPropertyRelative("Lines");
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("PORTRAIT SPEECH", EditorStyles.boldLabel);
         if (advanceModeProp != null)
-            EditorGUILayout.PropertyField(advanceModeProp, new GUIContent("Advance Mode"));
+            EditorGUILayout.PropertyField(advanceModeProp, FeatureContent("Advance Mode"));
 
         bool usesInput = advanceModeProp != null &&
                          advanceModeProp.enumValueIndex == (int)EventSO.PortraitAdvanceMode.Input;
         if (usesInput && advanceKeyProp != null)
         {
-            EditorGUILayout.PropertyField(advanceKeyProp, new GUIContent("Advance Key"));
+            EditorGUILayout.PropertyField(advanceKeyProp, FeatureContent("Advance Key"));
             if (advanceKeyProp.intValue == (int)KeyCode.None)
                 EditorGUILayout.HelpBox("Advance Key가 None이면 런타임에서 E 키를 사용합니다.", MessageType.Info);
         }
 
         if (isTypingProp != null)
-            EditorGUILayout.PropertyField(isTypingProp, new GUIContent("Is Typing"));
+            EditorGUILayout.PropertyField(isTypingProp, FeatureContent("Is Typing"));
 
         EditorGUILayout.HelpBox(
             usesInput
@@ -1342,41 +1747,44 @@ public class EventSOEditor : Editor
         }
 
         EditorGUILayout.Space(3);
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField($"Lines ({linesProp.arraySize})", EditorStyles.boldLabel);
-        if (GUILayout.Button("Add Line", GUILayout.Width(80)))
+        if (!WorkspaceSingleEntry(linesProp))
         {
-            int newIndex = linesProp.arraySize;
-            linesProp.arraySize++;
-            SerializedProperty newLine = linesProp.GetArrayElementAtIndex(newIndex);
-            SerializedProperty portraitProp = newLine?.FindPropertyRelative("Portrait");
-            SerializedProperty speakerProp = newLine?.FindPropertyRelative("SpeakerName");
-            SerializedProperty textProp = newLine?.FindPropertyRelative("Text");
-            SerializedProperty durationProp = newLine?.FindPropertyRelative("Duration");
-            if (portraitProp != null) portraitProp.objectReferenceValue = null;
-            if (speakerProp != null) speakerProp.stringValue = string.Empty;
-            if (textProp != null) textProp.stringValue = string.Empty;
-            if (durationProp != null) durationProp.floatValue = 2f;
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField($"Lines ({linesProp.arraySize})", EditorStyles.boldLabel);
+            if (GUILayout.Button("Add Line", GUILayout.Width(80)))
+            {
+                int newIndex = linesProp.arraySize;
+                linesProp.arraySize++;
+                SerializedProperty newLine = linesProp.GetArrayElementAtIndex(newIndex);
+                SerializedProperty portraitProp = newLine?.FindPropertyRelative("Portrait");
+                SerializedProperty speakerProp = newLine?.FindPropertyRelative("SpeakerName");
+                SerializedProperty textProp = newLine?.FindPropertyRelative("Text");
+                SerializedProperty durationProp = newLine?.FindPropertyRelative("Duration");
+                if (portraitProp != null) portraitProp.objectReferenceValue = null;
+                if (speakerProp != null) speakerProp.stringValue = string.Empty;
+                if (textProp != null) textProp.stringValue = string.Empty;
+                if (durationProp != null) durationProp.floatValue = 2f;
+            }
+            EditorGUI.BeginDisabledGroup(linesProp.arraySize == 0);
+            if (GUILayout.Button("-", GUILayout.Width(24)))
+                linesProp.DeleteArrayElementAtIndex(linesProp.arraySize - 1);
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
         }
-        EditorGUI.BeginDisabledGroup(linesProp.arraySize == 0);
-        if (GUILayout.Button("-", GUILayout.Width(24)))
-            linesProp.DeleteArrayElementAtIndex(linesProp.arraySize - 1);
-        EditorGUI.EndDisabledGroup();
-        EditorGUILayout.EndHorizontal();
 
         if (linesProp.arraySize == 0)
             EditorGUILayout.HelpBox("표시할 Line을 하나 이상 추가해 주세요.", MessageType.Warning);
 
         int removeIndex = -1;
-        for (int i = 0; i < linesProp.arraySize; i++)
+        for (int i = WorkspaceStart(linesProp); i < WorkspaceEnd(linesProp); i++)
         {
             SerializedProperty lineProp = linesProp.GetArrayElementAtIndex(i);
             if (lineProp == null) continue;
 
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            BeginFeatureBlock(EditorStyles.helpBox);
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField($"Line {i + 1}", EditorStyles.miniBoldLabel);
-            if (GUILayout.Button("X", GUILayout.Width(24))) removeIndex = i;
+            if (!workspaceDrawing && GUILayout.Button("X", GUILayout.Width(24))) removeIndex = i;
             EditorGUILayout.EndHorizontal();
 
             SerializedProperty portraitProp = lineProp.FindPropertyRelative("Portrait");
@@ -1384,14 +1792,14 @@ public class EventSOEditor : Editor
             SerializedProperty textProp = lineProp.FindPropertyRelative("Text");
             SerializedProperty durationProp = lineProp.FindPropertyRelative("Duration");
             if (portraitProp != null)
-                EditorGUILayout.PropertyField(portraitProp, new GUIContent("Portrait"));
+                EditorGUILayout.PropertyField(portraitProp, FeatureContent("Portrait"));
             if (speakerProp != null)
-                EditorGUILayout.PropertyField(speakerProp, new GUIContent("Speaker Name"));
+                EditorGUILayout.PropertyField(speakerProp, FeatureContent("Speaker Name"));
             if (textProp != null)
-                EditorGUILayout.PropertyField(textProp, new GUIContent("Text"));
+                EditorGUILayout.PropertyField(textProp, FeatureContent("Text"));
             if (!usesInput && durationProp != null)
             {
-                EditorGUILayout.PropertyField(durationProp, new GUIContent("Duration (Unscaled Seconds)"));
+                EditorGUILayout.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
                 if (durationProp.floatValue <= 0f)
                     EditorGUILayout.HelpBox("Duration이 0이면 이 Line은 같은 프레임에 다음 Line으로 넘어갑니다.", MessageType.Warning);
             }
@@ -1411,21 +1819,21 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "Speech Bubble", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "Speech Bubble", true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty objectNameProp = dataProp.FindPropertyRelative("GameObjectName");
         SerializedProperty isTypingProp = dataProp.FindPropertyRelative("isTyping");
         SerializedProperty linesProp = dataProp.FindPropertyRelative("SpeechBubbleTexts");
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("SPEECH BUBBLE", EditorStyles.boldLabel);
         if (objectNameProp != null)
             EditorGUILayout.PropertyField(
                 objectNameProp,
-                new GUIContent("GameObject Name", "비우면 이 EventSO를 호출한 오브젝트 위에 표시합니다."));
+                FeatureContent("GameObject Name", "비우면 이 EventSO를 호출한 오브젝트 위에 표시합니다."));
         if (isTypingProp != null)
-            EditorGUILayout.PropertyField(isTypingProp, new GUIContent("Is Typing"));
+            EditorGUILayout.PropertyField(isTypingProp, FeatureContent("Is Typing"));
 
         EditorGUILayout.HelpBox(
             "각 Line은 Duration 동안 대상 위에 표시됩니다. 글 길이에 맞춰 말풍선 폭과 높이가 자동으로 조정되며, 모든 Line이 끝날 때까지 다음 Phase로 넘어가지 않습니다.",
@@ -1439,49 +1847,52 @@ public class EventSOEditor : Editor
         }
 
         EditorGUILayout.Space(3);
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField($"Lines ({linesProp.arraySize})", EditorStyles.boldLabel);
-        if (GUILayout.Button("Add Line", GUILayout.Width(80)))
+        if (!WorkspaceSingleEntry(linesProp))
         {
-            int newIndex = linesProp.arraySize;
-            linesProp.arraySize++;
-            SerializedProperty newLine = linesProp.GetArrayElementAtIndex(newIndex);
-            SerializedProperty durationProp = newLine?.FindPropertyRelative("Duration");
-            SerializedProperty textProp = newLine?.FindPropertyRelative("Text");
-            if (durationProp != null) durationProp.floatValue = 2f;
-            if (textProp != null) textProp.stringValue = string.Empty;
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField($"Lines ({linesProp.arraySize})", EditorStyles.boldLabel);
+            if (GUILayout.Button("Add Line", GUILayout.Width(80)))
+            {
+                int newIndex = linesProp.arraySize;
+                linesProp.arraySize++;
+                SerializedProperty newLine = linesProp.GetArrayElementAtIndex(newIndex);
+                SerializedProperty durationProp = newLine?.FindPropertyRelative("Duration");
+                SerializedProperty textProp = newLine?.FindPropertyRelative("Text");
+                if (durationProp != null) durationProp.floatValue = 2f;
+                if (textProp != null) textProp.stringValue = string.Empty;
+            }
+            EditorGUI.BeginDisabledGroup(linesProp.arraySize == 0);
+            if (GUILayout.Button("-", GUILayout.Width(24)))
+                linesProp.DeleteArrayElementAtIndex(linesProp.arraySize - 1);
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
         }
-        EditorGUI.BeginDisabledGroup(linesProp.arraySize == 0);
-        if (GUILayout.Button("-", GUILayout.Width(24)))
-            linesProp.DeleteArrayElementAtIndex(linesProp.arraySize - 1);
-        EditorGUI.EndDisabledGroup();
-        EditorGUILayout.EndHorizontal();
 
         if (linesProp.arraySize == 0)
             EditorGUILayout.HelpBox("표시할 Line을 하나 이상 추가해 주세요.", MessageType.Warning);
 
         int removeIndex = -1;
-        for (int i = 0; i < linesProp.arraySize; i++)
+        for (int i = WorkspaceStart(linesProp); i < WorkspaceEnd(linesProp); i++)
         {
             SerializedProperty lineProp = linesProp.GetArrayElementAtIndex(i);
             if (lineProp == null) continue;
 
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            BeginFeatureBlock(EditorStyles.helpBox);
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField($"Line {i + 1}", EditorStyles.miniBoldLabel);
-            if (GUILayout.Button("X", GUILayout.Width(24))) removeIndex = i;
+            if (!workspaceDrawing && GUILayout.Button("X", GUILayout.Width(24))) removeIndex = i;
             EditorGUILayout.EndHorizontal();
 
             SerializedProperty durationProp = lineProp.FindPropertyRelative("Duration");
             SerializedProperty textProp = lineProp.FindPropertyRelative("Text");
             if (durationProp != null)
             {
-                EditorGUILayout.PropertyField(durationProp, new GUIContent("Duration (Unscaled Seconds)"));
+                EditorGUILayout.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
                 if (durationProp.floatValue <= 0f)
                     EditorGUILayout.HelpBox("Duration이 0이면 이 Line은 같은 프레임에 다음 Line으로 넘어갑니다.", MessageType.Warning);
             }
             if (textProp != null)
-                EditorGUILayout.PropertyField(textProp, new GUIContent("Text"));
+                EditorGUILayout.PropertyField(textProp, FeatureContent("Text"));
 
             EditorGUILayout.EndVertical();
         }
@@ -1498,7 +1909,7 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "Animator Event", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "Animator Event", true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty objectNameProp = dataProp.FindPropertyRelative("ObjectName");
@@ -1512,12 +1923,12 @@ public class EventSOEditor : Editor
         SerializedProperty floatValueProp = dataProp.FindPropertyRelative("FloatValue");
         SerializedProperty durationProp = dataProp.FindPropertyRelative("Duration");
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("ANIMATOR EVENT", EditorStyles.boldLabel);
         if (objectNameProp != null)
-            EditorGUILayout.PropertyField(objectNameProp, new GUIContent("Object Name", "비우면 이 EventSO를 호출한 오브젝트를 사용합니다."));
+            EditorGUILayout.PropertyField(objectNameProp, FeatureContent("Object Name", "비우면 이 EventSO를 호출한 오브젝트를 사용합니다."));
         if (commandProp != null)
-            EditorGUILayout.PropertyField(commandProp, new GUIContent("Command"));
+            EditorGUILayout.PropertyField(commandProp, FeatureContent("Command"));
 
         EventSO.AnimatorCommand command = commandProp != null
             ? (EventSO.AnimatorCommand)commandProp.enumValueIndex
@@ -1530,7 +1941,7 @@ public class EventSOEditor : Editor
         {
             EditorGUILayout.PropertyField(
                 stateOrParameterProp,
-                new GUIContent(usesState ? "State Name" : "Parameter Name"));
+                FeatureContent(usesState ? "State Name" : "Parameter Name"));
             if (string.IsNullOrWhiteSpace(stateOrParameterProp.stringValue))
                 EditorGUILayout.HelpBox(
                     usesState ? "실행할 Animator State 이름을 입력해 주세요." : "변경할 Animator Parameter 이름을 입력해 주세요.",
@@ -1540,38 +1951,72 @@ public class EventSOEditor : Editor
         if (usesState)
         {
             if (layerProp != null)
-                EditorGUILayout.PropertyField(layerProp, new GUIContent("Layer", "-1이면 Animator 기본 레이어 해석을 사용합니다."));
+                EditorGUILayout.PropertyField(layerProp, FeatureContent("Layer", "-1이면 Animator 기본 레이어 해석을 사용합니다."));
             if (normalizedTimeProp != null)
-                EditorGUILayout.PropertyField(normalizedTimeProp, new GUIContent("Start Normalized Time"));
+                EditorGUILayout.PropertyField(normalizedTimeProp, FeatureContent("Start Normalized Time"));
             if (command == EventSO.AnimatorCommand.CrossFade && transitionDurationProp != null)
                 EditorGUILayout.PropertyField(
                     transitionDurationProp,
-                    new GUIContent("Transition (Normalized)", "전환 대상 상태 길이에 대한 정규화된 전환 시간입니다."));
+                    FeatureContent("Transition (Normalized)", "전환 대상 상태 길이에 대한 정규화된 전환 시간입니다."));
         }
         else
         {
             switch (command)
             {
                 case EventSO.AnimatorCommand.SetBool:
-                    if (boolValueProp != null) EditorGUILayout.PropertyField(boolValueProp, new GUIContent("Value"));
+                    if (boolValueProp != null) EditorGUILayout.PropertyField(boolValueProp, FeatureContent("Value"));
                     break;
                 case EventSO.AnimatorCommand.SetInteger:
-                    if (intValueProp != null) EditorGUILayout.PropertyField(intValueProp, new GUIContent("Value"));
+                    if (intValueProp != null) EditorGUILayout.PropertyField(intValueProp, FeatureContent("Value"));
                     break;
                 case EventSO.AnimatorCommand.SetFloat:
-                    if (floatValueProp != null) EditorGUILayout.PropertyField(floatValueProp, new GUIContent("Value"));
+                    if (floatValueProp != null) EditorGUILayout.PropertyField(floatValueProp, FeatureContent("Value"));
                     break;
                 case EventSO.AnimatorCommand.SetSpeed:
-                    if (floatValueProp != null) EditorGUILayout.PropertyField(floatValueProp, new GUIContent("Animator Speed"));
+                    if (floatValueProp != null) EditorGUILayout.PropertyField(floatValueProp, FeatureContent("Animator Speed"));
                     break;
             }
         }
 
         if (durationProp != null)
-            EditorGUILayout.PropertyField(durationProp, new GUIContent("Duration (Unscaled Seconds)", "명령 적용 후 다음 Phase로 넘어가기 전에 기다릴 시간입니다."));
+            EditorGUILayout.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)", "명령 적용 후 다음 Phase로 넘어가기 전에 기다릴 시간입니다."));
         EditorGUILayout.HelpBox(
             "Object Name이 비어 있으면 Caller의 Animator를 사용하고, 없으면 자식 Animator까지 찾습니다. Duration은 애니메이션 길이를 자동 추정하지 않으며 설정한 시간만큼 Phase 진행을 막습니다.",
             MessageType.Info);
+        EditorGUILayout.EndVertical();
+    }
+
+    private void DrawCameraFixDirect(SerializedProperty dataProp, string uniqueKey)
+    {
+        if (dataProp == null || drawnDataKeys.Contains(uniqueKey)) return;
+        drawnDataKeys.Add(uniqueKey);
+
+        string foldKey = BuildKey(uniqueKey);
+        if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "Camera Fix", true);
+        if (!masterFoldouts[foldKey]) return;
+
+        SerializedProperty modeProp = dataProp.FindPropertyRelative("Mode");
+        SerializedProperty positionProp = dataProp.FindPropertyRelative("Position");
+        if (modeProp == null) return;
+
+        BeginFeatureBlock("box");
+        int current = modeProp.hasMultipleDifferentValues ? -1 : modeProp.intValue;
+        EditorGUI.showMixedValue = modeProp.hasMultipleDifferentValues;
+        int selected = GUILayout.Toolbar(current, new[] { "Enable", "Disable" }, GUILayout.Height(22));
+        EditorGUI.showMixedValue = false;
+        if (selected != current && selected >= 0)
+        {
+            modeProp.intValue = selected;
+            dataProp.serializedObject.ApplyModifiedProperties();
+            EditorGUILayout.EndVertical();
+            Repaint();
+            GUIUtility.ExitGUI();
+            return;
+        }
+
+        if (current == (int)EventSO.CameraFixMode.Enable && positionProp != null)
+            EditorGUILayout.PropertyField(positionProp, FeatureContent("Position", "Main Camera의 월드 고정 위치입니다."));
         EditorGUILayout.EndVertical();
     }
 
@@ -1582,7 +2027,7 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "Screen Shake", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "Screen Shake", true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty useMainProp = dataProp.FindPropertyRelative("UseMainCamera");
@@ -1591,24 +2036,24 @@ public class EventSOEditor : Editor
         SerializedProperty rotationProp = dataProp.FindPropertyRelative("RotationStrength");
         SerializedProperty frequencyProp = dataProp.FindPropertyRelative("Frequency");
         SerializedProperty fadeOutProp = dataProp.FindPropertyRelative("FadeOut");
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("SCREEN SHAKE", EditorStyles.boldLabel);
-        if (durationProp != null) EditorGUILayout.PropertyField(durationProp, new GUIContent("Duration (Unscaled Seconds)"));
+        if (durationProp != null) EditorGUILayout.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
 
         string advancedKey = BuildKey(uniqueKey, ".ScreenShakeAdvanced");
         if (!masterFoldouts.TryGetValue(advancedKey, out _)) masterFoldouts[advancedKey] = false;
-        masterFoldouts[advancedKey] = EditorGUILayout.Foldout(
+        masterFoldouts[advancedKey] = DrawFeatureFoldout(
             masterFoldouts[advancedKey],
             "Advanced Settings (Optional)",
             true);
         if (masterFoldouts[advancedKey])
         {
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-            if (useMainProp != null) EditorGUILayout.PropertyField(useMainProp, new GUIContent("Use Main Camera"));
-            if (positionProp != null) EditorGUILayout.PropertyField(positionProp, new GUIContent("Position Strength"));
-            if (rotationProp != null) EditorGUILayout.PropertyField(rotationProp, new GUIContent("Rotation Strength"));
-            if (frequencyProp != null) EditorGUILayout.PropertyField(frequencyProp, new GUIContent("Frequency"));
-            if (fadeOutProp != null) EditorGUILayout.PropertyField(fadeOutProp, new GUIContent("Fade Out"));
+            BeginFeatureBlock(EditorStyles.helpBox);
+            if (useMainProp != null) EditorGUILayout.PropertyField(useMainProp, FeatureContent("Use Main Camera"));
+            if (positionProp != null) EditorGUILayout.PropertyField(positionProp, FeatureContent("Position Strength"));
+            if (rotationProp != null) EditorGUILayout.PropertyField(rotationProp, FeatureContent("Rotation Strength"));
+            if (frequencyProp != null) EditorGUILayout.PropertyField(frequencyProp, FeatureContent("Frequency"));
+            if (fadeOutProp != null) EditorGUILayout.PropertyField(fadeOutProp, FeatureContent("Fade Out"));
             EditorGUILayout.EndVertical();
         }
 
@@ -1635,7 +2080,7 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "Camera Lens", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "Camera Lens", true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty useMainProp = dataProp.FindPropertyRelative("UseMainCamera");
@@ -1644,13 +2089,13 @@ public class EventSOEditor : Editor
         SerializedProperty durationProp = dataProp.FindPropertyRelative("Duration");
         SerializedProperty easeProp = dataProp.FindPropertyRelative("EaseInOut");
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("CAMERA LENS", EditorStyles.boldLabel);
-        if (useMainProp != null) EditorGUILayout.PropertyField(useMainProp, new GUIContent("Use Main Camera"));
-        if (fieldOfViewProp != null) EditorGUILayout.PropertyField(fieldOfViewProp, new GUIContent("Target FOV (Perspective)"));
-        if (orthographicSizeProp != null) EditorGUILayout.PropertyField(orthographicSizeProp, new GUIContent("Target Size (Orthographic)"));
-        if (durationProp != null) EditorGUILayout.PropertyField(durationProp, new GUIContent("Duration (Unscaled Seconds)"));
-        if (easeProp != null) EditorGUILayout.PropertyField(easeProp, new GUIContent("Ease In Out"));
+        if (useMainProp != null) EditorGUILayout.PropertyField(useMainProp, FeatureContent("Use Main Camera"));
+        if (fieldOfViewProp != null) EditorGUILayout.PropertyField(fieldOfViewProp, FeatureContent("Target FOV (Perspective)"));
+        if (orthographicSizeProp != null) EditorGUILayout.PropertyField(orthographicSizeProp, FeatureContent("Target Size (Orthographic)"));
+        if (durationProp != null) EditorGUILayout.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
+        if (easeProp != null) EditorGUILayout.PropertyField(easeProp, FeatureContent("Ease In Out"));
 
         if (durationProp != null && durationProp.floatValue <= 0f)
             EditorGUILayout.HelpBox("Duration이 0이면 해당 카메라 투영 방식의 목표 렌즈 값으로 즉시 전환합니다.", MessageType.Info);
@@ -1669,7 +2114,7 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "Visual Fade", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "Visual Fade", true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty arrayProp = dataProp.FindPropertyRelative("Fades");
@@ -1679,44 +2124,47 @@ public class EventSOEditor : Editor
             return;
         }
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("VISUAL FADE", EditorStyles.boldLabel);
         EditorGUILayout.HelpBox(
             "CanvasGroup, CanvasGroup 밖의 UI Graphic, SpriteRenderer, 3D Renderer를 함께 지원합니다. 여러 Entry는 동시에 실행되고 가장 긴 Duration이 끝날 때까지 Phase를 유지합니다.",
             MessageType.Info);
 
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField($"Entries ({arrayProp.arraySize})", EditorStyles.boldLabel);
-        if (GUILayout.Button("Add", GUILayout.Width(52)))
+        if (!WorkspaceSingleEntry(arrayProp))
         {
-            int newIndex = arrayProp.arraySize;
-            arrayProp.arraySize++;
-            SerializedProperty added = arrayProp.GetArrayElementAtIndex(newIndex);
-            SetStringRelative(added, "ObjectName", string.Empty);
-            SetBoolRelative(added, "IncludeChildren", true);
-            SetFloatRelative(added, "TargetAlpha", 0f);
-            SetFloatRelative(added, "Duration", 0.5f);
-            SetBoolRelative(added, "EaseInOut", true);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField($"Entries ({arrayProp.arraySize})", EditorStyles.boldLabel);
+            if (GUILayout.Button("Add", GUILayout.Width(52)))
+            {
+                int newIndex = arrayProp.arraySize;
+                arrayProp.arraySize++;
+                SerializedProperty added = arrayProp.GetArrayElementAtIndex(newIndex);
+                SetStringRelative(added, "ObjectName", string.Empty);
+                SetBoolRelative(added, "IncludeChildren", true);
+                SetFloatRelative(added, "TargetAlpha", 0f);
+                SetFloatRelative(added, "Duration", 0.5f);
+                SetBoolRelative(added, "EaseInOut", true);
+            }
+            EditorGUI.BeginDisabledGroup(arrayProp.arraySize == 0);
+            if (GUILayout.Button("-", GUILayout.Width(24)))
+                arrayProp.DeleteArrayElementAtIndex(arrayProp.arraySize - 1);
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
         }
-        EditorGUI.BeginDisabledGroup(arrayProp.arraySize == 0);
-        if (GUILayout.Button("-", GUILayout.Width(24)))
-            arrayProp.DeleteArrayElementAtIndex(arrayProp.arraySize - 1);
-        EditorGUI.EndDisabledGroup();
-        EditorGUILayout.EndHorizontal();
 
         if (arrayProp.arraySize == 0)
             EditorGUILayout.HelpBox("Fade할 오브젝트를 한 개 이상 추가해 주세요.", MessageType.Warning);
 
         int removeIndex = -1;
-        for (int i = 0; i < arrayProp.arraySize; i++)
+        for (int i = WorkspaceStart(arrayProp); i < WorkspaceEnd(arrayProp); i++)
         {
             SerializedProperty entry = arrayProp.GetArrayElementAtIndex(i);
             if (entry == null) continue;
 
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            BeginFeatureBlock(EditorStyles.helpBox);
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField($"Fade {i + 1}", EditorStyles.miniBoldLabel);
-            if (GUILayout.Button("X", GUILayout.Width(24))) removeIndex = i;
+            if (!workspaceDrawing && GUILayout.Button("X", GUILayout.Width(24))) removeIndex = i;
             EditorGUILayout.EndHorizontal();
 
             SerializedProperty objectName = entry.FindPropertyRelative("ObjectName");
@@ -1725,15 +2173,15 @@ public class EventSOEditor : Editor
             SerializedProperty duration = entry.FindPropertyRelative("Duration");
             SerializedProperty easeInOut = entry.FindPropertyRelative("EaseInOut");
             if (objectName != null)
-                EditorGUILayout.PropertyField(objectName, new GUIContent("Object (Name / Path, Empty = Caller)"));
+                EditorGUILayout.PropertyField(objectName, FeatureContent("Object (Name / Path, Empty = Caller)"));
             if (includeChildren != null)
-                EditorGUILayout.PropertyField(includeChildren, new GUIContent("Include Children"));
+                EditorGUILayout.PropertyField(includeChildren, FeatureContent("Include Children"));
             if (targetAlpha != null)
-                EditorGUILayout.PropertyField(targetAlpha, new GUIContent("Target Alpha"));
+                EditorGUILayout.PropertyField(targetAlpha, FeatureContent("Target Alpha"));
             if (duration != null)
-                EditorGUILayout.PropertyField(duration, new GUIContent("Duration (Unscaled Seconds)"));
+                EditorGUILayout.PropertyField(duration, FeatureContent("Duration (Unscaled Seconds)"));
             if (easeInOut != null)
-                EditorGUILayout.PropertyField(easeInOut, new GUIContent("Ease In Out"));
+                EditorGUILayout.PropertyField(easeInOut, FeatureContent("Ease In Out"));
 
             if (duration != null && duration.floatValue <= 0f)
                 EditorGUILayout.HelpBox("Duration이 0이면 Target Alpha를 즉시 적용합니다.", MessageType.Info);
@@ -1756,7 +2204,7 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "Light Tween", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "Light Tween", true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty arrayProp = dataProp.FindPropertyRelative("Lights");
@@ -1766,50 +2214,53 @@ public class EventSOEditor : Editor
             return;
         }
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("LIGHT TWEEN", EditorStyles.boldLabel);
         EditorGUILayout.HelpBox(
             "지정 오브젝트의 Light 색·밝기·범위를 동시에 보간합니다. 여러 Entry는 동시에 실행되고 가장 긴 Duration이 끝날 때까지 Phase를 유지합니다.",
             MessageType.Info);
 
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField($"Entries ({arrayProp.arraySize})", EditorStyles.boldLabel);
-        if (GUILayout.Button("Add", GUILayout.Width(52)))
+        if (!WorkspaceSingleEntry(arrayProp))
         {
-            int newIndex = arrayProp.arraySize;
-            arrayProp.arraySize++;
-            SerializedProperty added = arrayProp.GetArrayElementAtIndex(newIndex);
-            SetStringRelative(added, "ObjectName", string.Empty);
-            SetBoolRelative(added, "IncludeChildren", true);
-            SetBoolRelative(added, "AffectColor", false);
-            SerializedProperty targetColor = added?.FindPropertyRelative("TargetColor");
-            if (targetColor != null) targetColor.colorValue = Color.white;
-            SetBoolRelative(added, "AffectIntensity", true);
-            SetFloatRelative(added, "TargetIntensity", 1f);
-            SetBoolRelative(added, "AffectRange", false);
-            SetFloatRelative(added, "TargetRange", 10f);
-            SetFloatRelative(added, "Duration", 0.5f);
-            SetBoolRelative(added, "EaseInOut", true);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField($"Entries ({arrayProp.arraySize})", EditorStyles.boldLabel);
+            if (GUILayout.Button("Add", GUILayout.Width(52)))
+            {
+                int newIndex = arrayProp.arraySize;
+                arrayProp.arraySize++;
+                SerializedProperty added = arrayProp.GetArrayElementAtIndex(newIndex);
+                SetStringRelative(added, "ObjectName", string.Empty);
+                SetBoolRelative(added, "IncludeChildren", true);
+                SetBoolRelative(added, "AffectColor", false);
+                SerializedProperty targetColor = added?.FindPropertyRelative("TargetColor");
+                if (targetColor != null) targetColor.colorValue = Color.white;
+                SetBoolRelative(added, "AffectIntensity", true);
+                SetFloatRelative(added, "TargetIntensity", 1f);
+                SetBoolRelative(added, "AffectRange", false);
+                SetFloatRelative(added, "TargetRange", 10f);
+                SetFloatRelative(added, "Duration", 0.5f);
+                SetBoolRelative(added, "EaseInOut", true);
+            }
+            EditorGUI.BeginDisabledGroup(arrayProp.arraySize == 0);
+            if (GUILayout.Button("-", GUILayout.Width(24)))
+                arrayProp.DeleteArrayElementAtIndex(arrayProp.arraySize - 1);
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
         }
-        EditorGUI.BeginDisabledGroup(arrayProp.arraySize == 0);
-        if (GUILayout.Button("-", GUILayout.Width(24)))
-            arrayProp.DeleteArrayElementAtIndex(arrayProp.arraySize - 1);
-        EditorGUI.EndDisabledGroup();
-        EditorGUILayout.EndHorizontal();
 
         if (arrayProp.arraySize == 0)
             EditorGUILayout.HelpBox("조절할 Light를 한 개 이상 추가해 주세요.", MessageType.Warning);
 
         int removeIndex = -1;
-        for (int i = 0; i < arrayProp.arraySize; i++)
+        for (int i = WorkspaceStart(arrayProp); i < WorkspaceEnd(arrayProp); i++)
         {
             SerializedProperty entry = arrayProp.GetArrayElementAtIndex(i);
             if (entry == null) continue;
 
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            BeginFeatureBlock(EditorStyles.helpBox);
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField($"Light {i + 1}", EditorStyles.miniBoldLabel);
-            if (GUILayout.Button("X", GUILayout.Width(24))) removeIndex = i;
+            if (!workspaceDrawing && GUILayout.Button("X", GUILayout.Width(24))) removeIndex = i;
             EditorGUILayout.EndHorizontal();
 
             SerializedProperty objectName = entry.FindPropertyRelative("ObjectName");
@@ -1824,25 +2275,25 @@ public class EventSOEditor : Editor
             SerializedProperty easeInOut = entry.FindPropertyRelative("EaseInOut");
 
             if (objectName != null)
-                EditorGUILayout.PropertyField(objectName, new GUIContent("Object (Name / Path, Empty = Caller)"));
+                EditorGUILayout.PropertyField(objectName, FeatureContent("Object (Name / Path, Empty = Caller)"));
             if (includeChildren != null)
-                EditorGUILayout.PropertyField(includeChildren, new GUIContent("Include Children"));
+                EditorGUILayout.PropertyField(includeChildren, FeatureContent("Include Children"));
             if (affectColor != null)
-                EditorGUILayout.PropertyField(affectColor, new GUIContent("Affect Color"));
+                EditorGUILayout.PropertyField(affectColor, FeatureContent("Affect Color"));
             if (affectColor != null && affectColor.boolValue && targetColor != null)
-                EditorGUILayout.PropertyField(targetColor, new GUIContent("Target Color"));
+                EditorGUILayout.PropertyField(targetColor, FeatureContent("Target Color"));
             if (affectIntensity != null)
-                EditorGUILayout.PropertyField(affectIntensity, new GUIContent("Affect Intensity"));
+                EditorGUILayout.PropertyField(affectIntensity, FeatureContent("Affect Intensity"));
             if (affectIntensity != null && affectIntensity.boolValue && targetIntensity != null)
-                EditorGUILayout.PropertyField(targetIntensity, new GUIContent("Target Intensity"));
+                EditorGUILayout.PropertyField(targetIntensity, FeatureContent("Target Intensity"));
             if (affectRange != null)
-                EditorGUILayout.PropertyField(affectRange, new GUIContent("Affect Range"));
+                EditorGUILayout.PropertyField(affectRange, FeatureContent("Affect Range"));
             if (affectRange != null && affectRange.boolValue && targetRange != null)
-                EditorGUILayout.PropertyField(targetRange, new GUIContent("Target Range"));
+                EditorGUILayout.PropertyField(targetRange, FeatureContent("Target Range"));
             if (duration != null)
-                EditorGUILayout.PropertyField(duration, new GUIContent("Duration (Unscaled Seconds)"));
+                EditorGUILayout.PropertyField(duration, FeatureContent("Duration (Unscaled Seconds)"));
             if (easeInOut != null)
-                EditorGUILayout.PropertyField(easeInOut, new GUIContent("Ease In Out"));
+                EditorGUILayout.PropertyField(easeInOut, FeatureContent("Ease In Out"));
 
             bool changesAnything = (affectColor != null && affectColor.boolValue) ||
                                    (affectIntensity != null && affectIntensity.boolValue) ||
@@ -1866,7 +2317,7 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "Particle Event", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "Particle Event", true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty objectName = dataProp.FindPropertyRelative("ObjectName");
@@ -1874,16 +2325,16 @@ public class EventSOEditor : Editor
         SerializedProperty command = dataProp.FindPropertyRelative("Command");
         SerializedProperty duration = dataProp.FindPropertyRelative("Duration");
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("PARTICLE EVENT", EditorStyles.boldLabel);
         if (objectName != null)
-            EditorGUILayout.PropertyField(objectName, new GUIContent("Object (Name / Path, Empty = Caller)"));
+            EditorGUILayout.PropertyField(objectName, FeatureContent("Object (Name / Path, Empty = Caller)"));
         if (includeChildren != null)
-            EditorGUILayout.PropertyField(includeChildren, new GUIContent("Include Children"));
+            EditorGUILayout.PropertyField(includeChildren, FeatureContent("Include Children"));
         if (command != null)
-            EditorGUILayout.PropertyField(command, new GUIContent("Command"));
+            EditorGUILayout.PropertyField(command, FeatureContent("Command"));
         if (duration != null)
-            EditorGUILayout.PropertyField(duration, new GUIContent("Duration (Unscaled Seconds)"));
+            EditorGUILayout.PropertyField(duration, FeatureContent("Duration (Unscaled Seconds)"));
 
         EditorGUILayout.HelpBox(
             "대상과 선택한 자식의 ParticleSystem에 명령을 한 번 적용합니다. Duration은 파티클 수명을 추정하지 않고 설정한 시간만큼만 Phase 진행을 막습니다.",
@@ -1899,23 +2350,17 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], label, true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], label, true);
         if (!masterFoldouts[foldKey]) return;
 
         var arrProp = dataProp.FindPropertyRelative(arrayFieldName);
-        if (arrProp == null) { EditorGUILayout.BeginVertical("box"); EditorGUILayout.PropertyField(dataProp, true); EditorGUILayout.EndVertical(); return; }
+        if (arrProp == null) { BeginFeatureBlock("box"); EditorGUILayout.PropertyField(dataProp, true); EditorGUILayout.EndVertical(); return; }
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField(hint, EditorStyles.boldLabel);
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Size", GUILayout.Width(40));
-        int newSize = EditorGUILayout.IntField(arrProp.arraySize, GUILayout.Width(60));
-        if (newSize != arrProp.arraySize) arrProp.arraySize = Mathf.Max(0, newSize);
-        if (GUILayout.Button("+", GUILayout.Width(22))) arrProp.arraySize++;
-        if (GUILayout.Button("-", GUILayout.Width(22))) { if (arrProp.arraySize > 0) arrProp.arraySize--; }
-        EditorGUILayout.EndHorizontal();
+        DrawArraySizeControls(arrProp);
         EditorGUI.indentLevel++;
-        for (int i = 0; i < arrProp.arraySize; i++) { var elem = arrProp.GetArrayElementAtIndex(i); if (elem != null) EditorGUILayout.PropertyField(elem, new GUIContent($"[{i}]")); }
+        for (int i = WorkspaceStart(arrProp); i < WorkspaceEnd(arrProp); i++) { var elem = arrProp.GetArrayElementAtIndex(i); if (elem != null) EditorGUILayout.PropertyField(elem, FeatureContent($"[{i}]")); }
         EditorGUI.indentLevel--;
         EditorGUILayout.EndVertical();
     }
@@ -1931,28 +2376,22 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], label, true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], label, true);
         if (!masterFoldouts[foldKey]) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField(label, EditorStyles.boldLabel);
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Size", GUILayout.Width(40));
-        int newSize = EditorGUILayout.IntField(arrProp.arraySize, GUILayout.Width(60));
-        if (newSize != arrProp.arraySize) arrProp.arraySize = Mathf.Max(0, newSize);
-        if (GUILayout.Button("+", GUILayout.Width(22))) arrProp.arraySize++;
-        if (GUILayout.Button("-", GUILayout.Width(22))) { if (arrProp.arraySize > 0) arrProp.arraySize--; }
-        EditorGUILayout.EndHorizontal();
-        for (int i = 0; i < arrProp.arraySize; i++)
+        DrawArraySizeControls(arrProp);
+        for (int i = WorkspaceStart(arrProp); i < WorkspaceEnd(arrProp); i++)
         {
             var elem = arrProp.GetArrayElementAtIndex(i); if (elem == null) continue;
-            EditorGUILayout.BeginVertical("box");
+            BeginFeatureBlock("box");
             EditorGUILayout.LabelField($"[{i}]", EditorStyles.miniBoldLabel);
             EditorGUI.indentLevel++;
             var goNameProp = elem.FindPropertyRelative("gameObjectName");
-            if (goNameProp != null) { EditorGUILayout.LabelField("GameObject Name (Empty = Caller)"); EditorGUILayout.PropertyField(goNameProp, GUIContent.none); }
+            if (goNameProp != null) { EditorGUILayout.LabelField(FeatureContent("GameObject Name (Empty = Caller)")); EditorGUILayout.PropertyField(goNameProp, GUIContent.none); }
             var compNameProp = elem.FindPropertyRelative("componentName");
-            if (compNameProp != null) EditorGUILayout.PropertyField(compNameProp, new GUIContent("Component Name"));
+            if (compNameProp != null) EditorGUILayout.PropertyField(compNameProp, FeatureContent("Component Name"));
             EditorGUI.indentLevel--;
             EditorGUILayout.EndVertical();
         }
@@ -1970,40 +2409,34 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "UpdateComponent", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "UpdateComponent", true);
         if (!masterFoldouts[foldKey]) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("UpdateComponents", EditorStyles.boldLabel);
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Size", GUILayout.Width(40));
-        int newSize = EditorGUILayout.IntField(arrProp.arraySize, GUILayout.Width(60));
-        if (newSize != arrProp.arraySize) arrProp.arraySize = Mathf.Max(0, newSize);
-        if (GUILayout.Button("+", GUILayout.Width(22))) arrProp.arraySize++;
-        if (GUILayout.Button("-", GUILayout.Width(22))) { if (arrProp.arraySize > 0) arrProp.arraySize--; }
-        EditorGUILayout.EndHorizontal();
-        for (int i = 0; i < arrProp.arraySize; i++)
+        DrawArraySizeControls(arrProp);
+        for (int i = WorkspaceStart(arrProp); i < WorkspaceEnd(arrProp); i++)
         {
             var elem = arrProp.GetArrayElementAtIndex(i); if (elem == null) continue;
-            EditorGUILayout.BeginVertical("box");
+            BeginFeatureBlock("box");
             EditorGUILayout.LabelField($"[{i}]", EditorStyles.miniBoldLabel);
             EditorGUI.indentLevel++;
             var goNameProp = elem.FindPropertyRelative("gameObjectName");
-            if (goNameProp != null) { EditorGUILayout.LabelField("GameObject Name (Empty = Caller)"); EditorGUILayout.PropertyField(goNameProp, GUIContent.none); }
+            if (goNameProp != null) { EditorGUILayout.LabelField(FeatureContent("GameObject Name (Empty = Caller)")); EditorGUILayout.PropertyField(goNameProp, GUIContent.none); }
             var compNameProp = elem.FindPropertyRelative("componentName");
-            if (compNameProp != null) EditorGUILayout.PropertyField(compNameProp, new GUIContent("Component Name"));
+            if (compNameProp != null) EditorGUILayout.PropertyField(compNameProp, FeatureContent("Component Name"));
             var propNameProp = elem.FindPropertyRelative("propertyName");
-            if (propNameProp != null) EditorGUILayout.PropertyField(propNameProp, new GUIContent("Property/Field Name"));
+            if (propNameProp != null) EditorGUILayout.PropertyField(propNameProp, FeatureContent("Property/Field Name"));
             var valueTypeProp = elem.FindPropertyRelative("valueType");
-            if (valueTypeProp != null) EditorGUILayout.PropertyField(valueTypeProp, new GUIContent("Value Type"));
+            if (valueTypeProp != null) EditorGUILayout.PropertyField(valueTypeProp, FeatureContent("Value Type"));
             int vt = valueTypeProp != null ? valueTypeProp.enumValueIndex : 0;
             switch (vt)
             {
-                case 0: var ip = elem.FindPropertyRelative("intValue"); if (ip != null) EditorGUILayout.PropertyField(ip, new GUIContent("Value (Int)")); break;
-                case 1: var fp = elem.FindPropertyRelative("floatValue"); if (fp != null) EditorGUILayout.PropertyField(fp, new GUIContent("Value (Float)")); break;
-                case 2: var bp = elem.FindPropertyRelative("boolValue"); if (bp != null) EditorGUILayout.PropertyField(bp, new GUIContent("Value (Bool)")); break;
-                case 3: var sp = elem.FindPropertyRelative("stringValue"); if (sp != null) EditorGUILayout.PropertyField(sp, new GUIContent("Value (String)")); break;
-                case 4: var gp = elem.FindPropertyRelative("gameObjectValue"); if (gp != null) EditorGUILayout.PropertyField(gp, new GUIContent("Value (GameObject)")); break;
+                case 0: var ip = elem.FindPropertyRelative("intValue"); if (ip != null) EditorGUILayout.PropertyField(ip, FeatureContent("Value (Int)")); break;
+                case 1: var fp = elem.FindPropertyRelative("floatValue"); if (fp != null) EditorGUILayout.PropertyField(fp, FeatureContent("Value (Float)")); break;
+                case 2: var bp = elem.FindPropertyRelative("boolValue"); if (bp != null) EditorGUILayout.PropertyField(bp, FeatureContent("Value (Bool)")); break;
+                case 3: var sp = elem.FindPropertyRelative("stringValue"); if (sp != null) EditorGUILayout.PropertyField(sp, FeatureContent("Value (String)")); break;
+                case 4: var gp = elem.FindPropertyRelative("gameObjectValue"); if (gp != null) EditorGUILayout.PropertyField(gp, FeatureContent("Value (GameObject)")); break;
             }
             EditorGUI.indentLevel--;
             EditorGUILayout.EndVertical();
@@ -2019,57 +2452,51 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "SpawnObject", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "SpawnObject", true);
         if (!masterFoldouts[foldKey]) return;
 
         var arrProp = spawnProp.FindPropertyRelative("SpawnDatas");
         if (arrProp == null) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("SpawnDatas", EditorStyles.boldLabel);
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Size", GUILayout.Width(40));
-        int newSize = EditorGUILayout.IntField(arrProp.arraySize, GUILayout.Width(60));
-        if (newSize != arrProp.arraySize) arrProp.arraySize = Mathf.Max(0, newSize);
-        if (GUILayout.Button("+", GUILayout.Width(22))) arrProp.arraySize++;
-        if (GUILayout.Button("-", GUILayout.Width(22))) { if (arrProp.arraySize > 0) arrProp.arraySize--; }
-        EditorGUILayout.EndHorizontal();
+        DrawArraySizeControls(arrProp);
 
-        for (int i = 0; i < arrProp.arraySize; i++)
+        for (int i = WorkspaceStart(arrProp); i < WorkspaceEnd(arrProp); i++)
         {
             var elem = arrProp.GetArrayElementAtIndex(i); if (elem == null) continue;
-            EditorGUILayout.BeginVertical("box");
+            BeginFeatureBlock("box");
             EditorGUILayout.LabelField($"Spawn [{i}]", EditorStyles.miniBoldLabel);
             EditorGUI.indentLevel++;
-            EditorGUILayout.PropertyField(elem.FindPropertyRelative("prefab"));
-            EditorGUILayout.PropertyField(elem.FindPropertyRelative("naming"));
+            DrawFocusedProperty(elem.FindPropertyRelative("prefab"));
+            DrawFocusedProperty(elem.FindPropertyRelative("naming"));
             var parentNm = elem.FindPropertyRelative("parentName");
-            if (parentNm != null) { EditorGUILayout.LabelField("Parent Name (Empty = Root)"); EditorGUILayout.PropertyField(parentNm, GUIContent.none); }
+            if (parentNm != null) { EditorGUILayout.LabelField(FeatureContent("Parent Name (Empty = Root)")); EditorGUILayout.PropertyField(parentNm, GUIContent.none); }
             var sceneNm = elem.FindPropertyRelative("sceneName");
-            if (sceneNm != null) { EditorGUILayout.LabelField("Scene Name (Empty = Caller's Scene)"); EditorGUILayout.PropertyField(sceneNm, GUIContent.none); }
-            EditorGUILayout.PropertyField(elem.FindPropertyRelative("rotation"));
+            if (sceneNm != null) { EditorGUILayout.LabelField(FeatureContent("Scene Name (Empty = Caller's Scene)")); EditorGUILayout.PropertyField(sceneNm, GUIContent.none); }
+            DrawFocusedProperty(elem.FindPropertyRelative("rotation"));
             var isUIProp = elem.FindPropertyRelative("IsUI");
-            EditorGUILayout.PropertyField(isUIProp, new GUIContent("Is UI"));
+            EditorGUILayout.PropertyField(isUIProp, FeatureContent("Is UI"));
             if (isUIProp != null && isUIProp.boolValue)
             {
-                EditorGUILayout.PropertyField(elem.FindPropertyRelative("AnchoredPosition"));
-                EditorGUILayout.PropertyField(elem.FindPropertyRelative("AnchorMin"));
-                EditorGUILayout.PropertyField(elem.FindPropertyRelative("AnchorMax"));
-                EditorGUILayout.PropertyField(elem.FindPropertyRelative("Pivot"));
-                EditorGUILayout.PropertyField(elem.FindPropertyRelative("LocalScale"));
-                EditorGUILayout.PropertyField(elem.FindPropertyRelative("LocalEulerAngles"));
+                DrawFocusedProperty(elem.FindPropertyRelative("AnchoredPosition"));
+                DrawFocusedProperty(elem.FindPropertyRelative("AnchorMin"));
+                DrawFocusedProperty(elem.FindPropertyRelative("AnchorMax"));
+                DrawFocusedProperty(elem.FindPropertyRelative("Pivot"));
+                DrawFocusedProperty(elem.FindPropertyRelative("LocalScale"));
+                DrawFocusedProperty(elem.FindPropertyRelative("LocalEulerAngles"));
             }
             else
             {
                 var isLocalProp = elem.FindPropertyRelative("IsLocal");
-                EditorGUILayout.PropertyField(isLocalProp, new GUIContent("Is Local"));
+                EditorGUILayout.PropertyField(isLocalProp, FeatureContent("Is Local"));
                 if (isLocalProp != null && isLocalProp.boolValue)
                 {
-                    EditorGUILayout.PropertyField(elem.FindPropertyRelative("LocalCenterName"));
+                    DrawFocusedProperty(elem.FindPropertyRelative("LocalCenterName"));
                     var localOff = elem.FindPropertyRelative("LocalOffset");
-                    if (localOff != null) { EditorGUILayout.LabelField("Offset (Right=X, Up=Y, Front=Z)"); EditorGUILayout.PropertyField(localOff, GUIContent.none); }
+                    if (localOff != null) { EditorGUILayout.LabelField(FeatureContent("Offset (Right=X, Up=Y, Front=Z)")); EditorGUILayout.PropertyField(localOff, GUIContent.none); }
                 }
-                else { EditorGUILayout.PropertyField(elem.FindPropertyRelative("position"), new GUIContent("World Position")); }
+                else { EditorGUILayout.PropertyField(elem.FindPropertyRelative("position"), FeatureContent("World Position")); }
             }
             EditorGUI.indentLevel--;
             EditorGUILayout.EndVertical();
@@ -2084,7 +2511,7 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "AttachObject", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "AttachObject", true);
         if (!masterFoldouts[foldKey]) return;
 
         SerializedProperty arrayProp = attachProp.FindPropertyRelative("AttachObjects");
@@ -2094,49 +2521,52 @@ public class EventSOEditor : Editor
             return;
         }
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("ATTACH OBJECT", EditorStyles.boldLabel);
         EditorGUILayout.HelpBox(
             "Parent Name이 비어 있으면 부모에서 분리합니다. Apply Local Transform을 켜면 연결 직후 지정한 로컬 위치·회전·스케일을 적용합니다.",
             MessageType.Info);
 
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField($"Entries ({arrayProp.arraySize})", EditorStyles.boldLabel);
-        if (GUILayout.Button("Add", GUILayout.Width(52)))
+        if (!WorkspaceSingleEntry(arrayProp))
         {
-            int newIndex = arrayProp.arraySize;
-            arrayProp.arraySize++;
-            SerializedProperty added = arrayProp.GetArrayElementAtIndex(newIndex);
-            SetStringRelative(added, "ObjectName", string.Empty);
-            SetStringRelative(added, "ParentName", string.Empty);
-            SetBoolRelative(added, "WorldPositionStays", true);
-            SetBoolRelative(added, "ApplyLocalTransform", false);
-            SerializedProperty localPosition = added?.FindPropertyRelative("LocalPosition");
-            SerializedProperty localEulerAngles = added?.FindPropertyRelative("LocalEulerAngles");
-            SerializedProperty localScale = added?.FindPropertyRelative("LocalScale");
-            if (localPosition != null) localPosition.vector3Value = Vector3.zero;
-            if (localEulerAngles != null) localEulerAngles.vector3Value = Vector3.zero;
-            if (localScale != null) localScale.vector3Value = Vector3.one;
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField($"Entries ({arrayProp.arraySize})", EditorStyles.boldLabel);
+            if (GUILayout.Button("Add", GUILayout.Width(52)))
+            {
+                int newIndex = arrayProp.arraySize;
+                arrayProp.arraySize++;
+                SerializedProperty added = arrayProp.GetArrayElementAtIndex(newIndex);
+                SetStringRelative(added, "ObjectName", string.Empty);
+                SetStringRelative(added, "ParentName", string.Empty);
+                SetBoolRelative(added, "WorldPositionStays", true);
+                SetBoolRelative(added, "ApplyLocalTransform", false);
+                SerializedProperty localPosition = added?.FindPropertyRelative("LocalPosition");
+                SerializedProperty localEulerAngles = added?.FindPropertyRelative("LocalEulerAngles");
+                SerializedProperty localScale = added?.FindPropertyRelative("LocalScale");
+                if (localPosition != null) localPosition.vector3Value = Vector3.zero;
+                if (localEulerAngles != null) localEulerAngles.vector3Value = Vector3.zero;
+                if (localScale != null) localScale.vector3Value = Vector3.one;
+            }
+            EditorGUI.BeginDisabledGroup(arrayProp.arraySize == 0);
+            if (GUILayout.Button("-", GUILayout.Width(24)))
+                arrayProp.DeleteArrayElementAtIndex(arrayProp.arraySize - 1);
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
         }
-        EditorGUI.BeginDisabledGroup(arrayProp.arraySize == 0);
-        if (GUILayout.Button("-", GUILayout.Width(24)))
-            arrayProp.DeleteArrayElementAtIndex(arrayProp.arraySize - 1);
-        EditorGUI.EndDisabledGroup();
-        EditorGUILayout.EndHorizontal();
 
         if (arrayProp.arraySize == 0)
             EditorGUILayout.HelpBox("연결하거나 분리할 오브젝트를 추가해 주세요.", MessageType.Warning);
 
         int removeIndex = -1;
-        for (int i = 0; i < arrayProp.arraySize; i++)
+        for (int i = WorkspaceStart(arrayProp); i < WorkspaceEnd(arrayProp); i++)
         {
             SerializedProperty entry = arrayProp.GetArrayElementAtIndex(i);
             if (entry == null) continue;
 
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            BeginFeatureBlock(EditorStyles.helpBox);
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField($"Attach {i + 1}", EditorStyles.miniBoldLabel);
-            if (GUILayout.Button("X", GUILayout.Width(24))) removeIndex = i;
+            if (!workspaceDrawing && GUILayout.Button("X", GUILayout.Width(24))) removeIndex = i;
             EditorGUILayout.EndHorizontal();
 
             SerializedProperty objectName = entry.FindPropertyRelative("ObjectName");
@@ -2144,18 +2574,18 @@ public class EventSOEditor : Editor
             SerializedProperty worldPositionStays = entry.FindPropertyRelative("WorldPositionStays");
             SerializedProperty applyLocalTransform = entry.FindPropertyRelative("ApplyLocalTransform");
             if (objectName != null)
-                EditorGUILayout.PropertyField(objectName, new GUIContent("Object (Name / Path, Empty = Caller)"));
+                EditorGUILayout.PropertyField(objectName, FeatureContent("Object (Name / Path, Empty = Caller)"));
             if (parentName != null)
-                EditorGUILayout.PropertyField(parentName, new GUIContent("Parent (Name / Path, Empty = Detach)"));
+                EditorGUILayout.PropertyField(parentName, FeatureContent("Parent (Name / Path, Empty = Detach)"));
             if (worldPositionStays != null)
-                EditorGUILayout.PropertyField(worldPositionStays, new GUIContent("World Position Stays"));
+                EditorGUILayout.PropertyField(worldPositionStays, FeatureContent("World Position Stays"));
             if (applyLocalTransform != null)
-                EditorGUILayout.PropertyField(applyLocalTransform, new GUIContent("Apply Local Transform"));
+                EditorGUILayout.PropertyField(applyLocalTransform, FeatureContent("Apply Local Transform"));
             if (applyLocalTransform != null && applyLocalTransform.boolValue)
             {
-                EditorGUILayout.PropertyField(entry.FindPropertyRelative("LocalPosition"), new GUIContent("Local Position"));
-                EditorGUILayout.PropertyField(entry.FindPropertyRelative("LocalEulerAngles"), new GUIContent("Local Euler Angles"));
-                EditorGUILayout.PropertyField(entry.FindPropertyRelative("LocalScale"), new GUIContent("Local Scale"));
+                EditorGUILayout.PropertyField(entry.FindPropertyRelative("LocalPosition"), FeatureContent("Local Position"));
+                EditorGUILayout.PropertyField(entry.FindPropertyRelative("LocalEulerAngles"), FeatureContent("Local Euler Angles"));
+                EditorGUILayout.PropertyField(entry.FindPropertyRelative("LocalScale"), FeatureContent("Local Scale"));
             }
             EditorGUILayout.EndVertical();
         }
@@ -2173,105 +2603,99 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "MoveObject", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "MoveObject", true);
         if (!masterFoldouts[foldKey]) return;
 
         var arrProp = moveProp.FindPropertyRelative("MoveObjects");
         if (arrProp == null) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("MoveObjects", EditorStyles.boldLabel);
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Size", GUILayout.Width(40));
-        int newSize = EditorGUILayout.IntField(arrProp.arraySize, GUILayout.Width(60));
-        if (newSize != arrProp.arraySize) arrProp.arraySize = Mathf.Max(0, newSize);
-        if (GUILayout.Button("+", GUILayout.Width(22))) arrProp.arraySize++;
-        if (GUILayout.Button("-", GUILayout.Width(22))) { if (arrProp.arraySize > 0) arrProp.arraySize--; }
-        EditorGUILayout.EndHorizontal();
+        DrawArraySizeControls(arrProp);
 
-        for (int i = 0; i < arrProp.arraySize; i++)
+        for (int i = WorkspaceStart(arrProp); i < WorkspaceEnd(arrProp); i++)
         {
             var elem = arrProp.GetArrayElementAtIndex(i); if (elem == null) continue;
-            EditorGUILayout.BeginVertical("box");
+            BeginFeatureBlock("box");
             EditorGUILayout.LabelField($"Move [{i}]", EditorStyles.miniBoldLabel);
             EditorGUI.indentLevel++;
             var objNameProp = elem.FindPropertyRelative("objectName");
-            if (objNameProp != null) { EditorGUILayout.LabelField("Object Name (Empty = Caller)"); EditorGUILayout.PropertyField(objNameProp, GUIContent.none); }
+            if (objNameProp != null) { EditorGUILayout.LabelField(FeatureContent("Object Name (Empty = Caller)")); EditorGUILayout.PropertyField(objNameProp, GUIContent.none); }
             var loadingProp = elem.FindPropertyRelative("ShowLoadingScreen");
             if (loadingProp != null)
             {
-                EditorGUILayout.PropertyField(loadingProp, new GUIContent("맵 이동 로딩"));
+                EditorGUILayout.PropertyField(loadingProp, FeatureContent("맵 이동 로딩"));
                 if (loadingProp.boolValue)
-                    EditorGUILayout.PropertyField(elem.FindPropertyRelative("LoadingDuration"), new GUIContent("로딩 화면 시간 (초)"));
+                    EditorGUILayout.PropertyField(elem.FindPropertyRelative("LoadingDuration"), FeatureContent("로딩 화면 시간 (초)"));
             }
             var isRelativeProp = elem.FindPropertyRelative("isRelative");
             bool isRelativePrecheck = isRelativeProp != null && isRelativeProp.boolValue;
             if (!isRelativePrecheck)
             {
                 var isDrawerProp = elem.FindPropertyRelative("isDrawer");
-                if (isDrawerProp != null) EditorGUILayout.PropertyField(isDrawerProp, new GUIContent("Is Drawer"));
+                if (isDrawerProp != null) EditorGUILayout.PropertyField(isDrawerProp, FeatureContent("Is Drawer"));
                 if (isDrawerProp != null && isDrawerProp.boolValue)
                 {
                     var dOff = elem.FindPropertyRelative("drawerOffset");
-                    if (dOff != null) { EditorGUILayout.LabelField("Drawer Offset (Right=X, Up=Y, Front=Z)"); EditorGUILayout.PropertyField(dOff, GUIContent.none); }
-                    EditorGUILayout.PropertyField(elem.FindPropertyRelative("Duration"), new GUIContent("Duration"));
+                    if (dOff != null) { EditorGUILayout.LabelField(FeatureContent("Drawer Offset (Right=X, Up=Y, Front=Z)")); EditorGUILayout.PropertyField(dOff, GUIContent.none); }
+                    EditorGUILayout.PropertyField(elem.FindPropertyRelative("Duration"), FeatureContent("Duration"));
                     EditorGUI.indentLevel--; EditorGUILayout.EndVertical(); continue;
                 }
             }
             // ── Start Section ──
             var isAnotherStartProp = elem.FindPropertyRelative("IsAnotherStartPosition");
-            if (isAnotherStartProp != null) EditorGUILayout.PropertyField(isAnotherStartProp, new GUIContent("Use Custom Start Position"));
+            if (isAnotherStartProp != null) EditorGUILayout.PropertyField(isAnotherStartProp, FeatureContent("Use Custom Start Position"));
             if (isAnotherStartProp != null && isAnotherStartProp.boolValue)
             {
-                EditorGUILayout.BeginVertical("helpbox");
+                BeginFeatureBlock("helpbox");
                 EditorGUILayout.LabelField("── Start ──", EditorStyles.miniBoldLabel);
                 var startIsRelProp = elem.FindPropertyRelative("startIsRelative");
-                if (startIsRelProp != null) EditorGUILayout.PropertyField(startIsRelProp, new GUIContent("Start Is Relative"));
+                if (startIsRelProp != null) EditorGUILayout.PropertyField(startIsRelProp, FeatureContent("Start Is Relative"));
                 bool startIsRel = startIsRelProp != null && startIsRelProp.boolValue;
                 if (startIsRel)
-                    EditorGUILayout.PropertyField(elem.FindPropertyRelative("startTargetName"), new GUIContent("Start Target Name (Empty = Self)"));
+                    EditorGUILayout.PropertyField(elem.FindPropertyRelative("startTargetName"), FeatureContent("Start Target Name (Empty = Self)"));
                 string startLabel = startIsRel ? "Start Offset (Relative)" : "Start World Position";
-                EditorGUILayout.PropertyField(elem.FindPropertyRelative("startPosition"), new GUIContent(startLabel));
+                EditorGUILayout.PropertyField(elem.FindPropertyRelative("startPosition"), FeatureContent(startLabel));
                 EditorGUILayout.EndVertical();
             }
             // ── Goal Section ──
-            EditorGUILayout.BeginVertical("helpbox");
+            BeginFeatureBlock("helpbox");
             EditorGUILayout.LabelField("── Goal ──", EditorStyles.miniBoldLabel);
-            EditorGUILayout.PropertyField(isRelativeProp, new GUIContent("Goal Is Relative"));
+            EditorGUILayout.PropertyField(isRelativeProp, FeatureContent("Goal Is Relative"));
             bool isRelative = isRelativeProp != null && isRelativeProp.boolValue;
             if (isRelative)
-                EditorGUILayout.PropertyField(elem.FindPropertyRelative("targetName"), new GUIContent("Goal Target Name (Empty = Self)"));
+                EditorGUILayout.PropertyField(elem.FindPropertyRelative("targetName"), FeatureContent("Goal Target Name (Empty = Self)"));
             string posLabel = isRelative ? "Goal Offset (Relative)" : "Goal World Position";
-            EditorGUILayout.PropertyField(elem.FindPropertyRelative("targetPosition"), new GUIContent(posLabel));
+            EditorGUILayout.PropertyField(elem.FindPropertyRelative("targetPosition"), FeatureContent(posLabel));
             EditorGUILayout.EndVertical();
-            EditorGUILayout.PropertyField(elem.FindPropertyRelative("Duration"), new GUIContent("Duration"));
+            EditorGUILayout.PropertyField(elem.FindPropertyRelative("Duration"), FeatureContent("Duration"));
             var typeProp = elem.FindPropertyRelative("movementType");
-            EditorGUILayout.PropertyField(typeProp, new GUIContent("Movement Type"));
+            EditorGUILayout.PropertyField(typeProp, FeatureContent("Movement Type"));
             if (typeProp != null)
             {
                 int mt = typeProp.enumValueIndex;
                 switch (mt)
                 {
                     case 1: // Spiral
-                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("SpiralRadius"));
-                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("SpiralTurns"));
+                        DrawFocusedProperty(elem.FindPropertyRelative("SpiralRadius"));
+                        DrawFocusedProperty(elem.FindPropertyRelative("SpiralTurns"));
                         break;
                     case 2: // ZigZag
-                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("ZigZagAmplitude"));
-                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("ZigZagFrequency"));
+                        DrawFocusedProperty(elem.FindPropertyRelative("ZigZagAmplitude"));
+                        DrawFocusedProperty(elem.FindPropertyRelative("ZigZagFrequency"));
                         break;
                     case 3: // Bounce
-                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("BounceCount"));
-                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("BounceHeight"));
+                        DrawFocusedProperty(elem.FindPropertyRelative("BounceCount"));
+                        DrawFocusedProperty(elem.FindPropertyRelative("BounceHeight"));
                         break;
                     case 4: // EaseInOut
-                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("EaseExponent"), new GUIContent("Ease Exponent (2=Quad, 3=Cubic...)"));
+                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("EaseExponent"), FeatureContent("Ease Exponent (2=Quad, 3=Cubic...)"));
                         break;
                     case 5: // Arc
-                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("ArcHeight"));
+                        DrawFocusedProperty(elem.FindPropertyRelative("ArcHeight"));
                         break;
                     case 6: // Parabola
-                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("ParabolaPeakHeight"), new GUIContent("Peak Height"));
+                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("ParabolaPeakHeight"), FeatureContent("Peak Height"));
                         break;
                 }
             }
@@ -2288,41 +2712,41 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "RotateObject", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "RotateObject", true);
         if (!masterFoldouts[foldKey]) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         var objNameProp = rotateProp.FindPropertyRelative("ObjectName");
-        if (objNameProp != null) { EditorGUILayout.LabelField("Object Name (Empty = Caller)"); EditorGUILayout.PropertyField(objNameProp, GUIContent.none); }
+        if (objNameProp != null) { EditorGUILayout.LabelField(FeatureContent("Object Name (Empty = Caller)")); EditorGUILayout.PropertyField(objNameProp, GUIContent.none); }
         var isLookAtProp = rotateProp.FindPropertyRelative("isLookAt");
-        if (isLookAtProp != null) EditorGUILayout.PropertyField(isLookAtProp, new GUIContent("Is LookAt"));
+        if (isLookAtProp != null) EditorGUILayout.PropertyField(isLookAtProp, FeatureContent("Is LookAt"));
         bool isLookAt = (isLookAtProp != null && isLookAtProp.boolValue);
-        if (isLookAt) { EditorGUILayout.PropertyField(rotateProp.FindPropertyRelative("LookAtName")); }
+        if (isLookAt) { DrawFocusedProperty(rotateProp.FindPropertyRelative("LookAtName")); }
         else
         {
             var isDoorProp = rotateProp.FindPropertyRelative("isDoor");
-            if (isDoorProp != null) EditorGUILayout.PropertyField(isDoorProp, new GUIContent("Is Door"));
+            if (isDoorProp != null) EditorGUILayout.PropertyField(isDoorProp, FeatureContent("Is Door"));
             if (isDoorProp != null && isDoorProp.boolValue)
             {
                 var offsetProp = rotateProp.FindPropertyRelative("doorEulerOffset");
-                if (offsetProp != null) { EditorGUILayout.LabelField("Door Offset (Right=X, Up=Y, Front=Z)"); EditorGUILayout.PropertyField(offsetProp, GUIContent.none); }
+                if (offsetProp != null) { EditorGUILayout.LabelField(FeatureContent("Door Offset (Right=X, Up=Y, Front=Z)")); EditorGUILayout.PropertyField(offsetProp, GUIContent.none); }
                 var isDeltaPropDoor = rotateProp.FindPropertyRelative("isDelta");
-                if (isDeltaPropDoor != null) EditorGUILayout.PropertyField(isDeltaPropDoor, new GUIContent("Is Delta"));
+                if (isDeltaPropDoor != null) EditorGUILayout.PropertyField(isDeltaPropDoor, FeatureContent("Is Delta"));
             }
             else
             {
                 var isRelativeProp = rotateProp.FindPropertyRelative("isRelative");
-                if (isRelativeProp != null) EditorGUILayout.PropertyField(isRelativeProp, new GUIContent("Is Relative"));
+                if (isRelativeProp != null) EditorGUILayout.PropertyField(isRelativeProp, FeatureContent("Is Relative"));
                 bool isRelativeVal = isRelativeProp != null && isRelativeProp.boolValue;
-                if (isRelativeVal) { EditorGUILayout.PropertyField(rotateProp.FindPropertyRelative("TargetName"), new GUIContent("Target Name")); }
-                else { var isLocalProp = rotateProp.FindPropertyRelative("isLocal"); if (isLocalProp != null) EditorGUILayout.PropertyField(isLocalProp, new GUIContent("Is Local")); }
+                if (isRelativeVal) { EditorGUILayout.PropertyField(rotateProp.FindPropertyRelative("TargetName"), FeatureContent("Target Name")); }
+                else { var isLocalProp = rotateProp.FindPropertyRelative("isLocal"); if (isLocalProp != null) EditorGUILayout.PropertyField(isLocalProp, FeatureContent("Is Local")); }
                 var isDeltaProp = rotateProp.FindPropertyRelative("isDelta");
-                if (isDeltaProp != null) EditorGUILayout.PropertyField(isDeltaProp, new GUIContent("Is Delta"));
+                if (isDeltaProp != null) EditorGUILayout.PropertyField(isDeltaProp, FeatureContent("Is Delta"));
                 var eulerProp = rotateProp.FindPropertyRelative("eulerAngles");
-                if (eulerProp != null) { string l = (isDeltaProp != null && isDeltaProp.boolValue) ? "Relative Euler" : "Absolute Euler"; EditorGUILayout.PropertyField(eulerProp, new GUIContent(l)); }
+                if (eulerProp != null) { string l = (isDeltaProp != null && isDeltaProp.boolValue) ? "Relative Euler" : "Absolute Euler"; EditorGUILayout.PropertyField(eulerProp, FeatureContent(l)); }
             }
         }
-        EditorGUILayout.PropertyField(rotateProp.FindPropertyRelative("Duration"));
+        DrawFocusedProperty(rotateProp.FindPropertyRelative("Duration"));
         EditorGUILayout.EndVertical();
     }
 
@@ -2334,22 +2758,22 @@ public class EventSOEditor : Editor
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], "CameraMovement", true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], "CameraMovement", true);
         if (!masterFoldouts[foldKey]) return;
 
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         var useMainProp = camProp.FindPropertyRelative("IsCameraMoveUseMain");
-        if (useMainProp != null) EditorGUILayout.PropertyField(useMainProp, new GUIContent("Use Main Camera"));
+        if (useMainProp != null) EditorGUILayout.PropertyField(useMainProp, FeatureContent("Use Main Camera"));
         var isRelativeProp = camProp.FindPropertyRelative("IsRelative");
-        if (isRelativeProp != null) EditorGUILayout.PropertyField(isRelativeProp, new GUIContent("Is Relative"));
+        if (isRelativeProp != null) EditorGUILayout.PropertyField(isRelativeProp, FeatureContent("Is Relative"));
         bool isRelative = isRelativeProp != null && isRelativeProp.boolValue;
-        if (isRelative) { var centerProp = camProp.FindPropertyRelative("CenterObject"); if (centerProp != null) { EditorGUILayout.LabelField("Center Object Name (기준 오브젝트)"); EditorGUILayout.PropertyField(centerProp, GUIContent.none); } }
+        if (isRelative) { var centerProp = camProp.FindPropertyRelative("CenterObject"); if (centerProp != null) { EditorGUILayout.LabelField(FeatureContent("Center Object Name (기준 오브젝트)")); EditorGUILayout.PropertyField(centerProp, GUIContent.none); } }
         string startLabel = isRelative ? "Start Offset (Right=X, Up=Y, Front=Z)" : "Start Position (World)";
         string endLabel = isRelative ? "End Offset (Right=X, Up=Y, Front=Z)" : "End Position (World)";
-        var startProp = camProp.FindPropertyRelative("StartPosition"); if (startProp != null) EditorGUILayout.PropertyField(startProp, new GUIContent(startLabel));
-        var endProp = camProp.FindPropertyRelative("EndPosition"); if (endProp != null) EditorGUILayout.PropertyField(endProp, new GUIContent(endLabel));
-        var startTimeProp = camProp.FindPropertyRelative("StartTime"); if (startTimeProp != null) EditorGUILayout.PropertyField(startTimeProp, new GUIContent("Start Time"));
-        var endTimeProp = camProp.FindPropertyRelative("EndTime"); if (endTimeProp != null) EditorGUILayout.PropertyField(endTimeProp, new GUIContent("End Time"));
+        var startProp = camProp.FindPropertyRelative("StartPosition"); if (startProp != null) EditorGUILayout.PropertyField(startProp, FeatureContent(startLabel));
+        var endProp = camProp.FindPropertyRelative("EndPosition"); if (endProp != null) EditorGUILayout.PropertyField(endProp, FeatureContent(endLabel));
+        var startTimeProp = camProp.FindPropertyRelative("StartTime"); if (startTimeProp != null) EditorGUILayout.PropertyField(startTimeProp, FeatureContent("Start Time"));
+        var endTimeProp = camProp.FindPropertyRelative("EndTime"); if (endTimeProp != null) EditorGUILayout.PropertyField(endTimeProp, FeatureContent("End Time"));
         EditorGUILayout.EndVertical();
     }
 
@@ -2358,52 +2782,46 @@ public class EventSOEditor : Editor
     // ??????????????????????????????????????????
     private void DrawLockCustom(SerializedProperty flagsProp, SerializedProperty stepProp, string lockFlagName, string lockDataName)
     {
-        var lockFlag = flagsProp.FindPropertyRelative(lockFlagName); if (lockFlag == null || !lockFlag.boolValue) return;
+        var lockFlag = flagsProp.FindPropertyRelative(lockFlagName); if (lockFlag == null || !workspaceDrawing && !lockFlag.boolValue) return;
         string dataKey = stepProp.propertyPath + "." + lockDataName; if (drawnDataKeys.Contains(dataKey)) return; drawnDataKeys.Add(dataKey);
         var lockProp = stepProp.FindPropertyRelative(lockDataName); if (lockProp == null) return;
         string foldKey = BuildKey(stepProp.propertyPath, "." + lockDataName);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], lockDataName, true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], lockDataName, true);
         if (!masterFoldouts[foldKey]) return;
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         // 기존 EventSO의 직렬화 키는 보존하고 편집 의미만 Keyboard/Mouse로 노출합니다.
         var keyboardProp = lockProp.FindPropertyRelative("IsLockMove"); var mouseProp = lockProp.FindPropertyRelative("IsLockCamera");
-        if (keyboardProp != null) EditorGUILayout.PropertyField(keyboardProp, new GUIContent("Lock Keyboard"));
-        if (mouseProp != null) EditorGUILayout.PropertyField(mouseProp, new GUIContent("Lock Mouse"));
+        if (keyboardProp != null) EditorGUILayout.PropertyField(keyboardProp, FeatureContent("Lock Keyboard"));
+        if (mouseProp != null) EditorGUILayout.PropertyField(mouseProp, FeatureContent("Lock Mouse"));
         EditorGUILayout.EndVertical();
     }
 
     private void DrawChoiceCustom(SerializedProperty flagsProp, SerializedProperty stepProp, string flagName, string dataName)
     {
-        var flag = flagsProp.FindPropertyRelative(flagName); if (flag == null || !flag.boolValue) return;
+        var flag = flagsProp.FindPropertyRelative(flagName); if (flag == null || !workspaceDrawing && !flag.boolValue) return;
         string dataKey = stepProp.propertyPath + "." + dataName; if (drawnDataKeys.Contains(dataKey)) return; drawnDataKeys.Add(dataKey);
         var dataProp = stepProp.FindPropertyRelative(dataName); if (dataProp == null) return;
         string foldKey = BuildKey(stepProp.propertyPath, "." + dataName);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], dataName, true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], dataName, true);
         if (!masterFoldouts[foldKey]) return;
         var arrProp = dataProp.FindPropertyRelative("Candidates"); if (arrProp == null) { EditorGUILayout.PropertyField(dataProp, true); return; }
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("Candidates", EditorStyles.boldLabel);
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Size", GUILayout.Width(40));
-        int newSize = EditorGUILayout.IntField(arrProp.arraySize, GUILayout.Width(60));
-        if (newSize != arrProp.arraySize) arrProp.arraySize = Mathf.Max(0, newSize);
-        if (GUILayout.Button("+", GUILayout.Width(22))) arrProp.arraySize++;
-        if (GUILayout.Button("-", GUILayout.Width(22))) { if (arrProp.arraySize > 0) arrProp.arraySize--; }
-        EditorGUILayout.EndHorizontal();
-        for (int i = 0; i < arrProp.arraySize; i++)
+        DrawArraySizeControls(arrProp);
+        for (int i = WorkspaceStart(arrProp); i < WorkspaceEnd(arrProp); i++)
         {
             var elem = arrProp.GetArrayElementAtIndex(i); if (elem == null) continue;
-            EditorGUILayout.BeginVertical("box"); EditorGUILayout.LabelField($"Candidate [{i}]", EditorStyles.miniBoldLabel); EditorGUI.indentLevel++;
+            BeginFeatureBlock("box"); EditorGUILayout.LabelField($"Candidate [{i}]", EditorStyles.miniBoldLabel); EditorGUI.indentLevel++;
             var textProp = elem.FindPropertyRelative("Text"); var valueNameProp = elem.FindPropertyRelative("ValueName"); var typeProp = elem.FindPropertyRelative("type");
-            if (textProp != null) EditorGUILayout.PropertyField(textProp, new GUIContent("Text"));
-            if (valueNameProp != null) EditorGUILayout.PropertyField(valueNameProp, new GUIContent("Value Name"));
-            if (typeProp != null) EditorGUILayout.PropertyField(typeProp, new GUIContent("Value Type"));
+            if (textProp != null) EditorGUILayout.PropertyField(textProp, FeatureContent("Text"));
+            if (valueNameProp != null) EditorGUILayout.PropertyField(valueNameProp, FeatureContent("Value Name"));
+            if (typeProp != null) EditorGUILayout.PropertyField(typeProp, FeatureContent("Value Type"));
             int vt = typeProp != null ? typeProp.enumValueIndex : 0;
-            switch (vt) { case 0: var intP = elem.FindPropertyRelative("intValue"); if (intP != null) EditorGUILayout.PropertyField(intP, new GUIContent("Int Value")); break; case 1: var floatP = elem.FindPropertyRelative("floatValue"); if (floatP != null) EditorGUILayout.PropertyField(floatP, new GUIContent("Float Value")); break; case 2: var boolP = elem.FindPropertyRelative("boolValue"); if (boolP != null) EditorGUILayout.PropertyField(boolP, new GUIContent("Bool Value")); break; case 3: var strP = elem.FindPropertyRelative("stringValue"); if (strP != null) EditorGUILayout.PropertyField(strP, new GUIContent("String Value")); break; case 4: var goP = elem.FindPropertyRelative("gameObjectValue"); if (goP != null) EditorGUILayout.PropertyField(goP, new GUIContent("GameObject Value")); break; }
+            switch (vt) { case 0: var intP = elem.FindPropertyRelative("intValue"); if (intP != null) EditorGUILayout.PropertyField(intP, FeatureContent("Int Value")); break; case 1: var floatP = elem.FindPropertyRelative("floatValue"); if (floatP != null) EditorGUILayout.PropertyField(floatP, FeatureContent("Float Value")); break; case 2: var boolP = elem.FindPropertyRelative("boolValue"); if (boolP != null) EditorGUILayout.PropertyField(boolP, FeatureContent("Bool Value")); break; case 3: var strP = elem.FindPropertyRelative("stringValue"); if (strP != null) EditorGUILayout.PropertyField(strP, FeatureContent("String Value")); break; case 4: var goP = elem.FindPropertyRelative("gameObjectValue"); if (goP != null) EditorGUILayout.PropertyField(goP, FeatureContent("GameObject Value")); break; }
             EditorGUILayout.BeginHorizontal(); GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Delete", GUILayout.Width(90))) { arrProp.DeleteArrayElementAtIndex(i); EditorGUILayout.EndHorizontal(); EditorGUI.indentLevel--; EditorGUILayout.EndVertical(); break; }
+            if (!workspaceDrawing && GUILayout.Button("Delete", GUILayout.Width(90))) { arrProp.DeleteArrayElementAtIndex(i); EditorGUILayout.EndHorizontal(); EditorGUI.indentLevel--; EditorGUILayout.EndVertical(); break; }
             EditorGUILayout.EndHorizontal(); EditorGUI.indentLevel--; EditorGUILayout.EndVertical();
         }
         EditorGUILayout.EndVertical();
@@ -2411,27 +2829,21 @@ public class EventSOEditor : Editor
 
     private void DrawSetGlobalsCustom(SerializedProperty flagsProp, SerializedProperty stepProp, string flagName, string dataName)
     {
-        var flag = flagsProp.FindPropertyRelative(flagName); if (flag == null || !flag.boolValue) return;
+        var flag = flagsProp.FindPropertyRelative(flagName); if (flag == null || !workspaceDrawing && !flag.boolValue) return;
         string dataKey = stepProp.propertyPath + "." + dataName; if (drawnDataKeys.Contains(dataKey)) return; drawnDataKeys.Add(dataKey);
         var setProp = stepProp.FindPropertyRelative(dataName); if (setProp == null) return;
         string foldKey = BuildKey(stepProp.propertyPath, "." + dataName);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], dataName, true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], dataName, true);
         if (!masterFoldouts[foldKey]) return;
         var arrProp = setProp.FindPropertyRelative("SetValues"); if (arrProp == null) { EditorGUILayout.PropertyField(setProp, true); return; }
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         EditorGUILayout.LabelField("SetValues", EditorStyles.boldLabel);
-        EditorGUILayout.BeginHorizontal();
-        EditorGUILayout.LabelField("Size", GUILayout.Width(40));
-        int newSize = EditorGUILayout.IntField(arrProp.arraySize, GUILayout.Width(60));
-        if (newSize != arrProp.arraySize) arrProp.arraySize = Mathf.Max(0, newSize);
-        if (GUILayout.Button("+", GUILayout.Width(22))) arrProp.arraySize++;
-        if (GUILayout.Button("-", GUILayout.Width(22))) { if (arrProp.arraySize > 0) arrProp.arraySize--; }
-        EditorGUILayout.EndHorizontal();
-        for (int i = 0; i < arrProp.arraySize; i++)
+        DrawArraySizeControls(arrProp);
+        for (int i = WorkspaceStart(arrProp); i < WorkspaceEnd(arrProp); i++)
         {
             var elem = arrProp.GetArrayElementAtIndex(i); if (elem == null) continue;
-            EditorGUILayout.BeginVertical("box"); EditorGUILayout.LabelField($"SetValue [{i}]", EditorStyles.miniBoldLabel); EditorGUI.indentLevel++;
+            BeginFeatureBlock("box"); EditorGUILayout.LabelField($"SetValue [{i}]", EditorStyles.miniBoldLabel); EditorGUI.indentLevel++;
             var prefProp = elem.FindPropertyRelative("IsPrefData"); var setTypeProp = elem.FindPropertyRelative("setType"); var valueTypeProp = elem.FindPropertyRelative("valueType"); var nameProp = elem.FindPropertyRelative("ValueName");
             int currentValueType = valueTypeProp != null ? valueTypeProp.enumValueIndex : 0;
             bool isGameObjectValue = currentValueType == (int)EventSO.ValueType.GameObject;
@@ -2439,23 +2851,23 @@ public class EventSOEditor : Editor
             if (prefProp != null)
             {
                 EditorGUI.BeginDisabledGroup(isGameObjectValue);
-                EditorGUILayout.PropertyField(prefProp, new GUIContent("Use PlayerPrefs"));
+                EditorGUILayout.PropertyField(prefProp, FeatureContent("Use PlayerPrefs"));
                 EditorGUI.EndDisabledGroup();
             }
             if (setTypeProp != null)
             {
                 EditorGUI.BeginDisabledGroup(setOnlyValue);
-                EditorGUILayout.PropertyField(setTypeProp, new GUIContent("Operation"));
+                EditorGUILayout.PropertyField(setTypeProp, FeatureContent("Operation"));
                 EditorGUI.EndDisabledGroup();
             }
-            if (nameProp != null) EditorGUILayout.PropertyField(nameProp, new GUIContent("Key"));
-            if (valueTypeProp != null) EditorGUILayout.PropertyField(valueTypeProp, new GUIContent("Value Type"));
+            if (nameProp != null) EditorGUILayout.PropertyField(nameProp, FeatureContent("Key"));
+            if (valueTypeProp != null) EditorGUILayout.PropertyField(valueTypeProp, FeatureContent("Value Type"));
             int vt = valueTypeProp != null ? valueTypeProp.enumValueIndex : 0;
-            switch (vt) { case 0: EditorGUILayout.PropertyField(elem.FindPropertyRelative("intValue"), new GUIContent("Value (Int)")); break; case 1: EditorGUILayout.PropertyField(elem.FindPropertyRelative("floatValue"), new GUIContent("Value (Float)")); break; case 2: EditorGUILayout.PropertyField(elem.FindPropertyRelative("boolValue"), new GUIContent("Value (Bool)")); break; case 3: EditorGUILayout.PropertyField(elem.FindPropertyRelative("stringValue"), new GUIContent("Value (String)")); break; case 4: EditorGUILayout.PropertyField(elem.FindPropertyRelative("gameObjectValue"), new GUIContent("Value (GameObject)")); if (prefProp != null && prefProp.boolValue) EditorGUILayout.HelpBox("GameObject 값은 PlayerPrefs에 저장되지 않습니다.", MessageType.Info); break; }
+            switch (vt) { case 0: EditorGUILayout.PropertyField(elem.FindPropertyRelative("intValue"), FeatureContent("Value (Int)")); break; case 1: EditorGUILayout.PropertyField(elem.FindPropertyRelative("floatValue"), FeatureContent("Value (Float)")); break; case 2: EditorGUILayout.PropertyField(elem.FindPropertyRelative("boolValue"), FeatureContent("Value (Bool)")); break; case 3: EditorGUILayout.PropertyField(elem.FindPropertyRelative("stringValue"), FeatureContent("Value (String)")); break; case 4: EditorGUILayout.PropertyField(elem.FindPropertyRelative("gameObjectValue"), FeatureContent("Value (GameObject)")); if (prefProp != null && prefProp.boolValue) EditorGUILayout.HelpBox("GameObject 값은 PlayerPrefs에 저장되지 않습니다.", MessageType.Info); break; }
             if (setOnlyValue && setTypeProp != null && setTypeProp.enumValueIndex == (int)EventSO.SetType.Add)
                 EditorGUILayout.HelpBox("String/GameObject의 기존 Add 값은 호환성을 위해 Set으로 실행됩니다. 저장된 값은 자동 변경하지 않습니다.", MessageType.Info);
             EditorGUILayout.BeginHorizontal(); GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Delete", GUILayout.Width(90))) { arrProp.DeleteArrayElementAtIndex(i); EditorGUILayout.EndHorizontal(); EditorGUI.indentLevel--; EditorGUILayout.EndVertical(); break; }
+            if (!workspaceDrawing && GUILayout.Button("Delete", GUILayout.Width(90))) { arrProp.DeleteArrayElementAtIndex(i); EditorGUILayout.EndHorizontal(); EditorGUI.indentLevel--; EditorGUILayout.EndVertical(); break; }
             EditorGUILayout.EndHorizontal(); EditorGUI.indentLevel--; EditorGUILayout.EndVertical();
         }
         EditorGUILayout.EndVertical();
@@ -2463,16 +2875,16 @@ public class EventSOEditor : Editor
 
     private void DrawFlagAndData(SerializedProperty flagsProp, SerializedProperty stepProp, string flagName, string dataName)
     {
-        var flag = flagsProp.FindPropertyRelative(flagName); if (flag == null || !flag.boolValue) return;
+        var flag = flagsProp.FindPropertyRelative(flagName); if (flag == null || !workspaceDrawing && !flag.boolValue) return;
         string dataKey = stepProp.propertyPath + "." + dataName; if (drawnDataKeys.Contains(dataKey)) return; drawnDataKeys.Add(dataKey);
         var dataProp = stepProp.FindPropertyRelative(dataName); if (dataProp == null) return;
         string foldKey = BuildKey(stepProp.propertyPath, "." + dataName);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
-        masterFoldouts[foldKey] = EditorGUILayout.Foldout(masterFoldouts[foldKey], dataName, true);
+        masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], dataName, true);
         if (!masterFoldouts[foldKey]) return;
-        EditorGUILayout.BeginVertical("box");
+        BeginFeatureBlock("box");
         var iterator = dataProp.Copy(); var end = iterator.GetEndProperty();
-        if (iterator.NextVisible(true)) { while (!SerializedProperty.EqualContents(iterator, end)) { EditorGUILayout.PropertyField(iterator, true); if (!iterator.NextVisible(false)) break; } }
+        if (iterator.NextVisible(true)) { while (!SerializedProperty.EqualContents(iterator, end)) { DrawWorkspaceProperty(iterator); if (!iterator.NextVisible(false)) break; } }
         EditorGUILayout.EndVertical();
     }
 
@@ -2481,7 +2893,7 @@ public class EventSOEditor : Editor
         if (condsArrayProp == null) return;
         string key = BuildKey(string.IsNullOrEmpty(keySuffix) ? "ConditionsArray" : $"ConditionsArray_{keySuffix}");
         if (!masterFoldouts.TryGetValue(key, out _)) masterFoldouts[key] = true;
-        masterFoldouts[key] = EditorGUILayout.Foldout(masterFoldouts[key], $"Condition Branches ({condsArrayProp.arraySize})", true);
+        masterFoldouts[key] = DrawFeatureFoldout(masterFoldouts[key], $"Condition Branches ({condsArrayProp.arraySize})", true);
         if (!masterFoldouts[key]) return;
 
         EditorGUILayout.BeginHorizontal();
@@ -2529,7 +2941,7 @@ public class EventSOEditor : Editor
             SerializedProperty elem = condsArrayProp.GetArrayElementAtIndex(i);
             if (elem == null) continue;
 
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            BeginFeatureBlock(EditorStyles.helpBox);
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField($"Condition {i + 1}", EditorStyles.boldLabel);
             if (GUILayout.Button("X", GUILayout.Width(24)))
@@ -2579,7 +2991,7 @@ public class EventSOEditor : Editor
         if (condGroupProp == null) return;
         string key = BuildKey(condGroupProp.propertyPath);
         if (!masterFoldouts.TryGetValue(key, out _)) masterFoldouts[key] = true;
-        masterFoldouts[key] = EditorGUILayout.Foldout(masterFoldouts[key], "Condition Settings", true);
+        masterFoldouts[key] = DrawFeatureFoldout(masterFoldouts[key], "Condition Settings", true);
         if (!masterFoldouts[key]) return;
 
         SerializedProperty checksProp = condGroupProp.FindPropertyRelative("Checks");
@@ -2624,7 +3036,7 @@ public class EventSOEditor : Editor
         int checksMask = checksProp.intValue & knownChecksMask;
         EditorGUI.BeginChangeCheck();
         int selectedMask = EditorGUILayout.MaskField(
-            "Condition Checks",
+            workspaceDrawing ? "조건 항목" : "Condition Checks",
             checksMask,
             new[]
             {
@@ -2677,7 +3089,7 @@ public class EventSOEditor : Editor
         {
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("TIME COUNT", EditorStyles.miniBoldLabel);
-            EditorGUILayout.PropertyField(secondsProp, new GUIContent("Seconds After Game Start"));
+            EditorGUILayout.PropertyField(secondsProp, FeatureContent("Seconds After Game Start"));
             if (secondsProp.floatValue < 0f)
                 EditorGUILayout.HelpBox("시간은 0초 이상이어야 합니다. 런타임에서는 음수를 0초로 처리합니다.", MessageType.Warning);
         }
@@ -2687,9 +3099,9 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("A ↔ B COLLISION", EditorStyles.miniBoldLabel);
             if (collisionAProp != null)
-                EditorGUILayout.PropertyField(collisionAProp, new GUIContent("Object A (Name / Path)"));
+                EditorGUILayout.PropertyField(collisionAProp, FeatureContent("Object A (Name / Path)"));
             if (collisionBProp != null)
-                EditorGUILayout.PropertyField(collisionBProp, new GUIContent("Object B (Name / Path)"));
+                EditorGUILayout.PropertyField(collisionBProp, FeatureContent("Object B (Name / Path)"));
             EditorGUILayout.HelpBox(
                 "3D/2D의 Collision 또는 Trigger에서 A와 B가 접촉하면 참이 됩니다. " +
                 "필요한 Collider가 없으면 오브젝트 크기에 맞는 런타임 Trigger Collider를 자동으로 추가합니다. " +
@@ -2710,9 +3122,9 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("OBJECT STATE", EditorStyles.miniBoldLabel);
             if (objectStateTargetProp != null)
-                EditorGUILayout.PropertyField(objectStateTargetProp, new GUIContent("Object (Name / Path)"));
+                EditorGUILayout.PropertyField(objectStateTargetProp, FeatureContent("Object (Name / Path)"));
             if (objectStateProp != null)
-                EditorGUILayout.PropertyField(objectStateProp, new GUIContent("Required State"));
+                EditorGUILayout.PropertyField(objectStateProp, FeatureContent("Required State"));
             if (string.IsNullOrWhiteSpace(objectStateTargetProp?.stringValue))
                 EditorGUILayout.HelpBox("상태를 확인할 Object 이름 또는 Root/Child 경로를 입력해야 합니다.", MessageType.Warning);
         }
@@ -2722,15 +3134,15 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("DISTANCE", EditorStyles.miniBoldLabel);
             if (distanceAProp != null)
-                EditorGUILayout.PropertyField(distanceAProp, new GUIContent("Object A (Name / Path)"));
+                EditorGUILayout.PropertyField(distanceAProp, FeatureContent("Object A (Name / Path)"));
             if (distanceBProp != null)
-                EditorGUILayout.PropertyField(distanceBProp, new GUIContent("Object B (Name / Path)"));
+                EditorGUILayout.PropertyField(distanceBProp, FeatureContent("Object B (Name / Path)"));
             if (distanceComparisonProp != null)
-                EditorGUILayout.PropertyField(distanceComparisonProp, new GUIContent("Comparison"));
+                EditorGUILayout.PropertyField(distanceComparisonProp, FeatureContent("Comparison"));
             if (distanceThresholdProp != null)
-                EditorGUILayout.PropertyField(distanceThresholdProp, new GUIContent("Distance"));
+                EditorGUILayout.PropertyField(distanceThresholdProp, FeatureContent("Distance"));
             if (distanceUse2DProp != null)
-                EditorGUILayout.PropertyField(distanceUse2DProp, new GUIContent("Use 2D Distance (X/Y)"));
+                EditorGUILayout.PropertyField(distanceUse2DProp, FeatureContent("Use 2D Distance (X/Y)"));
 
             string distanceA = distanceAProp?.stringValue?.Trim() ?? string.Empty;
             string distanceB = distanceBProp?.stringValue?.Trim() ?? string.Empty;
@@ -2745,9 +3157,9 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("INPUT KEY", EditorStyles.miniBoldLabel);
             if (inputKeyCodeProp != null)
-                EditorGUILayout.PropertyField(inputKeyCodeProp, new GUIContent("Key"));
+                EditorGUILayout.PropertyField(inputKeyCodeProp, FeatureContent("Key"));
             if (inputKeyStateProp != null)
-                EditorGUILayout.PropertyField(inputKeyStateProp, new GUIContent("Input State"));
+                EditorGUILayout.PropertyField(inputKeyStateProp, FeatureContent("Input State"));
             EditorGUILayout.HelpBox(
                 "키보드와 Mouse0~Mouse4는 Legacy Input Manager와 새 Input System 전용 설정에서 동일하게 읽습니다.",
                 MessageType.Info);
@@ -2760,20 +3172,20 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("ANIMATOR STATE", EditorStyles.miniBoldLabel);
             if (animatorObjectProp != null)
-                EditorGUILayout.PropertyField(animatorObjectProp, new GUIContent("Object (Name / Path, Empty = Caller)"));
+                EditorGUILayout.PropertyField(animatorObjectProp, FeatureContent("Object (Name / Path, Empty = Caller)"));
             if (animatorStateNameProp != null)
-                EditorGUILayout.PropertyField(animatorStateNameProp, new GUIContent("State Name"));
+                EditorGUILayout.PropertyField(animatorStateNameProp, FeatureContent("State Name"));
             if (animatorLayerProp != null)
-                EditorGUILayout.PropertyField(animatorLayerProp, new GUIContent("Layer"));
+                EditorGUILayout.PropertyField(animatorLayerProp, FeatureContent("Layer"));
             if (animatorStateProp != null)
-                EditorGUILayout.PropertyField(animatorStateProp, new GUIContent("Check"));
+                EditorGUILayout.PropertyField(animatorStateProp, FeatureContent("Check"));
 
             bool checksCompletion = animatorStateProp != null &&
                                     animatorStateProp.enumValueIndex == (int)EventSO.AnimatorStateCheck.Completed;
             if (checksCompletion && animatorCompletionTimeProp != null)
                 EditorGUILayout.PropertyField(
                     animatorCompletionTimeProp,
-                    new GUIContent("Completion Normalized Time"));
+                    FeatureContent("Completion Normalized Time"));
 
             EditorGUILayout.HelpBox(
                 "지정 오브젝트에 Animator가 없으면 자식까지 찾습니다. Current는 해당 State가 현재 재생 중일 때, Completed는 normalizedTime 기준을 넘고 전환 중이 아닐 때 참입니다.",
@@ -2791,9 +3203,9 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("SCENE STATE", EditorStyles.miniBoldLabel);
             if (sceneNameProp != null)
-                EditorGUILayout.PropertyField(sceneNameProp, new GUIContent("Scene Name"));
+                EditorGUILayout.PropertyField(sceneNameProp, FeatureContent("Scene Name"));
             if (sceneStateProp != null)
-                EditorGUILayout.PropertyField(sceneStateProp, new GUIContent("Required State"));
+                EditorGUILayout.PropertyField(sceneStateProp, FeatureContent("Required State"));
             EditorGUILayout.HelpBox(
                 "Loaded/Unloaded는 씬의 로드 여부를, Active는 SceneManager의 현재 Active Scene인지 확인합니다.",
                 MessageType.Info);
@@ -2806,9 +3218,9 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("CAMERA VIEW", EditorStyles.miniBoldLabel);
             if (cameraViewTargetProp != null)
-                EditorGUILayout.PropertyField(cameraViewTargetProp, new GUIContent("Object (Name / Path)"));
+                EditorGUILayout.PropertyField(cameraViewTargetProp, FeatureContent("Object (Name / Path)"));
             if (cameraViewStateProp != null)
-                EditorGUILayout.PropertyField(cameraViewStateProp, new GUIContent("Required State"));
+                EditorGUILayout.PropertyField(cameraViewStateProp, FeatureContent("Required State"));
             EditorGUILayout.HelpBox(
                 "현재 활성화된 Game Camera 중 대상 Layer를 렌더링하는 가장 높은 Depth 카메라를 사용합니다. Renderer가 있으면 Bounds와 카메라 Frustum을, 없으면 Transform 위치를 확인합니다.",
                 MessageType.Info);
@@ -2860,7 +3272,7 @@ public class EventSOEditor : Editor
         for (int ci = 0; ci < condsProp.arraySize; ci++)
         {
             var condElem = condsProp.GetArrayElementAtIndex(ci); if (condElem == null) continue;
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            BeginFeatureBlock(EditorStyles.helpBox);
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField($"Value {ci + 1}", EditorStyles.miniBoldLabel);
             if (GUILayout.Button("X", GUILayout.Width(22)))
@@ -2875,8 +3287,8 @@ public class EventSOEditor : Editor
             var valueTypeProp = condElem.FindPropertyRelative("valueType");
             var prefProp = condElem.FindPropertyRelative("isPlayerPrefData");
             var checkTypeProp = condElem.FindPropertyRelative("checkType");
-            if (nameProp != null) EditorGUILayout.PropertyField(nameProp, new GUIContent("Global Key"));
-            if (checkTypeProp != null) EditorGUILayout.PropertyField(checkTypeProp, new GUIContent("Check Type"));
+            if (nameProp != null) EditorGUILayout.PropertyField(nameProp, FeatureContent("Global Key"));
+            if (checkTypeProp != null) EditorGUILayout.PropertyField(checkTypeProp, FeatureContent("Check Type"));
 
             EventSO.CheckType checkType = checkTypeProp != null
                 ? (EventSO.CheckType)checkTypeProp.enumValueIndex
@@ -2901,7 +3313,7 @@ public class EventSOEditor : Editor
             else
             {
                 if (valueTypeProp != null)
-                    EditorGUILayout.PropertyField(valueTypeProp, new GUIContent("Value Type"));
+                    EditorGUILayout.PropertyField(valueTypeProp, FeatureContent("Value Type"));
                 valueTypeIndex = valueTypeProp != null
                     ? valueTypeProp.enumValueIndex
                     : (int)EventSO.ValueType.Float;
@@ -2909,23 +3321,23 @@ public class EventSOEditor : Editor
                 {
                     case (int)EventSO.ValueType.Int:
                         var intExpected = condElem.FindPropertyRelative("ExpectedInt");
-                        if (intExpected != null) EditorGUILayout.PropertyField(intExpected, new GUIContent("Expected Int"));
+                        if (intExpected != null) EditorGUILayout.PropertyField(intExpected, FeatureContent("Expected Int"));
                         break;
                     case (int)EventSO.ValueType.Float:
                         var floatExpected = condElem.FindPropertyRelative("ExpectedFloat");
-                        if (floatExpected != null) EditorGUILayout.PropertyField(floatExpected, new GUIContent("Expected Float"));
+                        if (floatExpected != null) EditorGUILayout.PropertyField(floatExpected, FeatureContent("Expected Float"));
                         break;
                     case (int)EventSO.ValueType.Bool:
                         var boolExpected = condElem.FindPropertyRelative("ExpectedBool");
-                        if (boolExpected != null) EditorGUILayout.PropertyField(boolExpected, new GUIContent("Expected Bool"));
+                        if (boolExpected != null) EditorGUILayout.PropertyField(boolExpected, FeatureContent("Expected Bool"));
                         break;
                     case (int)EventSO.ValueType.String:
                         var stringExpected = condElem.FindPropertyRelative("ExpectedString");
-                        if (stringExpected != null) EditorGUILayout.PropertyField(stringExpected, new GUIContent("Expected String"));
+                        if (stringExpected != null) EditorGUILayout.PropertyField(stringExpected, FeatureContent("Expected String"));
                         break;
                     case (int)EventSO.ValueType.GameObject:
                         var objectExpected = condElem.FindPropertyRelative("ExpectedGameObject");
-                        if (objectExpected != null) EditorGUILayout.PropertyField(objectExpected, new GUIContent("Expected GameObject"));
+                        if (objectExpected != null) EditorGUILayout.PropertyField(objectExpected, FeatureContent("Expected GameObject"));
                         break;
                 }
 
@@ -2940,7 +3352,7 @@ public class EventSOEditor : Editor
             if (prefProp != null)
             {
                 EditorGUI.BeginDisabledGroup(isGameObjectCondition);
-                EditorGUILayout.PropertyField(prefProp, new GUIContent("Use PlayerPrefs"));
+                EditorGUILayout.PropertyField(prefProp, FeatureContent("Use PlayerPrefs"));
                 EditorGUI.EndDisabledGroup();
                 if (isGameObjectCondition && prefProp.boolValue)
                     EditorGUILayout.HelpBox("GameObject 조건은 PlayerPrefs에 저장할 수 없어 메모리 Global 값을 사용합니다. 기존 값은 자동 변경하지 않습니다.", MessageType.Info);

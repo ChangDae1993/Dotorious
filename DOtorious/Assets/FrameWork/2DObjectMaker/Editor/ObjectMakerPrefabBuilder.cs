@@ -391,6 +391,7 @@ namespace JYW.Game.ObjectMaker.Editor
                         new Vector3(700f + comboIndex * 230f, 40f + attackIndex * 150f),
                         preservedMotions,
                         comboIndex == 0 ? ObjectCommonAnimator.Attack : null);
+                    state.speed = attack.animationSpeed;
 
                     if (comboIndex == 0)
                     {

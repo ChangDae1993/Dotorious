@@ -1,0 +1,91 @@
+.ew-root { flex-grow: 1; background-color: #181c24; color: #d9dfea; font-size: 12px; }
+.ew-root Label { -unity-text-align: middle-left; }
+.ew-commandbar { flex-direction: row; align-items: center; height: 68px; padding-left: 16px; padding-right: 12px; background-color: #202632; border-bottom-width: 1px; border-bottom-color: #343d4d; flex-shrink: 0; }
+.ew-brand { width: 34px; height: 34px; border-radius: 8px; background-color: #5a8cf5; color: white; font-size: 23px; -unity-font-style: bold; -unity-text-align: middle-center; margin-right: 12px; }
+.ew-document { min-width: 130px; flex-shrink: 1; }
+.ew-eyebrow { color: #8190a7; font-size: 10px; -unity-font-style: bold; letter-spacing: 1px; }
+.ew-document-title { color: #f1f4fa; font-size: 18px; -unity-font-style: bold; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ew-save-state { color: #83bda8; font-size: 11px; margin-left: 16px; }
+.ew-save-state.is-dirty { color: #efbc75; }
+.ew-root Button { border-radius: 4px; border-width: 1px; border-color: #3a4658; background-color: #2a3342; color: #dbe4f2; padding-left: 10px; padding-right: 10px; min-height: 27px; margin: 2px; -unity-font-style: normal; }
+.ew-root Button:hover { background-color: #35445a; border-color: #607da7; }
+.ew-root Button:active { background-color: #3f5982; }
+.ew-root Button:disabled { opacity: 0.4; }
+.ew-root .ew-primary-button { background-color: #416bd0; border-color: #5b83e3; color: #ffffff; }
+.ew-root .ew-primary-button:hover { background-color: #527de2; }
+.ew-root .ew-icon-button { min-width: 28px; padding-left: 5px; padding-right: 5px; font-size: 17px; background-color: transparent; border-color: transparent; }
+.ew-file-menu { margin-left: 8px; margin-right: 8px; height: 27px; background-color: #2a3342; border-radius: 4px; }
+.ew-workspace { flex-grow: 1; min-height: 200px; }
+.ew-browser { background-color: #202630; border-right-width: 1px; border-right-color: #353e4c; }
+.ew-section-head { height: 34px; flex-direction: row; justify-content: space-between; align-items: center; padding-left: 14px; padding-right: 6px; }
+.ew-asset-field { margin-left: 10px; margin-right: 10px; margin-bottom: 7px; }
+.ew-follow { font-size: 11px; color: #95a4bb; margin: 3px 10px 12px 10px; }
+.ew-small-tabs { flex-direction: row; border-bottom-width: 1px; border-bottom-color: #394353; padding-left: 8px; padding-right: 8px; flex-shrink: 0; }
+.ew-root .ew-small-tab { flex-grow: 1; border-radius: 0; border-width: 0; border-bottom-width: 2px; border-bottom-color: transparent; background-color: transparent; color: #9aa9be; margin: 0; height: 33px; padding-left: 4px; padding-right: 4px; font-size: 11px; }
+.ew-root .ew-small-tab.is-active { color: #d9e6ff; border-bottom-color: #719af5; background-color: #283345; }
+.ew-browser-search { margin: 10px 9px 8px 9px; }
+.ew-browser-scroll { flex-grow: 1; }
+.ew-root .ew-outline-item, .ew-root .ew-asset-item { flex-direction: column; align-items: stretch; white-space: normal; min-height: 51px; padding: 8px 8px 8px 10px; margin: 2px 7px; background-color: transparent; border-color: transparent; border-left-width: 2px; border-radius: 3px; }
+.ew-root .ew-outline-item.is-selected, .ew-root .ew-asset-item.is-selected { background-color: #2b3e5b; border-left-color: #7aa3ff; }
+.ew-outline-title { color: #d4ddeb; white-space: normal; font-size: 12px; -unity-font-style: bold; margin-bottom: 5px; }
+.ew-muted { color: #899bb5; font-size: 11px; white-space: normal; }
+.ew-asset-path { color: #8795a8; white-space: normal; font-size: 10px; }
+.ew-browser-foot { padding: 10px; border-top-width: 1px; border-top-color: #343d4c; flex-shrink: 0; }
+.ew-browser-foot .ew-muted { margin-bottom: 7px; }
+.ew-center { flex-grow: 1; background-color: #181d27; }
+.ew-viewbar { height: 42px; flex-direction: row; align-items: stretch; padding-left: 7px; border-bottom-width: 1px; border-bottom-color: #353e4c; background-color: #232b38; flex-shrink: 0; }
+.ew-root .ew-view-tab { border-radius: 0; border-width: 0; border-bottom-width: 2px; border-bottom-color: transparent; background-color: transparent; color: #9caac0; margin: 0 2px; padding-left: 11px; padding-right: 11px; }
+.ew-root .ew-view-tab.is-active { color: #e2ebff; border-bottom-color: #7d9fff; background-color: #2a3548; }
+.ew-contextbar { flex-direction: row; align-items: center; padding: 7px 10px; min-height: 43px; flex-shrink: 0; border-bottom-width: 1px; border-bottom-color: #2a3341; }
+.ew-context-title { color: #a7b7cf; font-size: 11px; text-overflow: ellipsis; overflow: hidden; flex-shrink: 1; }
+.ew-canvas-host { flex-grow: 1; min-height: 100px; overflow: hidden; }
+.ew-canvas-host > VisualElement { flex-grow: 1; }
+.ew-timeline { flex-grow: 1; background-color: #242a33; }
+.ew-inspector { background-color: #242b36; border-left-width: 1px; border-left-color: #3a4454; }
+.ew-inspector-eyebrow { color: #8c9bb1; font-size: 10px; -unity-font-style: bold; margin: 14px 15px 8px 15px; }
+.ew-inspector-title { font-size: 20px; -unity-font-style: bold; color: #edf2fb; margin: 0 14px 7px 14px; white-space: normal; }
+.ew-inspector-caption { color: #8fa2bd; font-size: 11px; margin: 0 14px 13px 14px; white-space: normal; }
+.ew-property-body { flex-grow: 1; min-height: 100px; }
+.ew-property-actions { flex-direction: row; align-items: center; padding-left: 12px; padding-right: 10px; }
+.ew-feature-toggle { flex-grow: 1; color: #a9bad1; font-size: 11px; }
+.ew-property-scroll { flex-grow: 1; }
+.ew-property-gui { padding: 12px 10px; min-height: 30px; color: #d9dfea; }
+.ew-inspector-tip { color: #8191a8; font-size: 10px; white-space: normal; margin: 10px 13px; padding-top: 8px; border-top-width: 1px; border-top-color: #3a4351; }
+.ew-empty-text { color: #96a6c0; font-size: 12px; white-space: normal; margin: 18px 12px; }
+.ew-status { height: 24px; color: #8499b7; font-size: 10px; background-color: #151a23; border-top-width: 1px; border-top-color: #354153; padding-left: 12px; text-overflow: ellipsis; overflow: hidden; flex-shrink: 0; }
+.ew-root .unity-two-pane-split-view__dragline-anchor { background-color: #333e50; }
+.ew-root .unity-two-pane-split-view__dragline-anchor:hover { background-color: #729bff; }
+.ew-flow-canvas, .ew-flow-scroll { flex-grow: 1; }
+.ew-flow-content { padding: 20px; }
+.ew-flow-entry { background-color: #202d3e; border-width: 1px; border-color: #405a7c; border-radius: 7px; padding: 16px; }
+.ew-flow-entry-badge { color: #83b4ff; font-size: 10px; -unity-font-style: bold; }
+.ew-flow-entry-title { color: #ebf3ff; font-size: 18px; -unity-font-style: bold; }
+.ew-flow-muted { color: #9aaac0; font-size: 11px; white-space: normal; }
+.ew-flow-phase { background-color: #252e3c; border-width: 1px; border-color: #3a485d; border-radius: 7px; overflow: hidden; }
+.ew-flow-phase--selected { border-color: #7b9fff; background-color: #28354b; }
+.ew-flow-phase--inactive { opacity: 0.58; }
+.ew-flow-phase-header { background-color: #2b374a; border-bottom-width: 1px; border-bottom-color: #3d4b62; padding: 12px; }
+.ew-flow-phase-badge { background-color: #426ac0; color: white; border-radius: 4px; padding: 4px 7px; -unity-font-style: bold; font-size: 11px; }
+.ew-flow-route { color: #e1eafb; font-size: 13px; -unity-font-style: bold; }
+.ew-flow-duration { color: #8da2c0; font-size: 10px; }
+.ew-flow-condition { background-color: #1e2837; border-bottom-width: 1px; border-bottom-color: #354258; padding: 10px 12px; }
+.ew-flow-condition-text { color: #b2c6e2; font-size: 11px; white-space: normal; }
+.ew-flow-feature { background-color: #252f40; border-bottom-width: 1px; border-bottom-color: #344155; padding: 11px 13px; }
+.ew-flow-feature:hover { background-color: #30435d; }
+.ew-flow-feature--selected { background-color: #344c70; }
+.ew-flow-feature-title { color: #e4edfc; font-size: 13px; -unity-font-style: bold; }
+.ew-flow-feature-detail { color: #a0b1ca; font-size: 11px; white-space: normal; }
+.ew-flow-feature-time { color: #a9bfdf; font-size: 11px; }
+.ew-flow-phase-footer { padding: 7px 9px; background-color: #202b3b; }
+.ew-flow-chip { background-color: #34435b; color: #a9c0e1; border-radius: 3px; padding: 2px 6px; font-size: 10px; }
+.ew-flow-inactive-badge { color: #e1b676; }
+.ew-flow-connector { min-height: 39px; }
+.ew-flow-line { background-color: #4b6285; }
+.ew-flow-arrow { color: #789acd; }
+.ew-flow-connector-label { color: #7f94b2; font-size: 10px; }
+.ew-flow-warning { background-color: #3c3428; border-radius: 5px; padding: 12px; margin-top: 16px; }
+.ew-flow-warning-title { color: #ecc38b; -unity-font-style: bold; }
+.ew-flow-warning-text { color: #d1bb9b; white-space: normal; font-size: 11px; }
+.ew-flow-empty { padding: 25px; }
+.ew-flow-empty-title { color: #d9e8ff; font-size: 20px; -unity-font-style: bold; }
+.ew-flow-empty-detail { color: #a2b5d0; white-space: normal; margin-top: 12px; margin-bottom: 18px; }

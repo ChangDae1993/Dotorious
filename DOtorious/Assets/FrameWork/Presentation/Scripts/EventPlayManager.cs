@@ -47,6 +47,7 @@ namespace JYW.Game.EventPlay
         [SerializeField] private GameObject screenFlashPrefab;
         [SerializeField] private GameObject speechBubblePrefab;
         [SerializeField] private GameObject loadingScreenPrefab;
+        [SerializeField] private GameObject cameraFixPrefab;
 
         private GameObject fadeCanvas = null;
         private CanvasGroup fadeCanvasGroup = null;
@@ -78,6 +79,57 @@ namespace JYW.Game.EventPlay
 
         internal bool HasRunningEvents => runningEventPairs.Count > 0;
 
+        public bool IsCameraMovementControlled(Camera camera)
+        {
+            return camera != null && ((cameraFixController != null && cameraFixController.IsFixed(camera)) ||
+                HasTransientCameraMotion(camera));
+        }
+
+        internal bool HasTransientCameraMotion(Camera camera)
+        {
+            if (camera == null) return false;
+            if (mainCameraDepthUsages.TryGetValue(camera, out MainCameraDepthUsage usage) && usage.Count > 0)
+                return true;
+            foreach (CameraShakeRuntimeState state in activeCameraShakes)
+                if (!state.Cleaned && state.Target == camera.transform) return true;
+            return false;
+        }
+
+        private void ApplyCameraFix(CameraFixData data)
+        {
+            if (data.Mode == CameraFixMode.Disable)
+            {
+                if (cameraFixController != null) cameraFixController.ReleaseAll();
+                return;
+            }
+            Camera camera = Camera.main;
+            if (camera == null)
+            {
+                Debug.LogWarning("[EventPlayManager] Camera Fix: Main Camera is missing.", this);
+                return;
+            }
+            if (cameraFixController == null)
+            {
+                if (cameraFixPrefab == null)
+                {
+                    Debug.LogWarning("[EventPlayManager] Camera Fix: CameraFix prefab is not assigned.", this);
+                    return;
+                }
+                GameObject instance = Instantiate(cameraFixPrefab, transform);
+                instance.name = cameraFixPrefab.name;
+                cameraFixController = instance.GetComponentInChildren<CameraFixController>(true);
+                if (cameraFixController == null)
+                {
+                    Destroy(instance);
+                    Debug.LogWarning("[EventPlayManager] Camera Fix: prefab has no CameraFixController.", this);
+                    return;
+                }
+                cameraFixController.Configure(this);
+            }
+            cameraFixController.FixTo(camera, data.Position);
+        }
+
+
         private int lockKeyboardCount = 0;
         private int lockMouseCount = 0;
 
@@ -89,6 +141,8 @@ namespace JYW.Game.EventPlay
         private bool eventCameraDepthStored = false;
 
         private GameObject activeTooltipObject = null;
+        private CameraFixController cameraFixController;
+        private readonly HashSet<CameraShakeRuntimeState> activeCameraShakes = new HashSet<CameraShakeRuntimeState>();
         private TooltipData activeTooltipData = null;
         private GameObject activeTooltipCenterObject = null;
         private Camera[] tooltipCameraBuffer = Array.Empty<Camera>();
@@ -294,6 +348,7 @@ namespace JYW.Game.EventPlay
             // 비활성화된 MonoBehaviour의 코루틴은 다시 활성화해도 재개되지 않는다.
             // 추적 상태와 UI/Lock 정리가 영구 고착되지 않도록 즉시 취소한다.
             CancelAllRunningEvents();
+            if (cameraFixController != null) cameraFixController.ReleaseAll();
         }
 
         private void LateUpdate()
@@ -1855,6 +1910,11 @@ namespace JYW.Game.EventPlay
             if (step.Flags.IsCameras && step.Cameras != null)
             {
                 var cameras = step.Cameras;
+
+                // Persistent state is immediate; it must not block a later Disable phase.
+                if (cameras.IsCameraFix && cameras.CameraFix != null)
+                    ApplyCameraFix(cameras.CameraFix);
+
 
                 // CameraMovement
                 if (cameras.IsCameraMove && cameras.CameraMovement != null)
@@ -3484,6 +3544,7 @@ namespace JYW.Game.EventPlay
             }
 
             state.Target = camera.transform;
+            activeCameraShakes.Add(state);
             float duration = Mathf.Max(0f, cameraShake.Duration);
             float frequency = Mathf.Max(0f, cameraShake.Frequency);
             float seed = Time.realtimeSinceStartup * 0.731f + 11.17f;
@@ -3554,6 +3615,7 @@ namespace JYW.Game.EventPlay
         private void CleanupCameraShake(CameraShakeRuntimeState state)
         {
             if (state == null || state.Cleaned) return;
+            activeCameraShakes.Remove(state);
             RemoveAppliedCameraShake(state);
 
             if (state.UsesEventCamera)

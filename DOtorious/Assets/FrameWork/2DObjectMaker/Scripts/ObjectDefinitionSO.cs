@@ -157,6 +157,9 @@ namespace JYW.Game.ObjectMaker
         [Min(0f)] public float dashSpeed = 15f;
         public LayerMask obstacleMask = ~0;
 
+        // Applies only to generated attack Animator States, never global Animator.speed.
+        [Min(0.01f)] public float animationSpeed = 1f;
+
         public ObjectPlayerAttack Clone()
         {
             var clone = (ObjectPlayerAttack)MemberwiseClone();
@@ -188,6 +191,9 @@ namespace JYW.Game.ObjectMaker
             projectileRadius = Mathf.Max(0.01f, projectileRadius);
             projectileGravity = Mathf.Max(0f, projectileGravity);
             dashSpeed = Mathf.Max(0f, dashSpeed);
+            animationSpeed = float.IsNaN(animationSpeed) || float.IsInfinity(animationSpeed) || animationSpeed <= 0f
+                ? 1f
+                : Mathf.Max(0.01f, animationSpeed);
         }
     }
 
