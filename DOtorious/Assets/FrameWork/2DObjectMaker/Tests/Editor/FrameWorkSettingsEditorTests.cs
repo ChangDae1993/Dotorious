@@ -20,6 +20,7 @@ namespace JYW.Game.ObjectMaker.Tests
 
             string[] menuPaths =
             {
+                "Window/FrameWork/AllinOneEditor",
                 "Window/FrameWork/Presentation",
                 "Window/FrameWork/2DObjectMaker",
                 "Window/FrameWork/Settings"
@@ -42,7 +43,7 @@ namespace JYW.Game.ObjectMaker.Tests
                 for (int i = 0; i < windows.Length; i++)
                 {
                     string typeName = windows[i].GetType().Name;
-                    if (typeName == "EventSOEditorWindow" ||
+                    if (typeName == "AllinOneEditor" || typeName == "EventSOEditorWindow" ||
                         typeName == "ObjectMakerWindow" ||
                         typeName == "FrameWorkSettingsWindow")
                         windows[i].Close();

@@ -66,6 +66,8 @@ public class EventSOEditor : Editor
 
     public override void OnInspectorGUI()
     {
+        if (GUILayout.Button("Open AllinOneEditor", GUILayout.Height(27)))
+            EventSOEditorWindow.Open((EventSO)target);
         serializedObject.Update();
         UpdateTargetsKeyCache();
 
@@ -307,7 +309,7 @@ public class EventSOEditor : Editor
         EditorGUILayout.LabelField("다음 Phase 연결", EditorStyles.boldLabel);
         var nextFlag = phase.FindPropertyRelative("Flags.IsEventExe");
         EditorGUI.BeginChangeCheck();
-        if (nextFlag != null) EditorGUILayout.PropertyField(nextFlag, new GUIContent("다음 Phase 사용", "꺼도 저장된 다음 Phase와 조건은 보존합니다."));
+        if (nextFlag != null) EventSceneTargetField.PropertyField(nextFlag, new GUIContent("다음 Phase 사용", "꺼도 저장된 다음 Phase와 조건은 보존합니다."));
         if (EditorGUI.EndChangeCheck())
         { serializedObject.ApplyModifiedProperties(); GUIUtility.ExitGUI(); }
         var next = phase.FindPropertyRelative("EventExe");
@@ -478,8 +480,8 @@ public class EventSOEditor : Editor
     private void DrawFocusedProperty(SerializedProperty property)
     {
         if (property == null) return;
-        if (workspaceDrawing) EditorGUILayout.PropertyField(property, FeatureContent(property.displayName), true);
-        else EditorGUILayout.PropertyField(property);
+        if (workspaceDrawing) EventSceneTargetField.PropertyField(property, FeatureContent(property.displayName), true);
+        else EventSceneTargetField.PropertyField(property);
     }
 
     private void DrawArraySizeControls(SerializedProperty array)
@@ -498,13 +500,13 @@ public class EventSOEditor : Editor
     {
         if (!WorkspaceSingleEntry(property))
         {
-            if (workspaceDrawing) EditorGUILayout.PropertyField(property, FeatureContent(property.displayName), true);
-            else EditorGUILayout.PropertyField(property, true);
+            if (workspaceDrawing) EventSceneTargetField.PropertyField(property, FeatureContent(property.displayName), true);
+            else EventSceneTargetField.PropertyField(property, true);
             return;
         }
         var entry = property.GetArrayElementAtIndex(workspaceEntryIndex);
         if (entry.propertyType != SerializedPropertyType.Generic && entry.propertyType != SerializedPropertyType.ManagedReference)
-        { EditorGUILayout.PropertyField(entry, new GUIContent("내용"), true); return; }
+        { EventSceneTargetField.PropertyField(entry, new GUIContent("내용"), true); return; }
         var iterator = entry.Copy();
         var end = iterator.GetEndProperty();
         if (iterator.NextVisible(true))
@@ -679,16 +681,16 @@ public class EventSOEditor : Editor
 
         BeginFeatureBlock("box");
         if (contentProp != null)
-            EditorGUILayout.PropertyField(contentProp, FeatureContent("Content"));
+            EventSceneTargetField.PropertyField(contentProp, FeatureContent("Content"));
 
         if (isRelativeProp != null)
-            EditorGUILayout.PropertyField(isRelativeProp, FeatureContent("Is Relative"));
+            EventSceneTargetField.PropertyField(isRelativeProp, FeatureContent("Is Relative"));
 
         bool isRelative = isRelativeProp != null && isRelativeProp.boolValue;
         if (isRelative && centerObjectProp != null)
         {
             EditorGUILayout.LabelField(FeatureContent("Center Object Name (기준 오브젝트)"));
-            EditorGUILayout.PropertyField(centerObjectProp, GUIContent.none);
+            EventSceneTargetField.PropertyField(centerObjectProp, GUIContent.none);
         }
 
         if (positionProp != null)
@@ -696,7 +698,7 @@ public class EventSOEditor : Editor
             string positionLabel = isRelative
                 ? "Offset (World Right=X, Up=Y)"
                 : "Position (Canvas X/Y, Center = 0,0)";
-            EditorGUILayout.PropertyField(positionProp, FeatureContent(positionLabel));
+            EventSceneTargetField.PropertyField(positionProp, FeatureContent(positionLabel));
         }
 
         EditorGUILayout.HelpBox(
@@ -706,14 +708,14 @@ public class EventSOEditor : Editor
             MessageType.Info);
 
         if (blockedProp != null)
-            EditorGUILayout.PropertyField(
+            EventSceneTargetField.PropertyField(
                 blockedProp,
                 FeatureContent("Is Blocked", "켜면 시간 제한 없이 다음 키보드 키 또는 마우스 버튼 입력까지 기다립니다."));
 
         bool isBlocked = blockedProp != null && blockedProp.boolValue;
         EditorGUI.BeginDisabledGroup(isBlocked);
         if (durationProp != null)
-            EditorGUILayout.PropertyField(
+            EventSceneTargetField.PropertyField(
                 durationProp,
                 FeatureContent("Duration", "Is Blocked가 꺼져 있을 때 Tooltip을 표시할 시간입니다."));
         EditorGUI.EndDisabledGroup();
@@ -753,19 +755,19 @@ public class EventSOEditor : Editor
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField("SOUND", EditorStyles.boldLabel);
         if (delayProp != null)
-            EditorGUILayout.PropertyField(delayProp, FeatureContent("Start Delay (Scaled Seconds)"));
+            EventSceneTargetField.PropertyField(delayProp, FeatureContent("Start Delay (Scaled Seconds)"));
         if (audioClipProp != null)
-            EditorGUILayout.PropertyField(audioClipProp, FeatureContent("Audio Clip", "비우면 현재 Event AudioSource를 정지합니다."));
+            EventSceneTargetField.PropertyField(audioClipProp, FeatureContent("Audio Clip", "비우면 현재 Event AudioSource를 정지합니다."));
         if (volumeProp != null)
         {
-            EditorGUILayout.PropertyField(volumeProp, FeatureContent("Volume"));
+            EventSceneTargetField.PropertyField(volumeProp, FeatureContent("Volume"));
             if (volumeProp.floatValue < 0f || volumeProp.floatValue > 1f)
                 EditorGUILayout.HelpBox("Volume은 런타임에서 0~1 범위로 제한됩니다.", MessageType.Info);
         }
         if (loopProp != null)
-            EditorGUILayout.PropertyField(loopProp, FeatureContent("Loop"));
+            EventSceneTargetField.PropertyField(loopProp, FeatureContent("Loop"));
         if (waitProp != null)
-            EditorGUILayout.PropertyField(waitProp, FeatureContent("Wait For Completion"));
+            EventSceneTargetField.PropertyField(waitProp, FeatureContent("Wait For Completion"));
 
         bool isLoop = loopProp != null && loopProp.boolValue;
         bool waitsForCompletion = waitProp != null && waitProp.boolValue;
@@ -801,11 +803,11 @@ public class EventSOEditor : Editor
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField("TIME SCALE", EditorStyles.boldLabel);
         if (targetScaleProp != null)
-            EditorGUILayout.PropertyField(targetScaleProp, FeatureContent("Target Scale"));
+            EventSceneTargetField.PropertyField(targetScaleProp, FeatureContent("Target Scale"));
         if (durationProp != null)
-            EditorGUILayout.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
+            EventSceneTargetField.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
         if (restoreProp != null)
-            EditorGUILayout.PropertyField(restoreProp, FeatureContent("Restore After Duration"));
+            EventSceneTargetField.PropertyField(restoreProp, FeatureContent("Restore After Duration"));
 
         bool restores = restoreProp == null || restoreProp.boolValue;
         float targetScale = targetScaleProp != null ? targetScaleProp.floatValue : 1f;
@@ -846,11 +848,11 @@ public class EventSOEditor : Editor
         SerializedProperty fadeOutProp = dataProp.FindPropertyRelative("FadeOutDuration");
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField("SCREEN FLASH", EditorStyles.boldLabel);
-        if (colorProp != null) EditorGUILayout.PropertyField(colorProp, FeatureContent("Flash Color"));
-        if (peakAlphaProp != null) EditorGUILayout.PropertyField(peakAlphaProp, FeatureContent("Peak Alpha"));
-        if (fadeInProp != null) EditorGUILayout.PropertyField(fadeInProp, FeatureContent("Fade In"));
-        if (holdProp != null) EditorGUILayout.PropertyField(holdProp, FeatureContent("Hold Duration"));
-        if (fadeOutProp != null) EditorGUILayout.PropertyField(fadeOutProp, FeatureContent("Fade Out"));
+        if (colorProp != null) EventSceneTargetField.PropertyField(colorProp, FeatureContent("Flash Color"));
+        if (peakAlphaProp != null) EventSceneTargetField.PropertyField(peakAlphaProp, FeatureContent("Peak Alpha"));
+        if (fadeInProp != null) EventSceneTargetField.PropertyField(fadeInProp, FeatureContent("Fade In"));
+        if (holdProp != null) EventSceneTargetField.PropertyField(holdProp, FeatureContent("Hold Duration"));
+        if (fadeOutProp != null) EventSceneTargetField.PropertyField(fadeOutProp, FeatureContent("Fade Out"));
 
         float totalDuration =
             Mathf.Max(0f, fadeInProp != null ? fadeInProp.floatValue : 0f) +
@@ -890,7 +892,7 @@ public class EventSOEditor : Editor
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField("WAIT UNTIL CONDITION", EditorStyles.boldLabel);
         if (timeoutProp != null)
-            EditorGUILayout.PropertyField(timeoutProp, FeatureContent("Timeout (Unscaled Seconds)"));
+            EventSceneTargetField.PropertyField(timeoutProp, FeatureContent("Timeout (Unscaled Seconds)"));
         EditorGUILayout.HelpBox(
             timeoutProp == null || timeoutProp.floatValue <= 0f
                 ? "조건이 충족될 때까지 현재 Phase를 제한 없이 유지합니다."
@@ -1719,19 +1721,19 @@ public class EventSOEditor : Editor
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField("PORTRAIT SPEECH", EditorStyles.boldLabel);
         if (advanceModeProp != null)
-            EditorGUILayout.PropertyField(advanceModeProp, FeatureContent("Advance Mode"));
+            EventSceneTargetField.PropertyField(advanceModeProp, FeatureContent("Advance Mode"));
 
         bool usesInput = advanceModeProp != null &&
                          advanceModeProp.enumValueIndex == (int)EventSO.PortraitAdvanceMode.Input;
         if (usesInput && advanceKeyProp != null)
         {
-            EditorGUILayout.PropertyField(advanceKeyProp, FeatureContent("Advance Key"));
+            EventSceneTargetField.PropertyField(advanceKeyProp, FeatureContent("Advance Key"));
             if (advanceKeyProp.intValue == (int)KeyCode.None)
                 EditorGUILayout.HelpBox("Advance Key가 None이면 런타임에서 E 키를 사용합니다.", MessageType.Info);
         }
 
         if (isTypingProp != null)
-            EditorGUILayout.PropertyField(isTypingProp, FeatureContent("Is Typing"));
+            EventSceneTargetField.PropertyField(isTypingProp, FeatureContent("Is Typing"));
 
         EditorGUILayout.HelpBox(
             usesInput
@@ -1792,14 +1794,14 @@ public class EventSOEditor : Editor
             SerializedProperty textProp = lineProp.FindPropertyRelative("Text");
             SerializedProperty durationProp = lineProp.FindPropertyRelative("Duration");
             if (portraitProp != null)
-                EditorGUILayout.PropertyField(portraitProp, FeatureContent("Portrait"));
+                EventSceneTargetField.PropertyField(portraitProp, FeatureContent("Portrait"));
             if (speakerProp != null)
-                EditorGUILayout.PropertyField(speakerProp, FeatureContent("Speaker Name"));
+                EventSceneTargetField.PropertyField(speakerProp, FeatureContent("Speaker Name"));
             if (textProp != null)
-                EditorGUILayout.PropertyField(textProp, FeatureContent("Text"));
+                EventSceneTargetField.PropertyField(textProp, FeatureContent("Text"));
             if (!usesInput && durationProp != null)
             {
-                EditorGUILayout.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
+                EventSceneTargetField.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
                 if (durationProp.floatValue <= 0f)
                     EditorGUILayout.HelpBox("Duration이 0이면 이 Line은 같은 프레임에 다음 Line으로 넘어갑니다.", MessageType.Warning);
             }
@@ -1829,11 +1831,11 @@ public class EventSOEditor : Editor
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField("SPEECH BUBBLE", EditorStyles.boldLabel);
         if (objectNameProp != null)
-            EditorGUILayout.PropertyField(
+            EventSceneTargetField.PropertyField(
                 objectNameProp,
                 FeatureContent("GameObject Name", "비우면 이 EventSO를 호출한 오브젝트 위에 표시합니다."));
         if (isTypingProp != null)
-            EditorGUILayout.PropertyField(isTypingProp, FeatureContent("Is Typing"));
+            EventSceneTargetField.PropertyField(isTypingProp, FeatureContent("Is Typing"));
 
         EditorGUILayout.HelpBox(
             "각 Line은 Duration 동안 대상 위에 표시됩니다. 글 길이에 맞춰 말풍선 폭과 높이가 자동으로 조정되며, 모든 Line이 끝날 때까지 다음 Phase로 넘어가지 않습니다.",
@@ -1887,12 +1889,12 @@ public class EventSOEditor : Editor
             SerializedProperty textProp = lineProp.FindPropertyRelative("Text");
             if (durationProp != null)
             {
-                EditorGUILayout.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
+                EventSceneTargetField.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
                 if (durationProp.floatValue <= 0f)
                     EditorGUILayout.HelpBox("Duration이 0이면 이 Line은 같은 프레임에 다음 Line으로 넘어갑니다.", MessageType.Warning);
             }
             if (textProp != null)
-                EditorGUILayout.PropertyField(textProp, FeatureContent("Text"));
+                EventSceneTargetField.PropertyField(textProp, FeatureContent("Text"));
 
             EditorGUILayout.EndVertical();
         }
@@ -1926,9 +1928,9 @@ public class EventSOEditor : Editor
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField("ANIMATOR EVENT", EditorStyles.boldLabel);
         if (objectNameProp != null)
-            EditorGUILayout.PropertyField(objectNameProp, FeatureContent("Object Name", "비우면 이 EventSO를 호출한 오브젝트를 사용합니다."));
+            EventSceneTargetField.PropertyField(objectNameProp, FeatureContent("Object Name", "비우면 이 EventSO를 호출한 오브젝트를 사용합니다."));
         if (commandProp != null)
-            EditorGUILayout.PropertyField(commandProp, FeatureContent("Command"));
+            EventSceneTargetField.PropertyField(commandProp, FeatureContent("Command"));
 
         EventSO.AnimatorCommand command = commandProp != null
             ? (EventSO.AnimatorCommand)commandProp.enumValueIndex
@@ -1939,7 +1941,7 @@ public class EventSOEditor : Editor
 
         if (usesName && stateOrParameterProp != null)
         {
-            EditorGUILayout.PropertyField(
+            EventSceneTargetField.PropertyField(
                 stateOrParameterProp,
                 FeatureContent(usesState ? "State Name" : "Parameter Name"));
             if (string.IsNullOrWhiteSpace(stateOrParameterProp.stringValue))
@@ -1951,11 +1953,11 @@ public class EventSOEditor : Editor
         if (usesState)
         {
             if (layerProp != null)
-                EditorGUILayout.PropertyField(layerProp, FeatureContent("Layer", "-1이면 Animator 기본 레이어 해석을 사용합니다."));
+                EventSceneTargetField.PropertyField(layerProp, FeatureContent("Layer", "-1이면 Animator 기본 레이어 해석을 사용합니다."));
             if (normalizedTimeProp != null)
-                EditorGUILayout.PropertyField(normalizedTimeProp, FeatureContent("Start Normalized Time"));
+                EventSceneTargetField.PropertyField(normalizedTimeProp, FeatureContent("Start Normalized Time"));
             if (command == EventSO.AnimatorCommand.CrossFade && transitionDurationProp != null)
-                EditorGUILayout.PropertyField(
+                EventSceneTargetField.PropertyField(
                     transitionDurationProp,
                     FeatureContent("Transition (Normalized)", "전환 대상 상태 길이에 대한 정규화된 전환 시간입니다."));
         }
@@ -1964,22 +1966,22 @@ public class EventSOEditor : Editor
             switch (command)
             {
                 case EventSO.AnimatorCommand.SetBool:
-                    if (boolValueProp != null) EditorGUILayout.PropertyField(boolValueProp, FeatureContent("Value"));
+                    if (boolValueProp != null) EventSceneTargetField.PropertyField(boolValueProp, FeatureContent("Value"));
                     break;
                 case EventSO.AnimatorCommand.SetInteger:
-                    if (intValueProp != null) EditorGUILayout.PropertyField(intValueProp, FeatureContent("Value"));
+                    if (intValueProp != null) EventSceneTargetField.PropertyField(intValueProp, FeatureContent("Value"));
                     break;
                 case EventSO.AnimatorCommand.SetFloat:
-                    if (floatValueProp != null) EditorGUILayout.PropertyField(floatValueProp, FeatureContent("Value"));
+                    if (floatValueProp != null) EventSceneTargetField.PropertyField(floatValueProp, FeatureContent("Value"));
                     break;
                 case EventSO.AnimatorCommand.SetSpeed:
-                    if (floatValueProp != null) EditorGUILayout.PropertyField(floatValueProp, FeatureContent("Animator Speed"));
+                    if (floatValueProp != null) EventSceneTargetField.PropertyField(floatValueProp, FeatureContent("Animator Speed"));
                     break;
             }
         }
 
         if (durationProp != null)
-            EditorGUILayout.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)", "명령 적용 후 다음 Phase로 넘어가기 전에 기다릴 시간입니다."));
+            EventSceneTargetField.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)", "명령 적용 후 다음 Phase로 넘어가기 전에 기다릴 시간입니다."));
         EditorGUILayout.HelpBox(
             "Object Name이 비어 있으면 Caller의 Animator를 사용하고, 없으면 자식 Animator까지 찾습니다. Duration은 애니메이션 길이를 자동 추정하지 않으며 설정한 시간만큼 Phase 진행을 막습니다.",
             MessageType.Info);
@@ -2016,7 +2018,7 @@ public class EventSOEditor : Editor
         }
 
         if (current == (int)EventSO.CameraFixMode.Enable && positionProp != null)
-            EditorGUILayout.PropertyField(positionProp, FeatureContent("Position", "Main Camera의 월드 고정 위치입니다."));
+            EventSceneTargetField.PropertyField(positionProp, FeatureContent("Position", "Main Camera의 월드 고정 위치입니다."));
         EditorGUILayout.EndVertical();
     }
 
@@ -2038,7 +2040,7 @@ public class EventSOEditor : Editor
         SerializedProperty fadeOutProp = dataProp.FindPropertyRelative("FadeOut");
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField("SCREEN SHAKE", EditorStyles.boldLabel);
-        if (durationProp != null) EditorGUILayout.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
+        if (durationProp != null) EventSceneTargetField.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
 
         string advancedKey = BuildKey(uniqueKey, ".ScreenShakeAdvanced");
         if (!masterFoldouts.TryGetValue(advancedKey, out _)) masterFoldouts[advancedKey] = false;
@@ -2049,11 +2051,11 @@ public class EventSOEditor : Editor
         if (masterFoldouts[advancedKey])
         {
             BeginFeatureBlock(EditorStyles.helpBox);
-            if (useMainProp != null) EditorGUILayout.PropertyField(useMainProp, FeatureContent("Use Main Camera"));
-            if (positionProp != null) EditorGUILayout.PropertyField(positionProp, FeatureContent("Position Strength"));
-            if (rotationProp != null) EditorGUILayout.PropertyField(rotationProp, FeatureContent("Rotation Strength"));
-            if (frequencyProp != null) EditorGUILayout.PropertyField(frequencyProp, FeatureContent("Frequency"));
-            if (fadeOutProp != null) EditorGUILayout.PropertyField(fadeOutProp, FeatureContent("Fade Out"));
+            if (useMainProp != null) EventSceneTargetField.PropertyField(useMainProp, FeatureContent("Use Main Camera"));
+            if (positionProp != null) EventSceneTargetField.PropertyField(positionProp, FeatureContent("Position Strength"));
+            if (rotationProp != null) EventSceneTargetField.PropertyField(rotationProp, FeatureContent("Rotation Strength"));
+            if (frequencyProp != null) EventSceneTargetField.PropertyField(frequencyProp, FeatureContent("Frequency"));
+            if (fadeOutProp != null) EventSceneTargetField.PropertyField(fadeOutProp, FeatureContent("Fade Out"));
             EditorGUILayout.EndVertical();
         }
 
@@ -2091,11 +2093,11 @@ public class EventSOEditor : Editor
 
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField("CAMERA LENS", EditorStyles.boldLabel);
-        if (useMainProp != null) EditorGUILayout.PropertyField(useMainProp, FeatureContent("Use Main Camera"));
-        if (fieldOfViewProp != null) EditorGUILayout.PropertyField(fieldOfViewProp, FeatureContent("Target FOV (Perspective)"));
-        if (orthographicSizeProp != null) EditorGUILayout.PropertyField(orthographicSizeProp, FeatureContent("Target Size (Orthographic)"));
-        if (durationProp != null) EditorGUILayout.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
-        if (easeProp != null) EditorGUILayout.PropertyField(easeProp, FeatureContent("Ease In Out"));
+        if (useMainProp != null) EventSceneTargetField.PropertyField(useMainProp, FeatureContent("Use Main Camera"));
+        if (fieldOfViewProp != null) EventSceneTargetField.PropertyField(fieldOfViewProp, FeatureContent("Target FOV (Perspective)"));
+        if (orthographicSizeProp != null) EventSceneTargetField.PropertyField(orthographicSizeProp, FeatureContent("Target Size (Orthographic)"));
+        if (durationProp != null) EventSceneTargetField.PropertyField(durationProp, FeatureContent("Duration (Unscaled Seconds)"));
+        if (easeProp != null) EventSceneTargetField.PropertyField(easeProp, FeatureContent("Ease In Out"));
 
         if (durationProp != null && durationProp.floatValue <= 0f)
             EditorGUILayout.HelpBox("Duration이 0이면 해당 카메라 투영 방식의 목표 렌즈 값으로 즉시 전환합니다.", MessageType.Info);
@@ -2173,15 +2175,15 @@ public class EventSOEditor : Editor
             SerializedProperty duration = entry.FindPropertyRelative("Duration");
             SerializedProperty easeInOut = entry.FindPropertyRelative("EaseInOut");
             if (objectName != null)
-                EditorGUILayout.PropertyField(objectName, FeatureContent("Object (Name / Path, Empty = Caller)"));
+                EventSceneTargetField.PropertyField(objectName, FeatureContent("Object (Name / Path, Empty = Caller)"));
             if (includeChildren != null)
-                EditorGUILayout.PropertyField(includeChildren, FeatureContent("Include Children"));
+                EventSceneTargetField.PropertyField(includeChildren, FeatureContent("Include Children"));
             if (targetAlpha != null)
-                EditorGUILayout.PropertyField(targetAlpha, FeatureContent("Target Alpha"));
+                EventSceneTargetField.PropertyField(targetAlpha, FeatureContent("Target Alpha"));
             if (duration != null)
-                EditorGUILayout.PropertyField(duration, FeatureContent("Duration (Unscaled Seconds)"));
+                EventSceneTargetField.PropertyField(duration, FeatureContent("Duration (Unscaled Seconds)"));
             if (easeInOut != null)
-                EditorGUILayout.PropertyField(easeInOut, FeatureContent("Ease In Out"));
+                EventSceneTargetField.PropertyField(easeInOut, FeatureContent("Ease In Out"));
 
             if (duration != null && duration.floatValue <= 0f)
                 EditorGUILayout.HelpBox("Duration이 0이면 Target Alpha를 즉시 적용합니다.", MessageType.Info);
@@ -2275,25 +2277,25 @@ public class EventSOEditor : Editor
             SerializedProperty easeInOut = entry.FindPropertyRelative("EaseInOut");
 
             if (objectName != null)
-                EditorGUILayout.PropertyField(objectName, FeatureContent("Object (Name / Path, Empty = Caller)"));
+                EventSceneTargetField.PropertyField(objectName, FeatureContent("Object (Name / Path, Empty = Caller)"));
             if (includeChildren != null)
-                EditorGUILayout.PropertyField(includeChildren, FeatureContent("Include Children"));
+                EventSceneTargetField.PropertyField(includeChildren, FeatureContent("Include Children"));
             if (affectColor != null)
-                EditorGUILayout.PropertyField(affectColor, FeatureContent("Affect Color"));
+                EventSceneTargetField.PropertyField(affectColor, FeatureContent("Affect Color"));
             if (affectColor != null && affectColor.boolValue && targetColor != null)
-                EditorGUILayout.PropertyField(targetColor, FeatureContent("Target Color"));
+                EventSceneTargetField.PropertyField(targetColor, FeatureContent("Target Color"));
             if (affectIntensity != null)
-                EditorGUILayout.PropertyField(affectIntensity, FeatureContent("Affect Intensity"));
+                EventSceneTargetField.PropertyField(affectIntensity, FeatureContent("Affect Intensity"));
             if (affectIntensity != null && affectIntensity.boolValue && targetIntensity != null)
-                EditorGUILayout.PropertyField(targetIntensity, FeatureContent("Target Intensity"));
+                EventSceneTargetField.PropertyField(targetIntensity, FeatureContent("Target Intensity"));
             if (affectRange != null)
-                EditorGUILayout.PropertyField(affectRange, FeatureContent("Affect Range"));
+                EventSceneTargetField.PropertyField(affectRange, FeatureContent("Affect Range"));
             if (affectRange != null && affectRange.boolValue && targetRange != null)
-                EditorGUILayout.PropertyField(targetRange, FeatureContent("Target Range"));
+                EventSceneTargetField.PropertyField(targetRange, FeatureContent("Target Range"));
             if (duration != null)
-                EditorGUILayout.PropertyField(duration, FeatureContent("Duration (Unscaled Seconds)"));
+                EventSceneTargetField.PropertyField(duration, FeatureContent("Duration (Unscaled Seconds)"));
             if (easeInOut != null)
-                EditorGUILayout.PropertyField(easeInOut, FeatureContent("Ease In Out"));
+                EventSceneTargetField.PropertyField(easeInOut, FeatureContent("Ease In Out"));
 
             bool changesAnything = (affectColor != null && affectColor.boolValue) ||
                                    (affectIntensity != null && affectIntensity.boolValue) ||
@@ -2328,13 +2330,13 @@ public class EventSOEditor : Editor
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField("PARTICLE EVENT", EditorStyles.boldLabel);
         if (objectName != null)
-            EditorGUILayout.PropertyField(objectName, FeatureContent("Object (Name / Path, Empty = Caller)"));
+            EventSceneTargetField.PropertyField(objectName, FeatureContent("Object (Name / Path, Empty = Caller)"));
         if (includeChildren != null)
-            EditorGUILayout.PropertyField(includeChildren, FeatureContent("Include Children"));
+            EventSceneTargetField.PropertyField(includeChildren, FeatureContent("Include Children"));
         if (command != null)
-            EditorGUILayout.PropertyField(command, FeatureContent("Command"));
+            EventSceneTargetField.PropertyField(command, FeatureContent("Command"));
         if (duration != null)
-            EditorGUILayout.PropertyField(duration, FeatureContent("Duration (Unscaled Seconds)"));
+            EventSceneTargetField.PropertyField(duration, FeatureContent("Duration (Unscaled Seconds)"));
 
         EditorGUILayout.HelpBox(
             "대상과 선택한 자식의 ParticleSystem에 명령을 한 번 적용합니다. Duration은 파티클 수명을 추정하지 않고 설정한 시간만큼만 Phase 진행을 막습니다.",
@@ -2354,13 +2356,13 @@ public class EventSOEditor : Editor
         if (!masterFoldouts[foldKey]) return;
 
         var arrProp = dataProp.FindPropertyRelative(arrayFieldName);
-        if (arrProp == null) { BeginFeatureBlock("box"); EditorGUILayout.PropertyField(dataProp, true); EditorGUILayout.EndVertical(); return; }
+        if (arrProp == null) { BeginFeatureBlock("box"); EventSceneTargetField.PropertyField(dataProp, true); EditorGUILayout.EndVertical(); return; }
 
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField(hint, EditorStyles.boldLabel);
         DrawArraySizeControls(arrProp);
         EditorGUI.indentLevel++;
-        for (int i = WorkspaceStart(arrProp); i < WorkspaceEnd(arrProp); i++) { var elem = arrProp.GetArrayElementAtIndex(i); if (elem != null) EditorGUILayout.PropertyField(elem, FeatureContent($"[{i}]")); }
+        for (int i = WorkspaceStart(arrProp); i < WorkspaceEnd(arrProp); i++) { var elem = arrProp.GetArrayElementAtIndex(i); if (elem != null) EventSceneTargetField.PropertyField(elem, FeatureContent($"[{i}]")); }
         EditorGUI.indentLevel--;
         EditorGUILayout.EndVertical();
     }
@@ -2372,7 +2374,7 @@ public class EventSOEditor : Editor
         drawnDataKeys.Add(uniqueKey);
 
         var arrProp = dataProp.FindPropertyRelative(arrayFieldName);
-        if (arrProp == null) { EditorGUILayout.PropertyField(dataProp, true); return; }
+        if (arrProp == null) { EventSceneTargetField.PropertyField(dataProp, true); return; }
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
@@ -2389,9 +2391,9 @@ public class EventSOEditor : Editor
             EditorGUILayout.LabelField($"[{i}]", EditorStyles.miniBoldLabel);
             EditorGUI.indentLevel++;
             var goNameProp = elem.FindPropertyRelative("gameObjectName");
-            if (goNameProp != null) { EditorGUILayout.LabelField(FeatureContent("GameObject Name (Empty = Caller)")); EditorGUILayout.PropertyField(goNameProp, GUIContent.none); }
+            if (goNameProp != null) { EditorGUILayout.LabelField(FeatureContent("GameObject Name (Empty = Caller)")); EventSceneTargetField.PropertyField(goNameProp, GUIContent.none); }
             var compNameProp = elem.FindPropertyRelative("componentName");
-            if (compNameProp != null) EditorGUILayout.PropertyField(compNameProp, FeatureContent("Component Name"));
+            if (compNameProp != null) EventSceneTargetField.PropertyField(compNameProp, FeatureContent("Component Name"));
             EditorGUI.indentLevel--;
             EditorGUILayout.EndVertical();
         }
@@ -2405,7 +2407,7 @@ public class EventSOEditor : Editor
         drawnDataKeys.Add(uniqueKey);
 
         var arrProp = dataProp.FindPropertyRelative("UpdateComponents");
-        if (arrProp == null) { EditorGUILayout.PropertyField(dataProp, true); return; }
+        if (arrProp == null) { EventSceneTargetField.PropertyField(dataProp, true); return; }
 
         string foldKey = BuildKey(uniqueKey);
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
@@ -2422,21 +2424,21 @@ public class EventSOEditor : Editor
             EditorGUILayout.LabelField($"[{i}]", EditorStyles.miniBoldLabel);
             EditorGUI.indentLevel++;
             var goNameProp = elem.FindPropertyRelative("gameObjectName");
-            if (goNameProp != null) { EditorGUILayout.LabelField(FeatureContent("GameObject Name (Empty = Caller)")); EditorGUILayout.PropertyField(goNameProp, GUIContent.none); }
+            if (goNameProp != null) { EditorGUILayout.LabelField(FeatureContent("GameObject Name (Empty = Caller)")); EventSceneTargetField.PropertyField(goNameProp, GUIContent.none); }
             var compNameProp = elem.FindPropertyRelative("componentName");
-            if (compNameProp != null) EditorGUILayout.PropertyField(compNameProp, FeatureContent("Component Name"));
+            if (compNameProp != null) EventSceneTargetField.PropertyField(compNameProp, FeatureContent("Component Name"));
             var propNameProp = elem.FindPropertyRelative("propertyName");
-            if (propNameProp != null) EditorGUILayout.PropertyField(propNameProp, FeatureContent("Property/Field Name"));
+            if (propNameProp != null) EventSceneTargetField.PropertyField(propNameProp, FeatureContent("Property/Field Name"));
             var valueTypeProp = elem.FindPropertyRelative("valueType");
-            if (valueTypeProp != null) EditorGUILayout.PropertyField(valueTypeProp, FeatureContent("Value Type"));
+            if (valueTypeProp != null) EventSceneTargetField.PropertyField(valueTypeProp, FeatureContent("Value Type"));
             int vt = valueTypeProp != null ? valueTypeProp.enumValueIndex : 0;
             switch (vt)
             {
-                case 0: var ip = elem.FindPropertyRelative("intValue"); if (ip != null) EditorGUILayout.PropertyField(ip, FeatureContent("Value (Int)")); break;
-                case 1: var fp = elem.FindPropertyRelative("floatValue"); if (fp != null) EditorGUILayout.PropertyField(fp, FeatureContent("Value (Float)")); break;
-                case 2: var bp = elem.FindPropertyRelative("boolValue"); if (bp != null) EditorGUILayout.PropertyField(bp, FeatureContent("Value (Bool)")); break;
-                case 3: var sp = elem.FindPropertyRelative("stringValue"); if (sp != null) EditorGUILayout.PropertyField(sp, FeatureContent("Value (String)")); break;
-                case 4: var gp = elem.FindPropertyRelative("gameObjectValue"); if (gp != null) EditorGUILayout.PropertyField(gp, FeatureContent("Value (GameObject)")); break;
+                case 0: var ip = elem.FindPropertyRelative("intValue"); if (ip != null) EventSceneTargetField.PropertyField(ip, FeatureContent("Value (Int)")); break;
+                case 1: var fp = elem.FindPropertyRelative("floatValue"); if (fp != null) EventSceneTargetField.PropertyField(fp, FeatureContent("Value (Float)")); break;
+                case 2: var bp = elem.FindPropertyRelative("boolValue"); if (bp != null) EventSceneTargetField.PropertyField(bp, FeatureContent("Value (Bool)")); break;
+                case 3: var sp = elem.FindPropertyRelative("stringValue"); if (sp != null) EventSceneTargetField.PropertyField(sp, FeatureContent("Value (String)")); break;
+                case 4: var gp = elem.FindPropertyRelative("gameObjectValue"); if (gp != null) EventSceneTargetField.PropertyField(gp, FeatureContent("Value (GameObject)")); break;
             }
             EditorGUI.indentLevel--;
             EditorGUILayout.EndVertical();
@@ -2471,12 +2473,12 @@ public class EventSOEditor : Editor
             DrawFocusedProperty(elem.FindPropertyRelative("prefab"));
             DrawFocusedProperty(elem.FindPropertyRelative("naming"));
             var parentNm = elem.FindPropertyRelative("parentName");
-            if (parentNm != null) { EditorGUILayout.LabelField(FeatureContent("Parent Name (Empty = Root)")); EditorGUILayout.PropertyField(parentNm, GUIContent.none); }
+            if (parentNm != null) { EditorGUILayout.LabelField(FeatureContent("Parent Name (Empty = Root)")); EventSceneTargetField.PropertyField(parentNm, GUIContent.none); }
             var sceneNm = elem.FindPropertyRelative("sceneName");
-            if (sceneNm != null) { EditorGUILayout.LabelField(FeatureContent("Scene Name (Empty = Caller's Scene)")); EditorGUILayout.PropertyField(sceneNm, GUIContent.none); }
+            if (sceneNm != null) { EditorGUILayout.LabelField(FeatureContent("Scene Name (Empty = Caller's Scene)")); EventSceneTargetField.PropertyField(sceneNm, GUIContent.none); }
             DrawFocusedProperty(elem.FindPropertyRelative("rotation"));
             var isUIProp = elem.FindPropertyRelative("IsUI");
-            EditorGUILayout.PropertyField(isUIProp, FeatureContent("Is UI"));
+            EventSceneTargetField.PropertyField(isUIProp, FeatureContent("Is UI"));
             if (isUIProp != null && isUIProp.boolValue)
             {
                 DrawFocusedProperty(elem.FindPropertyRelative("AnchoredPosition"));
@@ -2489,14 +2491,14 @@ public class EventSOEditor : Editor
             else
             {
                 var isLocalProp = elem.FindPropertyRelative("IsLocal");
-                EditorGUILayout.PropertyField(isLocalProp, FeatureContent("Is Local"));
+                EventSceneTargetField.PropertyField(isLocalProp, FeatureContent("Is Local"));
                 if (isLocalProp != null && isLocalProp.boolValue)
                 {
                     DrawFocusedProperty(elem.FindPropertyRelative("LocalCenterName"));
                     var localOff = elem.FindPropertyRelative("LocalOffset");
-                    if (localOff != null) { EditorGUILayout.LabelField(FeatureContent("Offset (Right=X, Up=Y, Front=Z)")); EditorGUILayout.PropertyField(localOff, GUIContent.none); }
+                    if (localOff != null) { EditorGUILayout.LabelField(FeatureContent("Offset (Right=X, Up=Y, Front=Z)")); EventSceneTargetField.PropertyField(localOff, GUIContent.none); }
                 }
-                else { EditorGUILayout.PropertyField(elem.FindPropertyRelative("position"), FeatureContent("World Position")); }
+                else { EventSceneTargetField.PropertyField(elem.FindPropertyRelative("position"), FeatureContent("World Position")); }
             }
             EditorGUI.indentLevel--;
             EditorGUILayout.EndVertical();
@@ -2574,18 +2576,18 @@ public class EventSOEditor : Editor
             SerializedProperty worldPositionStays = entry.FindPropertyRelative("WorldPositionStays");
             SerializedProperty applyLocalTransform = entry.FindPropertyRelative("ApplyLocalTransform");
             if (objectName != null)
-                EditorGUILayout.PropertyField(objectName, FeatureContent("Object (Name / Path, Empty = Caller)"));
+                EventSceneTargetField.PropertyField(objectName, FeatureContent("Object (Name / Path, Empty = Caller)"));
             if (parentName != null)
-                EditorGUILayout.PropertyField(parentName, FeatureContent("Parent (Name / Path, Empty = Detach)"));
+                EventSceneTargetField.PropertyField(parentName, FeatureContent("Parent (Name / Path, Empty = Detach)"));
             if (worldPositionStays != null)
-                EditorGUILayout.PropertyField(worldPositionStays, FeatureContent("World Position Stays"));
+                EventSceneTargetField.PropertyField(worldPositionStays, FeatureContent("World Position Stays"));
             if (applyLocalTransform != null)
-                EditorGUILayout.PropertyField(applyLocalTransform, FeatureContent("Apply Local Transform"));
+                EventSceneTargetField.PropertyField(applyLocalTransform, FeatureContent("Apply Local Transform"));
             if (applyLocalTransform != null && applyLocalTransform.boolValue)
             {
-                EditorGUILayout.PropertyField(entry.FindPropertyRelative("LocalPosition"), FeatureContent("Local Position"));
-                EditorGUILayout.PropertyField(entry.FindPropertyRelative("LocalEulerAngles"), FeatureContent("Local Euler Angles"));
-                EditorGUILayout.PropertyField(entry.FindPropertyRelative("LocalScale"), FeatureContent("Local Scale"));
+                EventSceneTargetField.PropertyField(entry.FindPropertyRelative("LocalPosition"), FeatureContent("Local Position"));
+                EventSceneTargetField.PropertyField(entry.FindPropertyRelative("LocalEulerAngles"), FeatureContent("Local Euler Angles"));
+                EventSceneTargetField.PropertyField(entry.FindPropertyRelative("LocalScale"), FeatureContent("Local Scale"));
             }
             EditorGUILayout.EndVertical();
         }
@@ -2620,57 +2622,57 @@ public class EventSOEditor : Editor
             EditorGUILayout.LabelField($"Move [{i}]", EditorStyles.miniBoldLabel);
             EditorGUI.indentLevel++;
             var objNameProp = elem.FindPropertyRelative("objectName");
-            if (objNameProp != null) { EditorGUILayout.LabelField(FeatureContent("Object Name (Empty = Caller)")); EditorGUILayout.PropertyField(objNameProp, GUIContent.none); }
+            if (objNameProp != null) { EditorGUILayout.LabelField(FeatureContent("Object Name (Empty = Caller)")); EventSceneTargetField.PropertyField(objNameProp, GUIContent.none); }
             var loadingProp = elem.FindPropertyRelative("ShowLoadingScreen");
             if (loadingProp != null)
             {
-                EditorGUILayout.PropertyField(loadingProp, FeatureContent("맵 이동 로딩"));
+                EventSceneTargetField.PropertyField(loadingProp, FeatureContent("맵 이동 로딩"));
                 if (loadingProp.boolValue)
-                    EditorGUILayout.PropertyField(elem.FindPropertyRelative("LoadingDuration"), FeatureContent("로딩 화면 시간 (초)"));
+                    EventSceneTargetField.PropertyField(elem.FindPropertyRelative("LoadingDuration"), FeatureContent("로딩 화면 시간 (초)"));
             }
             var isRelativeProp = elem.FindPropertyRelative("isRelative");
             bool isRelativePrecheck = isRelativeProp != null && isRelativeProp.boolValue;
             if (!isRelativePrecheck)
             {
                 var isDrawerProp = elem.FindPropertyRelative("isDrawer");
-                if (isDrawerProp != null) EditorGUILayout.PropertyField(isDrawerProp, FeatureContent("Is Drawer"));
+                if (isDrawerProp != null) EventSceneTargetField.PropertyField(isDrawerProp, FeatureContent("Is Drawer"));
                 if (isDrawerProp != null && isDrawerProp.boolValue)
                 {
                     var dOff = elem.FindPropertyRelative("drawerOffset");
-                    if (dOff != null) { EditorGUILayout.LabelField(FeatureContent("Drawer Offset (Right=X, Up=Y, Front=Z)")); EditorGUILayout.PropertyField(dOff, GUIContent.none); }
-                    EditorGUILayout.PropertyField(elem.FindPropertyRelative("Duration"), FeatureContent("Duration"));
+                    if (dOff != null) { EditorGUILayout.LabelField(FeatureContent("Drawer Offset (Right=X, Up=Y, Front=Z)")); EventSceneTargetField.PropertyField(dOff, GUIContent.none); }
+                    EventSceneTargetField.PropertyField(elem.FindPropertyRelative("Duration"), FeatureContent("Duration"));
                     EditorGUI.indentLevel--; EditorGUILayout.EndVertical(); continue;
                 }
             }
             // ── Start Section ──
             var isAnotherStartProp = elem.FindPropertyRelative("IsAnotherStartPosition");
-            if (isAnotherStartProp != null) EditorGUILayout.PropertyField(isAnotherStartProp, FeatureContent("Use Custom Start Position"));
+            if (isAnotherStartProp != null) EventSceneTargetField.PropertyField(isAnotherStartProp, FeatureContent("Use Custom Start Position"));
             if (isAnotherStartProp != null && isAnotherStartProp.boolValue)
             {
                 BeginFeatureBlock("helpbox");
                 EditorGUILayout.LabelField("── Start ──", EditorStyles.miniBoldLabel);
                 var startIsRelProp = elem.FindPropertyRelative("startIsRelative");
-                if (startIsRelProp != null) EditorGUILayout.PropertyField(startIsRelProp, FeatureContent("Start Is Relative"));
+                if (startIsRelProp != null) EventSceneTargetField.PropertyField(startIsRelProp, FeatureContent("Start Is Relative"));
                 bool startIsRel = startIsRelProp != null && startIsRelProp.boolValue;
                 if (startIsRel)
-                    EditorGUILayout.PropertyField(elem.FindPropertyRelative("startTargetName"), FeatureContent("Start Target Name (Empty = Self)"));
+                    EventSceneTargetField.PropertyField(elem.FindPropertyRelative("startTargetName"), FeatureContent("Start Target Name (Empty = Self)"));
                 string startLabel = startIsRel ? "Start Offset (Relative)" : "Start World Position";
-                EditorGUILayout.PropertyField(elem.FindPropertyRelative("startPosition"), FeatureContent(startLabel));
+                EventSceneTargetField.PropertyField(elem.FindPropertyRelative("startPosition"), FeatureContent(startLabel));
                 EditorGUILayout.EndVertical();
             }
             // ── Goal Section ──
             BeginFeatureBlock("helpbox");
             EditorGUILayout.LabelField("── Goal ──", EditorStyles.miniBoldLabel);
-            EditorGUILayout.PropertyField(isRelativeProp, FeatureContent("Goal Is Relative"));
+            EventSceneTargetField.PropertyField(isRelativeProp, FeatureContent("Goal Is Relative"));
             bool isRelative = isRelativeProp != null && isRelativeProp.boolValue;
             if (isRelative)
-                EditorGUILayout.PropertyField(elem.FindPropertyRelative("targetName"), FeatureContent("Goal Target Name (Empty = Self)"));
+                EventSceneTargetField.PropertyField(elem.FindPropertyRelative("targetName"), FeatureContent("Goal Target Name (Empty = Self)"));
             string posLabel = isRelative ? "Goal Offset (Relative)" : "Goal World Position";
-            EditorGUILayout.PropertyField(elem.FindPropertyRelative("targetPosition"), FeatureContent(posLabel));
+            EventSceneTargetField.PropertyField(elem.FindPropertyRelative("targetPosition"), FeatureContent(posLabel));
             EditorGUILayout.EndVertical();
-            EditorGUILayout.PropertyField(elem.FindPropertyRelative("Duration"), FeatureContent("Duration"));
+            EventSceneTargetField.PropertyField(elem.FindPropertyRelative("Duration"), FeatureContent("Duration"));
             var typeProp = elem.FindPropertyRelative("movementType");
-            EditorGUILayout.PropertyField(typeProp, FeatureContent("Movement Type"));
+            EventSceneTargetField.PropertyField(typeProp, FeatureContent("Movement Type"));
             if (typeProp != null)
             {
                 int mt = typeProp.enumValueIndex;
@@ -2689,13 +2691,13 @@ public class EventSOEditor : Editor
                         DrawFocusedProperty(elem.FindPropertyRelative("BounceHeight"));
                         break;
                     case 4: // EaseInOut
-                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("EaseExponent"), FeatureContent("Ease Exponent (2=Quad, 3=Cubic...)"));
+                        EventSceneTargetField.PropertyField(elem.FindPropertyRelative("EaseExponent"), FeatureContent("Ease Exponent (2=Quad, 3=Cubic...)"));
                         break;
                     case 5: // Arc
                         DrawFocusedProperty(elem.FindPropertyRelative("ArcHeight"));
                         break;
                     case 6: // Parabola
-                        EditorGUILayout.PropertyField(elem.FindPropertyRelative("ParabolaPeakHeight"), FeatureContent("Peak Height"));
+                        EventSceneTargetField.PropertyField(elem.FindPropertyRelative("ParabolaPeakHeight"), FeatureContent("Peak Height"));
                         break;
                 }
             }
@@ -2717,33 +2719,33 @@ public class EventSOEditor : Editor
 
         BeginFeatureBlock("box");
         var objNameProp = rotateProp.FindPropertyRelative("ObjectName");
-        if (objNameProp != null) { EditorGUILayout.LabelField(FeatureContent("Object Name (Empty = Caller)")); EditorGUILayout.PropertyField(objNameProp, GUIContent.none); }
+        if (objNameProp != null) { EditorGUILayout.LabelField(FeatureContent("Object Name (Empty = Caller)")); EventSceneTargetField.PropertyField(objNameProp, GUIContent.none); }
         var isLookAtProp = rotateProp.FindPropertyRelative("isLookAt");
-        if (isLookAtProp != null) EditorGUILayout.PropertyField(isLookAtProp, FeatureContent("Is LookAt"));
+        if (isLookAtProp != null) EventSceneTargetField.PropertyField(isLookAtProp, FeatureContent("Is LookAt"));
         bool isLookAt = (isLookAtProp != null && isLookAtProp.boolValue);
         if (isLookAt) { DrawFocusedProperty(rotateProp.FindPropertyRelative("LookAtName")); }
         else
         {
             var isDoorProp = rotateProp.FindPropertyRelative("isDoor");
-            if (isDoorProp != null) EditorGUILayout.PropertyField(isDoorProp, FeatureContent("Is Door"));
+            if (isDoorProp != null) EventSceneTargetField.PropertyField(isDoorProp, FeatureContent("Is Door"));
             if (isDoorProp != null && isDoorProp.boolValue)
             {
                 var offsetProp = rotateProp.FindPropertyRelative("doorEulerOffset");
-                if (offsetProp != null) { EditorGUILayout.LabelField(FeatureContent("Door Offset (Right=X, Up=Y, Front=Z)")); EditorGUILayout.PropertyField(offsetProp, GUIContent.none); }
+                if (offsetProp != null) { EditorGUILayout.LabelField(FeatureContent("Door Offset (Right=X, Up=Y, Front=Z)")); EventSceneTargetField.PropertyField(offsetProp, GUIContent.none); }
                 var isDeltaPropDoor = rotateProp.FindPropertyRelative("isDelta");
-                if (isDeltaPropDoor != null) EditorGUILayout.PropertyField(isDeltaPropDoor, FeatureContent("Is Delta"));
+                if (isDeltaPropDoor != null) EventSceneTargetField.PropertyField(isDeltaPropDoor, FeatureContent("Is Delta"));
             }
             else
             {
                 var isRelativeProp = rotateProp.FindPropertyRelative("isRelative");
-                if (isRelativeProp != null) EditorGUILayout.PropertyField(isRelativeProp, FeatureContent("Is Relative"));
+                if (isRelativeProp != null) EventSceneTargetField.PropertyField(isRelativeProp, FeatureContent("Is Relative"));
                 bool isRelativeVal = isRelativeProp != null && isRelativeProp.boolValue;
-                if (isRelativeVal) { EditorGUILayout.PropertyField(rotateProp.FindPropertyRelative("TargetName"), FeatureContent("Target Name")); }
-                else { var isLocalProp = rotateProp.FindPropertyRelative("isLocal"); if (isLocalProp != null) EditorGUILayout.PropertyField(isLocalProp, FeatureContent("Is Local")); }
+                if (isRelativeVal) { EventSceneTargetField.PropertyField(rotateProp.FindPropertyRelative("TargetName"), FeatureContent("Target Name")); }
+                else { var isLocalProp = rotateProp.FindPropertyRelative("isLocal"); if (isLocalProp != null) EventSceneTargetField.PropertyField(isLocalProp, FeatureContent("Is Local")); }
                 var isDeltaProp = rotateProp.FindPropertyRelative("isDelta");
-                if (isDeltaProp != null) EditorGUILayout.PropertyField(isDeltaProp, FeatureContent("Is Delta"));
+                if (isDeltaProp != null) EventSceneTargetField.PropertyField(isDeltaProp, FeatureContent("Is Delta"));
                 var eulerProp = rotateProp.FindPropertyRelative("eulerAngles");
-                if (eulerProp != null) { string l = (isDeltaProp != null && isDeltaProp.boolValue) ? "Relative Euler" : "Absolute Euler"; EditorGUILayout.PropertyField(eulerProp, FeatureContent(l)); }
+                if (eulerProp != null) { string l = (isDeltaProp != null && isDeltaProp.boolValue) ? "Relative Euler" : "Absolute Euler"; EventSceneTargetField.PropertyField(eulerProp, FeatureContent(l)); }
             }
         }
         DrawFocusedProperty(rotateProp.FindPropertyRelative("Duration"));
@@ -2763,17 +2765,17 @@ public class EventSOEditor : Editor
 
         BeginFeatureBlock("box");
         var useMainProp = camProp.FindPropertyRelative("IsCameraMoveUseMain");
-        if (useMainProp != null) EditorGUILayout.PropertyField(useMainProp, FeatureContent("Use Main Camera"));
+        if (useMainProp != null) EventSceneTargetField.PropertyField(useMainProp, FeatureContent("Use Main Camera"));
         var isRelativeProp = camProp.FindPropertyRelative("IsRelative");
-        if (isRelativeProp != null) EditorGUILayout.PropertyField(isRelativeProp, FeatureContent("Is Relative"));
+        if (isRelativeProp != null) EventSceneTargetField.PropertyField(isRelativeProp, FeatureContent("Is Relative"));
         bool isRelative = isRelativeProp != null && isRelativeProp.boolValue;
-        if (isRelative) { var centerProp = camProp.FindPropertyRelative("CenterObject"); if (centerProp != null) { EditorGUILayout.LabelField(FeatureContent("Center Object Name (기준 오브젝트)")); EditorGUILayout.PropertyField(centerProp, GUIContent.none); } }
+        if (isRelative) { var centerProp = camProp.FindPropertyRelative("CenterObject"); if (centerProp != null) { EditorGUILayout.LabelField(FeatureContent("Center Object Name (기준 오브젝트)")); EventSceneTargetField.PropertyField(centerProp, GUIContent.none); } }
         string startLabel = isRelative ? "Start Offset (Right=X, Up=Y, Front=Z)" : "Start Position (World)";
         string endLabel = isRelative ? "End Offset (Right=X, Up=Y, Front=Z)" : "End Position (World)";
-        var startProp = camProp.FindPropertyRelative("StartPosition"); if (startProp != null) EditorGUILayout.PropertyField(startProp, FeatureContent(startLabel));
-        var endProp = camProp.FindPropertyRelative("EndPosition"); if (endProp != null) EditorGUILayout.PropertyField(endProp, FeatureContent(endLabel));
-        var startTimeProp = camProp.FindPropertyRelative("StartTime"); if (startTimeProp != null) EditorGUILayout.PropertyField(startTimeProp, FeatureContent("Start Time"));
-        var endTimeProp = camProp.FindPropertyRelative("EndTime"); if (endTimeProp != null) EditorGUILayout.PropertyField(endTimeProp, FeatureContent("End Time"));
+        var startProp = camProp.FindPropertyRelative("StartPosition"); if (startProp != null) EventSceneTargetField.PropertyField(startProp, FeatureContent(startLabel));
+        var endProp = camProp.FindPropertyRelative("EndPosition"); if (endProp != null) EventSceneTargetField.PropertyField(endProp, FeatureContent(endLabel));
+        var startTimeProp = camProp.FindPropertyRelative("StartTime"); if (startTimeProp != null) EventSceneTargetField.PropertyField(startTimeProp, FeatureContent("Start Time"));
+        var endTimeProp = camProp.FindPropertyRelative("EndTime"); if (endTimeProp != null) EventSceneTargetField.PropertyField(endTimeProp, FeatureContent("End Time"));
         EditorGUILayout.EndVertical();
     }
 
@@ -2792,8 +2794,8 @@ public class EventSOEditor : Editor
         BeginFeatureBlock("box");
         // 기존 EventSO의 직렬화 키는 보존하고 편집 의미만 Keyboard/Mouse로 노출합니다.
         var keyboardProp = lockProp.FindPropertyRelative("IsLockMove"); var mouseProp = lockProp.FindPropertyRelative("IsLockCamera");
-        if (keyboardProp != null) EditorGUILayout.PropertyField(keyboardProp, FeatureContent("Lock Keyboard"));
-        if (mouseProp != null) EditorGUILayout.PropertyField(mouseProp, FeatureContent("Lock Mouse"));
+        if (keyboardProp != null) EventSceneTargetField.PropertyField(keyboardProp, FeatureContent("Lock Keyboard"));
+        if (mouseProp != null) EventSceneTargetField.PropertyField(mouseProp, FeatureContent("Lock Mouse"));
         EditorGUILayout.EndVertical();
     }
 
@@ -2806,7 +2808,7 @@ public class EventSOEditor : Editor
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
         masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], dataName, true);
         if (!masterFoldouts[foldKey]) return;
-        var arrProp = dataProp.FindPropertyRelative("Candidates"); if (arrProp == null) { EditorGUILayout.PropertyField(dataProp, true); return; }
+        var arrProp = dataProp.FindPropertyRelative("Candidates"); if (arrProp == null) { EventSceneTargetField.PropertyField(dataProp, true); return; }
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField("Candidates", EditorStyles.boldLabel);
         DrawArraySizeControls(arrProp);
@@ -2815,11 +2817,11 @@ public class EventSOEditor : Editor
             var elem = arrProp.GetArrayElementAtIndex(i); if (elem == null) continue;
             BeginFeatureBlock("box"); EditorGUILayout.LabelField($"Candidate [{i}]", EditorStyles.miniBoldLabel); EditorGUI.indentLevel++;
             var textProp = elem.FindPropertyRelative("Text"); var valueNameProp = elem.FindPropertyRelative("ValueName"); var typeProp = elem.FindPropertyRelative("type");
-            if (textProp != null) EditorGUILayout.PropertyField(textProp, FeatureContent("Text"));
-            if (valueNameProp != null) EditorGUILayout.PropertyField(valueNameProp, FeatureContent("Value Name"));
-            if (typeProp != null) EditorGUILayout.PropertyField(typeProp, FeatureContent("Value Type"));
+            if (textProp != null) EventSceneTargetField.PropertyField(textProp, FeatureContent("Text"));
+            if (valueNameProp != null) EventSceneTargetField.PropertyField(valueNameProp, FeatureContent("Value Name"));
+            if (typeProp != null) EventSceneTargetField.PropertyField(typeProp, FeatureContent("Value Type"));
             int vt = typeProp != null ? typeProp.enumValueIndex : 0;
-            switch (vt) { case 0: var intP = elem.FindPropertyRelative("intValue"); if (intP != null) EditorGUILayout.PropertyField(intP, FeatureContent("Int Value")); break; case 1: var floatP = elem.FindPropertyRelative("floatValue"); if (floatP != null) EditorGUILayout.PropertyField(floatP, FeatureContent("Float Value")); break; case 2: var boolP = elem.FindPropertyRelative("boolValue"); if (boolP != null) EditorGUILayout.PropertyField(boolP, FeatureContent("Bool Value")); break; case 3: var strP = elem.FindPropertyRelative("stringValue"); if (strP != null) EditorGUILayout.PropertyField(strP, FeatureContent("String Value")); break; case 4: var goP = elem.FindPropertyRelative("gameObjectValue"); if (goP != null) EditorGUILayout.PropertyField(goP, FeatureContent("GameObject Value")); break; }
+            switch (vt) { case 0: var intP = elem.FindPropertyRelative("intValue"); if (intP != null) EventSceneTargetField.PropertyField(intP, FeatureContent("Int Value")); break; case 1: var floatP = elem.FindPropertyRelative("floatValue"); if (floatP != null) EventSceneTargetField.PropertyField(floatP, FeatureContent("Float Value")); break; case 2: var boolP = elem.FindPropertyRelative("boolValue"); if (boolP != null) EventSceneTargetField.PropertyField(boolP, FeatureContent("Bool Value")); break; case 3: var strP = elem.FindPropertyRelative("stringValue"); if (strP != null) EventSceneTargetField.PropertyField(strP, FeatureContent("String Value")); break; case 4: var goP = elem.FindPropertyRelative("gameObjectValue"); if (goP != null) EventSceneTargetField.PropertyField(goP, FeatureContent("GameObject Value")); break; }
             EditorGUILayout.BeginHorizontal(); GUILayout.FlexibleSpace();
             if (!workspaceDrawing && GUILayout.Button("Delete", GUILayout.Width(90))) { arrProp.DeleteArrayElementAtIndex(i); EditorGUILayout.EndHorizontal(); EditorGUI.indentLevel--; EditorGUILayout.EndVertical(); break; }
             EditorGUILayout.EndHorizontal(); EditorGUI.indentLevel--; EditorGUILayout.EndVertical();
@@ -2836,7 +2838,7 @@ public class EventSOEditor : Editor
         if (!masterFoldouts.TryGetValue(foldKey, out _)) masterFoldouts[foldKey] = true;
         masterFoldouts[foldKey] = DrawFeatureFoldout(masterFoldouts[foldKey], dataName, true);
         if (!masterFoldouts[foldKey]) return;
-        var arrProp = setProp.FindPropertyRelative("SetValues"); if (arrProp == null) { EditorGUILayout.PropertyField(setProp, true); return; }
+        var arrProp = setProp.FindPropertyRelative("SetValues"); if (arrProp == null) { EventSceneTargetField.PropertyField(setProp, true); return; }
         BeginFeatureBlock("box");
         EditorGUILayout.LabelField("SetValues", EditorStyles.boldLabel);
         DrawArraySizeControls(arrProp);
@@ -2851,19 +2853,19 @@ public class EventSOEditor : Editor
             if (prefProp != null)
             {
                 EditorGUI.BeginDisabledGroup(isGameObjectValue);
-                EditorGUILayout.PropertyField(prefProp, FeatureContent("Use PlayerPrefs"));
+                EventSceneTargetField.PropertyField(prefProp, FeatureContent("Use PlayerPrefs"));
                 EditorGUI.EndDisabledGroup();
             }
             if (setTypeProp != null)
             {
                 EditorGUI.BeginDisabledGroup(setOnlyValue);
-                EditorGUILayout.PropertyField(setTypeProp, FeatureContent("Operation"));
+                EventSceneTargetField.PropertyField(setTypeProp, FeatureContent("Operation"));
                 EditorGUI.EndDisabledGroup();
             }
-            if (nameProp != null) EditorGUILayout.PropertyField(nameProp, FeatureContent("Key"));
-            if (valueTypeProp != null) EditorGUILayout.PropertyField(valueTypeProp, FeatureContent("Value Type"));
+            if (nameProp != null) EventSceneTargetField.PropertyField(nameProp, FeatureContent("Key"));
+            if (valueTypeProp != null) EventSceneTargetField.PropertyField(valueTypeProp, FeatureContent("Value Type"));
             int vt = valueTypeProp != null ? valueTypeProp.enumValueIndex : 0;
-            switch (vt) { case 0: EditorGUILayout.PropertyField(elem.FindPropertyRelative("intValue"), FeatureContent("Value (Int)")); break; case 1: EditorGUILayout.PropertyField(elem.FindPropertyRelative("floatValue"), FeatureContent("Value (Float)")); break; case 2: EditorGUILayout.PropertyField(elem.FindPropertyRelative("boolValue"), FeatureContent("Value (Bool)")); break; case 3: EditorGUILayout.PropertyField(elem.FindPropertyRelative("stringValue"), FeatureContent("Value (String)")); break; case 4: EditorGUILayout.PropertyField(elem.FindPropertyRelative("gameObjectValue"), FeatureContent("Value (GameObject)")); if (prefProp != null && prefProp.boolValue) EditorGUILayout.HelpBox("GameObject 값은 PlayerPrefs에 저장되지 않습니다.", MessageType.Info); break; }
+            switch (vt) { case 0: EventSceneTargetField.PropertyField(elem.FindPropertyRelative("intValue"), FeatureContent("Value (Int)")); break; case 1: EventSceneTargetField.PropertyField(elem.FindPropertyRelative("floatValue"), FeatureContent("Value (Float)")); break; case 2: EventSceneTargetField.PropertyField(elem.FindPropertyRelative("boolValue"), FeatureContent("Value (Bool)")); break; case 3: EventSceneTargetField.PropertyField(elem.FindPropertyRelative("stringValue"), FeatureContent("Value (String)")); break; case 4: EventSceneTargetField.PropertyField(elem.FindPropertyRelative("gameObjectValue"), FeatureContent("Value (GameObject)")); if (prefProp != null && prefProp.boolValue) EditorGUILayout.HelpBox("GameObject 값은 PlayerPrefs에 저장되지 않습니다.", MessageType.Info); break; }
             if (setOnlyValue && setTypeProp != null && setTypeProp.enumValueIndex == (int)EventSO.SetType.Add)
                 EditorGUILayout.HelpBox("String/GameObject의 기존 Add 값은 호환성을 위해 Set으로 실행됩니다. 저장된 값은 자동 변경하지 않습니다.", MessageType.Info);
             EditorGUILayout.BeginHorizontal(); GUILayout.FlexibleSpace();
@@ -3089,7 +3091,7 @@ public class EventSOEditor : Editor
         {
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("TIME COUNT", EditorStyles.miniBoldLabel);
-            EditorGUILayout.PropertyField(secondsProp, FeatureContent("Seconds After Game Start"));
+            EventSceneTargetField.PropertyField(secondsProp, FeatureContent("Seconds After Game Start"));
             if (secondsProp.floatValue < 0f)
                 EditorGUILayout.HelpBox("시간은 0초 이상이어야 합니다. 런타임에서는 음수를 0초로 처리합니다.", MessageType.Warning);
         }
@@ -3099,9 +3101,9 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("A ↔ B COLLISION", EditorStyles.miniBoldLabel);
             if (collisionAProp != null)
-                EditorGUILayout.PropertyField(collisionAProp, FeatureContent("Object A (Name / Path)"));
+                EventSceneTargetField.PropertyField(collisionAProp, FeatureContent("Object A (Name / Path)"));
             if (collisionBProp != null)
-                EditorGUILayout.PropertyField(collisionBProp, FeatureContent("Object B (Name / Path)"));
+                EventSceneTargetField.PropertyField(collisionBProp, FeatureContent("Object B (Name / Path)"));
             EditorGUILayout.HelpBox(
                 "3D/2D의 Collision 또는 Trigger에서 A와 B가 접촉하면 참이 됩니다. " +
                 "필요한 Collider가 없으면 오브젝트 크기에 맞는 런타임 Trigger Collider를 자동으로 추가합니다. " +
@@ -3122,9 +3124,9 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("OBJECT STATE", EditorStyles.miniBoldLabel);
             if (objectStateTargetProp != null)
-                EditorGUILayout.PropertyField(objectStateTargetProp, FeatureContent("Object (Name / Path)"));
+                EventSceneTargetField.PropertyField(objectStateTargetProp, FeatureContent("Object (Name / Path)"));
             if (objectStateProp != null)
-                EditorGUILayout.PropertyField(objectStateProp, FeatureContent("Required State"));
+                EventSceneTargetField.PropertyField(objectStateProp, FeatureContent("Required State"));
             if (string.IsNullOrWhiteSpace(objectStateTargetProp?.stringValue))
                 EditorGUILayout.HelpBox("상태를 확인할 Object 이름 또는 Root/Child 경로를 입력해야 합니다.", MessageType.Warning);
         }
@@ -3134,15 +3136,15 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("DISTANCE", EditorStyles.miniBoldLabel);
             if (distanceAProp != null)
-                EditorGUILayout.PropertyField(distanceAProp, FeatureContent("Object A (Name / Path)"));
+                EventSceneTargetField.PropertyField(distanceAProp, FeatureContent("Object A (Name / Path)"));
             if (distanceBProp != null)
-                EditorGUILayout.PropertyField(distanceBProp, FeatureContent("Object B (Name / Path)"));
+                EventSceneTargetField.PropertyField(distanceBProp, FeatureContent("Object B (Name / Path)"));
             if (distanceComparisonProp != null)
-                EditorGUILayout.PropertyField(distanceComparisonProp, FeatureContent("Comparison"));
+                EventSceneTargetField.PropertyField(distanceComparisonProp, FeatureContent("Comparison"));
             if (distanceThresholdProp != null)
-                EditorGUILayout.PropertyField(distanceThresholdProp, FeatureContent("Distance"));
+                EventSceneTargetField.PropertyField(distanceThresholdProp, FeatureContent("Distance"));
             if (distanceUse2DProp != null)
-                EditorGUILayout.PropertyField(distanceUse2DProp, FeatureContent("Use 2D Distance (X/Y)"));
+                EventSceneTargetField.PropertyField(distanceUse2DProp, FeatureContent("Use 2D Distance (X/Y)"));
 
             string distanceA = distanceAProp?.stringValue?.Trim() ?? string.Empty;
             string distanceB = distanceBProp?.stringValue?.Trim() ?? string.Empty;
@@ -3157,9 +3159,9 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("INPUT KEY", EditorStyles.miniBoldLabel);
             if (inputKeyCodeProp != null)
-                EditorGUILayout.PropertyField(inputKeyCodeProp, FeatureContent("Key"));
+                EventSceneTargetField.PropertyField(inputKeyCodeProp, FeatureContent("Key"));
             if (inputKeyStateProp != null)
-                EditorGUILayout.PropertyField(inputKeyStateProp, FeatureContent("Input State"));
+                EventSceneTargetField.PropertyField(inputKeyStateProp, FeatureContent("Input State"));
             EditorGUILayout.HelpBox(
                 "키보드와 Mouse0~Mouse4는 Legacy Input Manager와 새 Input System 전용 설정에서 동일하게 읽습니다.",
                 MessageType.Info);
@@ -3172,18 +3174,18 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("ANIMATOR STATE", EditorStyles.miniBoldLabel);
             if (animatorObjectProp != null)
-                EditorGUILayout.PropertyField(animatorObjectProp, FeatureContent("Object (Name / Path, Empty = Caller)"));
+                EventSceneTargetField.PropertyField(animatorObjectProp, FeatureContent("Object (Name / Path, Empty = Caller)"));
             if (animatorStateNameProp != null)
-                EditorGUILayout.PropertyField(animatorStateNameProp, FeatureContent("State Name"));
+                EventSceneTargetField.PropertyField(animatorStateNameProp, FeatureContent("State Name"));
             if (animatorLayerProp != null)
-                EditorGUILayout.PropertyField(animatorLayerProp, FeatureContent("Layer"));
+                EventSceneTargetField.PropertyField(animatorLayerProp, FeatureContent("Layer"));
             if (animatorStateProp != null)
-                EditorGUILayout.PropertyField(animatorStateProp, FeatureContent("Check"));
+                EventSceneTargetField.PropertyField(animatorStateProp, FeatureContent("Check"));
 
             bool checksCompletion = animatorStateProp != null &&
                                     animatorStateProp.enumValueIndex == (int)EventSO.AnimatorStateCheck.Completed;
             if (checksCompletion && animatorCompletionTimeProp != null)
-                EditorGUILayout.PropertyField(
+                EventSceneTargetField.PropertyField(
                     animatorCompletionTimeProp,
                     FeatureContent("Completion Normalized Time"));
 
@@ -3203,9 +3205,9 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("SCENE STATE", EditorStyles.miniBoldLabel);
             if (sceneNameProp != null)
-                EditorGUILayout.PropertyField(sceneNameProp, FeatureContent("Scene Name"));
+                EventSceneTargetField.PropertyField(sceneNameProp, FeatureContent("Scene Name"));
             if (sceneStateProp != null)
-                EditorGUILayout.PropertyField(sceneStateProp, FeatureContent("Required State"));
+                EventSceneTargetField.PropertyField(sceneStateProp, FeatureContent("Required State"));
             EditorGUILayout.HelpBox(
                 "Loaded/Unloaded는 씬의 로드 여부를, Active는 SceneManager의 현재 Active Scene인지 확인합니다.",
                 MessageType.Info);
@@ -3218,9 +3220,9 @@ public class EventSOEditor : Editor
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("CAMERA VIEW", EditorStyles.miniBoldLabel);
             if (cameraViewTargetProp != null)
-                EditorGUILayout.PropertyField(cameraViewTargetProp, FeatureContent("Object (Name / Path)"));
+                EventSceneTargetField.PropertyField(cameraViewTargetProp, FeatureContent("Object (Name / Path)"));
             if (cameraViewStateProp != null)
-                EditorGUILayout.PropertyField(cameraViewStateProp, FeatureContent("Required State"));
+                EventSceneTargetField.PropertyField(cameraViewStateProp, FeatureContent("Required State"));
             EditorGUILayout.HelpBox(
                 "현재 활성화된 Game Camera 중 대상 Layer를 렌더링하는 가장 높은 Depth 카메라를 사용합니다. Renderer가 있으면 Bounds와 카메라 Frustum을, 없으면 Transform 위치를 확인합니다.",
                 MessageType.Info);
@@ -3287,8 +3289,8 @@ public class EventSOEditor : Editor
             var valueTypeProp = condElem.FindPropertyRelative("valueType");
             var prefProp = condElem.FindPropertyRelative("isPlayerPrefData");
             var checkTypeProp = condElem.FindPropertyRelative("checkType");
-            if (nameProp != null) EditorGUILayout.PropertyField(nameProp, FeatureContent("Global Key"));
-            if (checkTypeProp != null) EditorGUILayout.PropertyField(checkTypeProp, FeatureContent("Check Type"));
+            if (nameProp != null) EventSceneTargetField.PropertyField(nameProp, FeatureContent("Global Key"));
+            if (checkTypeProp != null) EventSceneTargetField.PropertyField(checkTypeProp, FeatureContent("Check Type"));
 
             EventSO.CheckType checkType = checkTypeProp != null
                 ? (EventSO.CheckType)checkTypeProp.enumValueIndex
@@ -3313,7 +3315,7 @@ public class EventSOEditor : Editor
             else
             {
                 if (valueTypeProp != null)
-                    EditorGUILayout.PropertyField(valueTypeProp, FeatureContent("Value Type"));
+                    EventSceneTargetField.PropertyField(valueTypeProp, FeatureContent("Value Type"));
                 valueTypeIndex = valueTypeProp != null
                     ? valueTypeProp.enumValueIndex
                     : (int)EventSO.ValueType.Float;
@@ -3321,23 +3323,23 @@ public class EventSOEditor : Editor
                 {
                     case (int)EventSO.ValueType.Int:
                         var intExpected = condElem.FindPropertyRelative("ExpectedInt");
-                        if (intExpected != null) EditorGUILayout.PropertyField(intExpected, FeatureContent("Expected Int"));
+                        if (intExpected != null) EventSceneTargetField.PropertyField(intExpected, FeatureContent("Expected Int"));
                         break;
                     case (int)EventSO.ValueType.Float:
                         var floatExpected = condElem.FindPropertyRelative("ExpectedFloat");
-                        if (floatExpected != null) EditorGUILayout.PropertyField(floatExpected, FeatureContent("Expected Float"));
+                        if (floatExpected != null) EventSceneTargetField.PropertyField(floatExpected, FeatureContent("Expected Float"));
                         break;
                     case (int)EventSO.ValueType.Bool:
                         var boolExpected = condElem.FindPropertyRelative("ExpectedBool");
-                        if (boolExpected != null) EditorGUILayout.PropertyField(boolExpected, FeatureContent("Expected Bool"));
+                        if (boolExpected != null) EventSceneTargetField.PropertyField(boolExpected, FeatureContent("Expected Bool"));
                         break;
                     case (int)EventSO.ValueType.String:
                         var stringExpected = condElem.FindPropertyRelative("ExpectedString");
-                        if (stringExpected != null) EditorGUILayout.PropertyField(stringExpected, FeatureContent("Expected String"));
+                        if (stringExpected != null) EventSceneTargetField.PropertyField(stringExpected, FeatureContent("Expected String"));
                         break;
                     case (int)EventSO.ValueType.GameObject:
                         var objectExpected = condElem.FindPropertyRelative("ExpectedGameObject");
-                        if (objectExpected != null) EditorGUILayout.PropertyField(objectExpected, FeatureContent("Expected GameObject"));
+                        if (objectExpected != null) EventSceneTargetField.PropertyField(objectExpected, FeatureContent("Expected GameObject"));
                         break;
                 }
 
@@ -3352,7 +3354,7 @@ public class EventSOEditor : Editor
             if (prefProp != null)
             {
                 EditorGUI.BeginDisabledGroup(isGameObjectCondition);
-                EditorGUILayout.PropertyField(prefProp, FeatureContent("Use PlayerPrefs"));
+                EventSceneTargetField.PropertyField(prefProp, FeatureContent("Use PlayerPrefs"));
                 EditorGUI.EndDisabledGroup();
                 if (isGameObjectCondition && prefProp.boolValue)
                     EditorGUILayout.HelpBox("GameObject 조건은 PlayerPrefs에 저장할 수 없어 메모리 Global 값을 사용합니다. 기존 값은 자동 변경하지 않습니다.", MessageType.Info);

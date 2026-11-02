@@ -14,6 +14,15 @@ namespace JYW.Game.ObjectMaker.Tests
 {
     public sealed class ObjectMakerEditorTests
     {
+        private Func<UnityEngine.Object, ObjectMakerWindow> workspaceOpener;
+
+        // These historical tests exercise the shared IMGUI controls and builder in isolation.
+        // AllinOneEditorTests verifies the production router and multi-document workspace.
+        [SetUp] public void IsolateSharedControls()
+        { workspaceOpener = ObjectMakerWindow.WorkspaceOpener; ObjectMakerWindow.WorkspaceOpener = null; }
+        [TearDown] public void RestoreWorkspaceRouter()
+        { ObjectMakerWindow.WorkspaceOpener = workspaceOpener; }
+
         [Test]
         public void SG001DefaultMatchesDesignValues()
         {

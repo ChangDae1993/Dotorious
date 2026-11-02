@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -41,6 +42,8 @@ namespace JYW.Game.ObjectMaker.Editor
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
 
+            string applyBlocker = ObjectPrefabCatalog.ApplyBlocker(existingDefinition);
+            if (!string.IsNullOrEmpty(applyBlocker)) throw new InvalidOperationException(applyBlocker);
             ObjectMakerPaths.EnsureStructure();
             ObjectMakerPaths.EnsureGeneratedStructure();
             ObjectDefinitionData data = source.Clone();
@@ -202,10 +205,9 @@ namespace JYW.Game.ObjectMaker.Editor
             if (controller.layers == null || controller.layers.Length == 0)
                 controller.AddLayer("Base Layer");
 
-            Dictionary<string, Motion> preservedMotions = CaptureStateMotions(
+            StateMotions preservedMotions = CaptureStateMotions(
                 controller.layers[0].stateMachine);
-            while (controller.layers.Length > 1)
-                controller.RemoveLayer(controller.layers.Length - 1);
+            // Additional layers are authored by the user and are never regenerated.
 
             AnimatorStateMachine stateMachine = controller.layers[0].stateMachine;
             ClearGeneratedGraph(controller, stateMachine);
@@ -229,7 +231,7 @@ namespace JYW.Game.ObjectMaker.Editor
                 ObjectCommonAnimator.Dead,
                 new Vector3(440f, 240f),
                 preservedMotions);
-            stateMachine.defaultState = idle;
+            if (stateMachine.defaultState == null || IsGeneratedState(stateMachine.defaultState.name)) stateMachine.defaultState = idle;
             AddAnyTriggerTransition(
                 stateMachine,
                 dead,
@@ -260,6 +262,7 @@ namespace JYW.Game.ObjectMaker.Editor
                     data.ai,
                     preservedMotions);
 
+            RemoveUnusedGeneratedStates(controller, stateMachine, preservedMotions.Used);
             EditorUtility.SetDirty(stateMachine);
             EditorUtility.SetDirty(controller);
         }
@@ -269,7 +272,7 @@ namespace JYW.Game.ObjectMaker.Editor
             AnimatorStateMachine stateMachine,
             AnimatorState idle,
             ObjectDefinitionData data,
-            Dictionary<string, Motion> preservedMotions)
+            StateMotions preservedMotions)
         {
             ObjectPlayerSettings settings = data.player;
             if (settings == null)
@@ -433,7 +436,7 @@ namespace JYW.Game.ObjectMaker.Editor
             AnimatorStateMachine stateMachine,
             AnimatorState idle,
             ObjectAIProgram program,
-            Dictionary<string, Motion> preservedMotions)
+            StateMotions preservedMotions)
         {
             if (program == null || program.rules == null)
                 return;
@@ -565,10 +568,10 @@ namespace JYW.Game.ObjectMaker.Editor
             return ObjectCommonAnimator.Idle;
         }
 
-        private static Dictionary<string, Motion> CaptureStateMotions(
+        private static StateMotions CaptureStateMotions(
             AnimatorStateMachine stateMachine)
         {
-            var motions = new Dictionary<string, Motion>(StringComparer.Ordinal);
+            var motions = new StateMotions();
             ChildAnimatorState[] states = stateMachine.states;
             for (int i = 0; i < states.Length; i++)
             {
@@ -579,34 +582,63 @@ namespace JYW.Game.ObjectMaker.Editor
             return motions;
         }
 
-        private static void ClearGeneratedGraph(
-            AnimatorController controller,
-            AnimatorStateMachine stateMachine)
+        private sealed class StateMotions : Dictionary<string, Motion>
+        { public readonly HashSet<AnimatorState> Used = new HashSet<AnimatorState>(); }
+
+        private static bool IsGeneratedState(string name) =>
+            new[] { "Idle", "Walk", "Run", "Jump", "Attack", "Hit", "Dead" }.Contains(name) ||
+            name.StartsWith("Enemy_Rule_", StringComparison.Ordinal) || name.StartsWith("Player_Attack_", StringComparison.Ordinal);
+
+        private static IEnumerable<AnimatorStateMachine> Machines(AnimatorStateMachine machine)
         {
-            AnimatorStateTransition[] anyTransitions = stateMachine.anyStateTransitions;
-            for (int i = anyTransitions.Length - 1; i >= 0; i--)
-                stateMachine.RemoveAnyStateTransition(anyTransitions[i]);
+            yield return machine;
+            foreach (var child in machine.stateMachines)
+                foreach (var nested in Machines(child.stateMachine)) yield return nested;
+        }
+        private static IEnumerable<AnimatorStateTransition> UserTransitions(AnimatorController controller) =>
+            controller.layers.SelectMany(l => Machines(l.stateMachine)).SelectMany(m =>
+                m.anyStateTransitions.Concat(m.states.SelectMany(s => s.state.transitions)))
+                .Where(t => !t.name.StartsWith("Auto_", StringComparison.Ordinal));
 
-            ChildAnimatorState[] states = stateMachine.states;
-            for (int i = states.Length - 1; i >= 0; i--)
-                stateMachine.RemoveState(states[i].state);
-
-            ChildAnimatorStateMachine[] childMachines = stateMachine.stateMachines;
-            for (int i = childMachines.Length - 1; i >= 0; i--)
-                stateMachine.RemoveStateMachine(childMachines[i].stateMachine);
-
+        private static void ClearGeneratedGraph(AnimatorController controller, AnimatorStateMachine stateMachine)
+        {
+            // Auto_* transitions and reserved parameters belong to the generator. Keep user graphs and references.
+            foreach (var transition in stateMachine.anyStateTransitions.ToArray())
+                if (transition.name.StartsWith("Auto_", StringComparison.Ordinal)) stateMachine.RemoveAnyStateTransition(transition);
+            foreach (var state in stateMachine.states)
+                foreach (var transition in state.state.transitions.ToArray())
+                    if (transition.name.StartsWith("Auto_", StringComparison.Ordinal)) state.state.RemoveTransition(transition);
+            var referenced = new HashSet<string>(UserTransitions(controller).SelectMany(t => t.conditions).Select(c => c.parameter));
+            foreach (var machine in controller.layers.SelectMany(l => Machines(l.stateMachine)))
+                foreach (var transition in machine.entryTransitions)
+                    foreach (var condition in transition.conditions) referenced.Add(condition.parameter);
+            var reserved = new HashSet<string> { "MoveSpeed", "IsRunning", "IsGrounded", "IsAttacking", "PlayerAttack", "PlayerCombo", "EnemyRule", "EnemyAttackPhase", "Jump", "Hit", "Dead" };
             for (int i = controller.parameters.Length - 1; i >= 0; i--)
-                controller.RemoveParameter(i);
+                if (reserved.Contains(controller.parameters[i].name) && !referenced.Contains(controller.parameters[i].name)) controller.RemoveParameter(i);
+        }
+        private static void RemoveUnusedGeneratedStates(AnimatorController controller, AnimatorStateMachine machine, HashSet<AnimatorState> used)
+        {
+            var references = new HashSet<AnimatorState>(UserTransitions(controller).Select(t => t.destinationState).Where(s => s != null));
+            foreach (var m in controller.layers.SelectMany(l => Machines(l.stateMachine)))
+                foreach (var transition in m.entryTransitions) if (transition.destinationState != null) references.Add(transition.destinationState);
+            foreach (var child in machine.states.ToArray())
+            {
+                var state = child.state;
+                if (used.Contains(state) || !IsGeneratedState(state.name) || references.Contains(state) || state.behaviours.Length > 0 ||
+                    state.transitions.Any(t => !t.name.StartsWith("Auto_", StringComparison.Ordinal))) continue;
+                machine.RemoveState(state);
+            }
         }
 
         private static AnimatorState AddState(
             AnimatorStateMachine stateMachine,
             string name,
             Vector3 position,
-            Dictionary<string, Motion> preservedMotions,
+            StateMotions preservedMotions,
             string fallbackName = null)
         {
-            AnimatorState state = stateMachine.AddState(name, position);
+            AnimatorState state = stateMachine.states.Select(s => s.state).FirstOrDefault(s => s.name == name) ?? stateMachine.AddState(name, position);
+            preservedMotions.Used.Add(state);
             Motion motion;
             if (preservedMotions.TryGetValue(name, out motion) ||
                 (!string.IsNullOrEmpty(fallbackName) &&
@@ -781,19 +813,12 @@ namespace JYW.Game.ObjectMaker.Editor
             }
 
             Animator animator = spriteRenderer.GetComponent<Animator>();
+            bool createdAnimator = animator == null;
             if (animator == null)
                 animator = spriteRenderer.gameObject.AddComponent<Animator>();
             animator.runtimeAnimatorController = data.animatorController;
-            animator.applyRootMotion = false;
-
-            Animator previousAnimator = actor.Animator;
-            if (previousAnimator != null && previousAnimator != animator &&
-                string.Equals(previousAnimator.gameObject.name, "Visual", StringComparison.Ordinal))
-            {
-                SpriteRenderer previousRenderer = previousAnimator.GetComponent<SpriteRenderer>();
-                if (previousRenderer == null || previousRenderer.sprite == null)
-                    UnityEngine.Object.DestroyImmediate(previousAnimator);
-            }
+            if (createdAnimator) animator.applyRootMotion = false;
+            // Keep other Animator components: user scripts may still hold references to them.
 
             Vector2 visualSize = spriteRenderer.sprite != null
                 ? spriteRenderer.sprite.bounds.size

@@ -63,6 +63,17 @@ namespace JYW.Game.ObjectMaker.Editor
 
         public static ObjectDefinitionData Import(string json, out string[] warnings)
         {
+            return ReadDocument(json, out warnings, true);
+        }
+
+        // Recovery keeps unfinished input exactly as typed. Portable JSON import retains its validation.
+        internal static ObjectDefinitionData RestoreDraft(string json, out string[] warnings)
+        {
+            return ReadDocument(json, out warnings, false);
+        }
+
+        private static ObjectDefinitionData ReadDocument(string json, out string[] warnings, bool sanitize)
+        {
             if (string.IsNullOrWhiteSpace(json)) throw new FormatException("JSON 파일이 비어 있습니다.");
             Document document;
             try { document = JsonUtility.FromJson<Document>(json); }
@@ -91,7 +102,7 @@ namespace JYW.Game.ObjectMaker.Editor
                 if (asset == null)
                     messages.Add(reference.field + ": 에셋을 찾지 못했습니다 (" + reference.assetPath + ")");
             }
-            document.data.Sanitize();
+            if (sanitize) document.data.Sanitize();
             warnings = messages.ToArray();
             return document.data;
         }

@@ -8,7 +8,7 @@ using UnityEngine.InputSystem;
 
 namespace JYW.Game.ObjectMaker.Editor
 {
-    public sealed class ObjectMakerWindow : EditorWindow
+    public partial class ObjectMakerWindow : EditorWindow
     {
         [SerializeField] private ObjectDefinitionSO currentDefinition;
         [SerializeField] private ObjectDefinitionData draft = ObjectDefinitionData.CreateSG001();
@@ -65,6 +65,7 @@ namespace JYW.Game.ObjectMaker.Editor
 
         public static ObjectMakerWindow Open(UnityEngine.Object source)
         {
+            if (WorkspaceOpener != null) return WorkspaceOpener(source);
             ObjectMakerWindow window = GetWindow<ObjectMakerWindow>();
             window.titleContent = new GUIContent("2DObjectMaker");
             window.minSize = new Vector2(520f, 520f);
@@ -91,8 +92,9 @@ namespace JYW.Game.ObjectMaker.Editor
             return true;
         }
 
-        private void OnEnable()
+        protected virtual void OnEnable()
         {
+            EditorApplication.delayCall += MigrateLegacyWindow;
             titleContent = new GUIContent("2DObjectMaker");
             minSize = new Vector2(520f, 520f);
             if (draft == null)
@@ -102,7 +104,7 @@ namespace JYW.Game.ObjectMaker.Editor
             Selection.selectionChanged += OnSelectionChanged;
         }
 
-        private void OnDisable()
+        protected virtual void OnDisable()
         {
             Selection.selectionChanged -= OnSelectionChanged;
         }
@@ -116,7 +118,7 @@ namespace JYW.Game.ObjectMaker.Editor
                 LoadDefinition(selected);
         }
 
-        private void OnGUI()
+        protected virtual void OnGUI()
         {
             DrawToolbar();
             DrawDefinitionDropZone();
@@ -395,6 +397,7 @@ namespace JYW.Game.ObjectMaker.Editor
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
 
+            if (workspaceInspector) return;
             showPlayerAttacks = EditorGUILayout.BeginFoldoutHeaderGroup(
                 showPlayerAttacks,
                 "Player 공격 / 콤보");
@@ -435,73 +438,7 @@ namespace JYW.Game.ObjectMaker.Editor
                         removeIndex = i;
                     EditorGUILayout.EndHorizontal();
 
-                    attack.key = (Key)EditorGUILayout.EnumPopup("공격 키", attack.key);
-                    attack.damage = EditorGUILayout.IntField("데미지", attack.damage);
-                    attack.inputDelaySeconds = EditorGUILayout.FloatField(
-                        "공격 전 딜레이", attack.inputDelaySeconds);
-                    attack.activeSeconds = EditorGUILayout.FloatField(
-                        "공격 판정 지속시간", attack.activeSeconds);
-                    attack.recoverySeconds = EditorGUILayout.FloatField(
-                        "공격 후 딜레이", attack.recoverySeconds);
-                    attack.cooldownSeconds = EditorGUILayout.FloatField(
-                        "재사용 대기시간", attack.cooldownSeconds);
-                    attack.animationSpeed = EditorGUILayout.FloatField(
-                        new GUIContent("공격 모션 배속", "1은 기본 속도입니다. 공격 Animator State에만 적용하며 이동·점프 속도와 공격 판정시간은 바꾸지 않습니다."),
-                        attack.animationSpeed);
-                    attack.pattern = (ObjectPlayerAttackPattern)EditorGUILayout.EnumPopup("공격 방식", attack.pattern);
-                    if (attack.pattern != ObjectPlayerAttackPattern.Melee)
-                    {
-                        attack.effectPrefab = (GameObject)EditorGUILayout.ObjectField("스킬 연출 프리팹", attack.effectPrefab, typeof(GameObject), false);
-                        attack.effectOffset = EditorGUILayout.Vector2Field("연출 위치 (전방 / 높이)", attack.effectOffset);
-                        if (attack.pattern == ObjectPlayerAttackPattern.Projectile)
-                        {
-                            attack.projectileSpeed = EditorGUILayout.FloatField("투사체 속도", attack.projectileSpeed);
-                            attack.projectileLifetime = EditorGUILayout.FloatField("투사체 수명", attack.projectileLifetime);
-                            attack.projectileRadius = EditorGUILayout.FloatField("투사체 반경", attack.projectileRadius);
-                            attack.projectileGravity = EditorGUILayout.FloatField("투사체 중력", attack.projectileGravity);
-                        }
-                        if (attack.pattern == ObjectPlayerAttackPattern.Dash)
-                            attack.dashSpeed = EditorGUILayout.FloatField("돌진 속도", attack.dashSpeed);
-                        if (attack.pattern == ObjectPlayerAttackPattern.Dash || attack.pattern == ObjectPlayerAttackPattern.Projectile)
-                            attack.obstacleMask = DrawLayerMask("지형/장애물 레이어", attack.obstacleMask);
-                        EditorGUILayout.HelpBox("투사체/돌진은 지형에 막힙니다. 연출 프리팹은 SpriteRenderer + ObjectSkillVisual2D로 교체할 수 있습니다.", MessageType.None);
-                    }
-                    if (attack.pattern != ObjectPlayerAttackPattern.Projectile)
-                    {
-                        attack.range = EditorGUILayout.FloatField("공격 거리", attack.range);
-                        attack.hitboxHeight = EditorGUILayout.FloatField("공격 판정 높이", attack.hitboxHeight);
-                    }
-                    attack.knockback = EditorGUILayout.FloatField("넉백", attack.knockback);
-                    attack.targetInvulnerabilitySeconds = EditorGUILayout.FloatField(
-                        "대상 피격 무적", attack.targetInvulnerabilitySeconds);
-                    attack.sound = DrawSoundCue(
-                        "공격 소리",
-                        attack.sound,
-                        false,
-                        i == 0
-                            ? rect => LastPlayerAttackSoundRectForTests = rect
-                            : (Action<Rect>)null);
-                    attack.comboSteps = EditorGUILayout.IntSlider(
-                        "콤보 수", attack.comboSteps, 1, 12);
-                    if (attack.comboSteps > 1)
-                    {
-                        attack.comboInputWindowSeconds = EditorGUILayout.FloatField(
-                            "콤보 입력 가능시간", attack.comboInputWindowSeconds);
-                        attack.comboResetSeconds = EditorGUILayout.FloatField(
-                            "콤보 초기화 시간", attack.comboResetSeconds);
-                        EditorGUILayout.LabelField(
-                            "생성 State",
-                            ObjectAnimatorGraph2D.PlayerAttackState(i, 0) + " ~ " +
-                            ObjectAnimatorGraph2D.PlayerAttackState(i, attack.comboSteps - 1),
-                            EditorStyles.miniLabel);
-                    }
-                    else
-                    {
-                        EditorGUILayout.LabelField(
-                            "생성 State",
-                            ObjectAnimatorGraph2D.PlayerAttackState(i, 0),
-                            EditorStyles.miniLabel);
-                    }
+                    DrawPlayerAttackFields(attack, i);
                     EditorGUILayout.EndVertical();
                 }
 

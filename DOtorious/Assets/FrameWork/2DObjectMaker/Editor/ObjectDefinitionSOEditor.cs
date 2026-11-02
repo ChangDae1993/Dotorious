@@ -19,7 +19,7 @@ namespace JYW.Game.ObjectMaker.Editor
             }
 
             GUILayout.Space(8f);
-            if (GUILayout.Button("Open 2DObjectMaker (Modify)", GUILayout.Height(28f)))
+            if (GUILayout.Button("Open AllinOneEditor (Modify)", GUILayout.Height(28f)))
                 ObjectMakerWindow.Open((ObjectDefinitionSO)target);
 
             if (GUILayout.Button("Modify Generated Prefab", GUILayout.Height(28f)))
