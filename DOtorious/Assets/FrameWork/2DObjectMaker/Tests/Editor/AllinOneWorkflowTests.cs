@@ -201,7 +201,7 @@ namespace JYW.Game.ObjectMaker.Tests
             Assert.Throws<InvalidOperationException>(() => ObjectMakerPrefabBuilder.Make(data, result.Definition));
             CollectionAssert.AreEqual(before, File.ReadAllBytes(result.PrefabPath)); CollectionAssert.AreEqual(graph, File.ReadAllBytes(Folder + "/User.controller"));
         }
-        [Test] public void ThreeAreasScopeDocumentsAndKeepDraftSelectionAndSearch()
+        [Test] public void FourAreasScopeDocumentsAndKeepDraftSelectionAndSearch()
         {
             var type = Find("AllinOneEditor"); var window = (EditorWindow)Call(type, "OpenDocument", new object[] { null });
             var enumType = type.GetNestedType("WorkspaceArea");
@@ -211,7 +211,7 @@ namespace JYW.Game.ObjectMaker.Tests
             Instance(window, "NewObject", ObjectKind.Player);
             var player = Current(window); player.Data.displayName = "P_Draft"; player.Section = "controls";
             Instance(window, "SetAnyTarget", EventAsset());
-            CollectionAssert.AreEquivalent(new[] { "Event", "Monster", "Player" }, Enum.GetNames(enumType));
+            CollectionAssert.AreEquivalent(new[] { "Event", "Monster", "Player", "Map" }, Enum.GetNames(enumType));
             area("Monster"); Assert.AreSame(monster, Current(window)); Assert.AreEqual(97, monster.Data.core.maxHealth); Assert.AreEqual("rule", monster.Section);
             var names = window.rootVisualElement.Query<Button>(className: "aio-document-tab").ToList().Select(b => b.text).ToArray();
             Assert.IsTrue(names.Any(n => n.Contains("M_Draft"))); Assert.IsFalse(names.Any(n => n.Contains("P_Draft")));

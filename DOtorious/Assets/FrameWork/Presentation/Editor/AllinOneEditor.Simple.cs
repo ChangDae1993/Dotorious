@@ -66,7 +66,7 @@ public sealed partial class AllinOneEditor
     }
     private void RefreshSimpleWorkspace()
     {
-        if (simplePage == null || detailedMode || creatingEvent) return;
+        if (IsMapArea || simplePage == null || detailedMode || creatingEvent) return;
         string key = IsObjectDocument ? ActiveObject.Key + ":" + ActiveObject.Data.player.attacks.Count + ":" + ActiveObject.Data.ai.rules.Count :
             (currentEventSO == null ? "none" : currentEventSO.GetEntityId().ToString()) + ":" + selectedPhasePath + ":" + selectedFeaturePath + ":" +
             (model == null ? "" : string.Join("|", model.Rows.Select(r => r.FeaturePath))) + ":" + currentEventSO?.UseCondition + ":" + currentEventSO?.Conditions?.Length;

@@ -62,6 +62,7 @@ public sealed partial class AllinOneEditor : ObjectMakerWindow
     {
         titleContent = new GUIContent("AllinOneEditor"); minSize = new Vector2(960, 600);
         RestoreWorkspace();
+        RestoreMapDraft(); wantsMouseMove = true;
         viewMode = Mathf.Clamp(SessionState.GetInt(SessionKey, viewMode), 0, 3);
         if (timelineView == null) timelineView = new EventTimelineView();
         timelineView.SelectionRequested = SelectOnly; timelineView.EditRequested = SelectForEditing;
@@ -73,6 +74,7 @@ public sealed partial class AllinOneEditor : ObjectMakerWindow
     }
     protected override void OnDisable()
     {
+        FinishMapStroke(); SaveMapRecovery(); ReleaseMapTextures();
         EventSceneTargetField.Cancel();
         EventSceneTargetField.Changed -= RequestRefresh;
         PersistWorkspace();
@@ -93,7 +95,7 @@ public sealed partial class AllinOneEditor : ObjectMakerWindow
         DrawAreas(root);
         DrawCommandBar(root);
         DrawDocuments(root); documentsBar.style.display = DisplayStyle.None;
-        var workspace = new TwoPaneSplitView(0, 238, TwoPaneSplitViewOrientation.Horizontal);
+        var workspace = new TwoPaneSplitView(0, 238, TwoPaneSplitViewOrientation.Horizontal); documentWorkspace = workspace;
         workspace.viewDataKey = "AllinOneEditor.ExplorerWidth";
         workspace.AddToClassList("ew-workspace"); root.Add(workspace);
         var left = new VisualElement(); left.AddToClassList("ew-browser"); left.style.minWidth = 175; workspace.Add(left); DrawBrowser(left);
@@ -105,17 +107,19 @@ public sealed partial class AllinOneEditor : ObjectMakerWindow
         center = new VisualElement(); center.AddToClassList("ew-center"); center.style.minWidth = 380; work.Add(center); DrawCenter(center);
         var right = new VisualElement(); right.AddToClassList("ew-inspector"); right.style.minWidth = 280; work.Add(right); DrawInspector(right);
 
+        DrawMapWorkspace(root);
         status = new Label(); status.AddToClassList("ew-status"); root.Add(status); status.style.display = DisplayStyle.None;
         root.RegisterCallback<KeyDownEvent>(evt =>
         {
-            if (evt.keyCode == KeyCode.Escape) { if (creatingEvent) CancelNewEvent(); else EventSceneTargetField.Cancel(); evt.StopPropagation(); }
+            if (IsMapArea && !evt.actionKey && !evt.altKey && MapShortcutTargetAllowsTyping() && HandleMapShortcut(evt.keyCode)) { evt.StopImmediatePropagation(); return; }
+            if (evt.keyCode == KeyCode.Escape) { FinishMapStroke(); if (creatingEvent) CancelNewEvent(); else EventSceneTargetField.Cancel(); evt.StopPropagation(); }
             if (evt.actionKey && evt.keyCode == KeyCode.F) { browserSearch?.Focus(); evt.StopPropagation(); }
-            if (evt.actionKey && evt.keyCode >= KeyCode.Alpha1 && evt.keyCode <= KeyCode.Alpha3) { SwitchArea((WorkspaceArea)((int)evt.keyCode - (int)KeyCode.Alpha1)); evt.StopPropagation(); }
+            if (evt.actionKey && evt.keyCode >= KeyCode.Alpha1 && evt.keyCode <= KeyCode.Alpha4) { SwitchArea((WorkspaceArea)((int)evt.keyCode - (int)KeyCode.Alpha1)); evt.StopPropagation(); }
             if (evt.actionKey && evt.keyCode == KeyCode.S) { Save(); evt.StopPropagation(); }
         }, TrickleDown.TrickleDown);
         root.schedule.Execute(() =>
         {
-            if (creatingEvent) return;
+            if (IsMapArea) { RefreshMapStatus(); return; } if (creatingEvent) return;
             if (IsObjectDocument) { RefreshObjectStatus(); return; }
             if (!IsEventArea || currentEventSO == null) return;
             int dirty = EditorUtility.GetDirtyCount(currentEventSO);
@@ -149,7 +153,7 @@ public sealed partial class AllinOneEditor : ObjectMakerWindow
         options.menu.AppendAction("현재 초안 되돌리기…", _ => RevertObject(), _ => IsObjectDocument && ActiveObject.Source != null ? DropdownMenuAction.Status.Normal : DropdownMenuAction.Status.Disabled);
         options.menu.AppendAction("Project에서 위치 찾기", _ => { var asset = IsObjectDocument ? ActiveObject.Source : (UnityEngine.Object)currentEventSO; if (asset != null) EditorGUIUtility.PingObject(asset); });
         options.menu.AppendAction("이벤트 전체 구조 편집", _ => { SetDetailed(true); SetInspectorMode(2); }, _ => !IsObjectDocument && currentEventSO != null ? DropdownMenuAction.Status.Normal : DropdownMenuAction.Status.Disabled); bar.Add(options);
-        saveButton = ActionButton("이벤트 저장", Save, "ew-primary-button"); saveButton.name = "document-save"; saveButton.tooltip = "Ctrl+S"; bar.Add(saveButton);
+        saveButton = ActionButton("이벤트 저장", () => { if (IsMapArea) MakeMap(); else Save(); }, "ew-primary-button"); saveButton.name = "document-save"; saveButton.tooltip = "Ctrl+S"; bar.Add(saveButton);
     }
     private void DrawBrowser(VisualElement left) => DrawUnifiedBrowser(left);
     private void DrawCenter(VisualElement parent)
@@ -207,6 +211,12 @@ public sealed partial class AllinOneEditor : ObjectMakerWindow
     private void RefreshDocument()
     {
         if (canvasHost == null) return;
+        documentWorkspace.style.display = IsMapArea ? DisplayStyle.None : DisplayStyle.Flex;
+        mapWorkspace.style.display = IsMapArea ? DisplayStyle.Flex : DisplayStyle.None;
+        modeButton.style.display = IsMapArea ? DisplayStyle.None : DisplayStyle.Flex;
+        if (IsMapArea) { RefreshMapWorkspace(); return; }
+        rootVisualElement.Q<ToolbarMenu>(className: "ew-file-menu")?.SetEnabled(true);
+        saveButton.tooltip = "Ctrl+S";
         SetDocumentVisibility();
         RefreshDocuments(); RefreshModeVisibility();
         if (IsObjectDocument) { RefreshObjectWorkspace(); RebuildBrowser(); RefreshSimpleWorkspace(); return; }
@@ -291,6 +301,7 @@ public sealed partial class AllinOneEditor : ObjectMakerWindow
     }
     private void Save()
     {
+        if (IsMapArea) { SaveMapDraftFile(); return; }
         if (creatingEvent) return;
         // End active field interaction before applying the current draft.
         rootVisualElement.Focus();
@@ -322,7 +333,7 @@ public sealed partial class AllinOneEditor : ObjectMakerWindow
     }
     private void OnProjectChange() { prefabEntries = null; overview?.InvalidateSources(); RequestRefresh(); }
     private void OnHierarchyChanged() { overview?.InvalidateSources(); RequestRefresh(); }
-    private void OnUndoRedo() { simpleFingerprint = null; PersistWorkspace(); RequestRefresh(); }
+    private void OnUndoRedo() { OnMapUndoRedo(); simpleFingerprint = null; PersistWorkspace(); RequestRefresh(); }
     private void OnSelectionChanged() { if (!EventSceneTargetField.IsPicking && !EventSceneTargetField.SelectionConsumedThisTick && workspaceFollowSelection) TryUseSelection(); }
     private bool TryUseSelection() { return workspaceFollowSelection && EditorUtility.IsPersistent(Selection.activeObject) && TryOpenInArea(Selection.activeObject); }
     private void SetTarget(EventSO asset)

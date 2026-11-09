@@ -12,7 +12,7 @@ using UnityEngine.UIElements;
 
 public sealed partial class AllinOneEditor
 {
-    public enum WorkspaceArea { Event, Monster, Player }
+    public enum WorkspaceArea { Event, Monster, Player, Map }
     [SerializeField] private WorkspaceArea activeArea;
     [SerializeField] private string monsterKey, playerKey;
     [SerializeField] private string eventSearch = "", monsterSearch = "", playerSearch = "";
@@ -31,8 +31,8 @@ public sealed partial class AllinOneEditor
     {
         var bar = new VisualElement { name = "workspace-areas" }; bar.AddToClassList("aio-areas"); root.Add(bar);
         areaButtons.Clear();
-        string[] captions = { "조건 · 이벤트", "몬스터 Prefab", "플레이어 설정" };
-        for (int i = 0; i < 3; i++)
+        string[] captions = { "조건 · 이벤트", "몬스터 Prefab", "플레이어 설정", "지형 그리기" };
+        for (int i = 0; i < 4; i++)
         {
             var area = (WorkspaceArea)i;
             var button = ActionButton("", () => SwitchArea(area), "aio-area");
@@ -45,19 +45,20 @@ public sealed partial class AllinOneEditor
     {
         if (IsEventArea) eventSearch = assetSearch;
         else if (activeArea == WorkspaceArea.Monster) monsterSearch = assetSearch;
-        else playerSearch = assetSearch;
+        else if (activeArea == WorkspaceArea.Player) playerSearch = assetSearch;
     }
     public void SwitchArea(WorkspaceArea area)
     {
         if (area == activeArea) return;
+        FinishMapStroke(); SaveMapRecovery();
         ShowBrowserMessage("파일을 여기에 놓아 불러오기");
         creatingEvent = false; simpleFingerprint = null;
         EventSceneTargetField.Cancel();
         RememberSearch(); PersistWorkspace();
         activeArea = area;
         assetSearch = IsEventArea ? eventSearch : area == WorkspaceArea.Monster ? monsterSearch : playerSearch;
-        objectActive = !IsEventArea;
-        if (!IsEventArea)
+        objectActive = !IsEventArea && !IsMapArea;
+        if (!IsEventArea && !IsMapArea)
         {
             string key = area == WorkspaceArea.Monster ? monsterKey : playerKey;
             var doc = objectDocuments.FirstOrDefault(d => d != null && d.Key == key && d.Data.kind == AreaKind)

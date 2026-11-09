@@ -166,3 +166,20 @@
 .ew-root .aio-simple-action.is-selected { background-color: #365278; border-color: #82aaff; }
 .aio-simple-gui { padding: 8px 3px; min-height: 24px; flex-shrink: 0; }
 .aio-basic .ew-browser-foot { min-height: 27px; }
+
+/* Map authoring stays independent from Event / Monster / Player documents. */
+.map-workspace { flex-grow: 1; min-height: 300px; background-color: #151e2a; }
+.map-settings { min-width: 280px; background-color: #1c2735; }
+.map-settings > .unity-scroll-view__content-viewport > .unity-scroll-view__content-container { padding: 9px; }
+.map-section { padding: 12px; margin-bottom: 9px; background-color: #243246; border-width: 1px; border-color: #3c4d66; border-radius: 5px; flex-shrink: 0; }
+.map-heading { color: #d9e9ff; -unity-font-style: bold; font-size: 13px; margin-bottom: 8px; }
+.map-field { min-height: 23px; margin-bottom: 7px; }
+.map-field > .unity-base-field__label { min-width: 105px; width: 105px; color: #c6d5e8; }
+.map-help { color: #a5b7cd; font-size: 11px; white-space: normal; margin-top: 7px; margin-bottom: 4px; }
+.map-row { flex-direction: row; flex-wrap: wrap; }
+.map-row > .ew-button { flex-grow: 1; font-size: 11px; padding: 4px 6px; }
+.map-toolbar { flex-direction: row; flex-wrap: wrap; align-items: center; padding: 6px; background-color: #202c3d; min-height: 35px; flex-shrink: 0; }
+.map-info { color: #a6bfdc; font-size: 11px; margin: 5px 8px; }
+.map-notice { color: #b4d9ca; padding: 9px 12px; white-space: normal; background-color: #20353a; flex-shrink: 0; }
+.map-notice.is-error { color: #ffd199; background-color: #49362d; }
+.map-shortcuts { color: #839bb7; font-size: 10px; padding: 6px 12px; white-space: normal; flex-shrink: 0; }

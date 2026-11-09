@@ -25,7 +25,7 @@ public sealed partial class AllinOneEditor
     private bool recoveryBlocked, restoring;
     private readonly List<Button> assetFilterButtons = new List<Button>();
     private ObjectWorkspaceDocument ActiveObject => objectDocuments.FirstOrDefault(d => d != null && d.Key == activeObjectKey);
-    private bool IsObjectDocument => !IsEventArea && objectActive && ActiveObject != null && ActiveObject.Data.kind == AreaKind;
+    private bool IsObjectDocument => !IsEventArea && !IsMapArea && objectActive && ActiveObject != null && ActiveObject.Data.kind == AreaKind;
 
     private void RestoreWorkspace()
     {
@@ -87,6 +87,7 @@ public sealed partial class AllinOneEditor
 
     private void OnDestroy()
     {
+        DisposeMapDraft();
         PersistWorkspace();
         foreach (var doc in objectDocuments.Where(d => d != null)) { Undo.ClearUndo(doc); DestroyImmediate(doc); }
     }
