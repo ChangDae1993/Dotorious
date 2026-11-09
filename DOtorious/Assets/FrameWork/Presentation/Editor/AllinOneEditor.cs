@@ -75,6 +75,7 @@ public sealed partial class AllinOneEditor : ObjectMakerWindow
     protected override void OnDisable()
     {
         FinishMapStroke(); SaveMapRecovery(); ReleaseMapTextures();
+        if (mapSourcePreview) DestroyImmediate(mapSourcePreview); mapSourcePreview = null;
         EventSceneTargetField.Cancel();
         EventSceneTargetField.Changed -= RequestRefresh;
         PersistWorkspace();

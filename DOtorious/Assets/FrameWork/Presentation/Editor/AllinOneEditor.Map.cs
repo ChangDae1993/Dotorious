@@ -11,7 +11,7 @@ using UnityEngine.UIElements;
 
 public sealed partial class AllinOneEditor
 {
-    private enum MapTool { Brush, Eraser, Line, Rectangle, Ellipse }
+    private enum MapTool { Brush, Eraser, Line, Rectangle, Ellipse, Fill }
     [SerializeField] private MapEditorDraft mapDraft;
     [SerializeField] private MapTool mapTool;
     [SerializeField] private float mapZoom = 1;
@@ -41,6 +41,7 @@ public sealed partial class AllinOneEditor
         {
             if (File.Exists(MapRecoveryPath)) mapDraft.Data = ReadMapFile(MapRecoveryPath);
             mapDraft.Data.EnsureValid();
+            RestoreMapTerrainSource();
         }
         catch (Exception ex)
         {
@@ -98,15 +99,16 @@ public sealed partial class AllinOneEditor
     private void OnMapUndoRedo()
     {
         if (mapDraft == null) return;
-        mapPreviewDirty = mapRecoveryDirty = true;
-        if (IsMapArea) { RebuildMapSettings(); RefreshMapStatus(); mapCanvas?.MarkDirtyRepaint(); }
+        mapPreviewDirty = mapRecoveryDirty = mapCollisionDirty = true;
+        RebuildMapSettings();
+        if (IsMapArea) { RefreshMapStatus(); mapCanvas?.MarkDirtyRepaint(); }
     }
     private void MapChanged()
     {
-        mapPreviewDirty = mapRecoveryDirty = true;
+        mapPreviewDirty = mapRecoveryDirty = mapCollisionDirty = true;
         EditorUtility.SetDirty(mapDraft); mapCanvas?.MarkDirtyRepaint(); RefreshMapStatus();
     }
-    private void ChangeMap(string label, Action<MapPaintDocument> change, bool rebuild = false)
+    private bool ChangeMap(string label, Action<MapPaintDocument> change, bool rebuild = false, bool rebuildOnFailure = true)
     {
         FinishMapStroke(); RestoreMapDraft();
         var current = mapDraft.Data;
@@ -115,11 +117,14 @@ public sealed partial class AllinOneEditor
             width = current.width, height = current.height, pixelsPerUnit = current.pixelsPerUnit,
             brushDiameter = current.brushDiameter, mapName = current.mapName, terrainPng = current.terrainPng,
             textureMode = current.textureMode, tileWidth = current.tileWidth, tileHeight = current.tileHeight,
-            tileScale = current.tileScale, mask = current.mask == null ? null : (byte[])current.mask.Clone()
+            tileScale = current.tileScale, alphaThreshold = current.alphaThreshold,
+            terrainSourceId = current.terrainSourceId, terrainSourceName = current.terrainSourceName,
+            mask = current.mask == null ? null : (byte[])current.mask.Clone()
         };
+        var beforeSource = mapDraft.TerrainSource;
         Undo.RegisterCompleteObjectUndo(mapDraft, label);
-        try { change(mapDraft.Data); mapDraft.Data.EnsureValid(); MapChanged(); if (rebuild) RebuildMapSettings(); }
-        catch (Exception ex) { mapDraft.Data = before; mapPreviewDirty = true; RebuildMapSettings(); SetMapNotice(ex.Message, true); }
+        try { change(mapDraft.Data); mapDraft.Data.EnsureValid(); MapChanged(); if (rebuild) RebuildMapSettings(); return true; }
+        catch (Exception ex) { mapDraft.Data = before; mapDraft.TerrainSource = beforeSource; mapPreviewDirty = true; if (rebuildOnFailure) RebuildMapSettings(); SetMapNotice(ex.Message, true); return false; }
     }
 
     private void DrawMapWorkspace(VisualElement root)
@@ -132,7 +137,7 @@ public sealed partial class AllinOneEditor
         var body = new VisualElement(); body.style.flexGrow = 1; body.style.minWidth = 350; split.Add(body);
         var tools = new VisualElement(); tools.AddToClassList("map-toolbar"); body.Add(tools);
         var tool = new ToolbarMenu { text = "도구" };
-        string[] names = { "브러시 · B", "지우개 · E", "직선 · L", "사각형 · R", "타원 · O" };
+        string[] names = { "브러시 · B", "지우개 · E", "직선 · L", "사각형 · R", "타원 · O", "채우기 · G" };
         for (int i = 0; i < names.Length; i++) { var choice = (MapTool)i; tool.menu.AppendAction(names[i], _ => { FinishMapStroke(); mapTool = choice; RebuildMapSettings(); mapCanvas.Focus(); }); }
         tools.Add(tool);
         tools.Add(ActionButton("화면 맞춤 · F", () => { mapFitPending = true; mapCanvas.MarkDirtyRepaint(); }));
@@ -171,23 +176,25 @@ public sealed partial class AllinOneEditor
         var height = MapField(size, new IntegerField("세로 px") { isDelayed = true }, d.height, _ => { }, "map-height");
         size.Add(ActionButton("크기 적용 · 좌하단 유지", () => ChangeMap("도화지 크기", m => { m.Resize(width.value, height.value); mapFitPending = true; }, true)));
         MapField(size, new FloatField("Pixels / Unit") { isDelayed = true }, d.pixelsPerUnit, v => ChangeMap("월드 크기", m => m.pixelsPerUnit = Mathf.Clamp(v, 1, 10000)), "map-ppu");
-        size.Add(Text("1~4096 px. 축소하면 바깥 그림이 잘립니다. 실행 취소 가능. 원점은 지형 중앙입니다.", "map-help"));
+        size.Add(Text("1~4096 px. 축소하면 바깥 그림이 잘립니다. 실행 취소 가능. 원점은 지형 중앙입니다. Make는 1픽셀 충돌 보존을 위해 1~100 PPU를 지원합니다.", "map-help"));
         var brush = MapSection("그리기");
         MapField(brush, new EnumField("도구", mapTool), (Enum)mapTool, v => { FinishMapStroke(); mapTool = (MapTool)v; mapCanvas.Focus(); }, "map-tool");
-        MapField(brush, new SliderInt("브러시 지름", 1, 512), Mathf.RoundToInt(d.brushDiameter), v => ChangeMap("브러시 크기", m => m.brushDiameter = v), "map-brush");
+        MapField(brush, new SliderInt("브러시 지름", 1, 512) { showInputField = true }, Mathf.RoundToInt(d.brushDiameter), v => ChangeMap("브러시 크기", m => m.brushDiameter = v), "map-brush");
+        AddMapFillSettings(brush);
         var operations = new VisualElement(); operations.AddToClassList("map-row"); brush.Add(operations);
         operations.Add(ActionButton("전체 채우기", () => ChangeMap("지형 채우기", m => { for (int i = 0; i < m.mask.Length; i++) m.mask[i] = 255; })));
         operations.Add(ActionButton("비우기", () => ChangeMap("지형 비우기", m => m.Clear())));
         operations.Add(ActionButton("반전", () => ChangeMap("지형 반전", m => { for (int i = 0; i < m.mask.Length; i++) m.mask[i] = (byte)(255 - m.mask[i]); })));
+        var flips = new VisualElement(); flips.AddToClassList("map-row"); brush.Add(flips);
+        flips.Add(ActionButton("마스크 좌우 반전", () => ChangeMap("마스크 좌우 반전", m => m.FlipMask(true))));
+        flips.Add(ActionButton("마스크 상하 반전", () => ChangeMap("마스크 상하 반전", m => m.FlipMask(false))));
         var terrain = MapSection("지형 이미지");
         terrain.Add(ActionButton("이미지 파일 불러오기…", ImportMapImage));
-        MapField(terrain, new UnityEditor.UIElements.ObjectField("프로젝트 이미지") { objectType = typeof(UnityEngine.Object), allowSceneObjects = false }, (UnityEngine.Object)null, o =>
-        {
-            if (o is Texture2D texture) ChangeMap("지형 이미지", m => { m.SetTerrain(texture); m.tileWidth = m.tileHeight = 0; }, true);
-            else if (o is Sprite sprite) ChangeMap("지형 이미지", m => { m.SetTerrain(sprite); m.tileWidth = m.tileHeight = 0; }, true);
-            else if (o != null) SetMapNotice("Texture2D 또는 Sprite를 선택하세요.", true);
-        }, "map-image");
-        terrain.Add(Text(d.terrainPng != null && d.terrainPng.Length > 0 ? "✓ 이미지가 초안에 포함되어 있습니다." : "PNG / JPG를 선택하세요. 지금은 갈색으로 마스크를 미리 봅니다.", "map-help"));
+        AddMapImagePicker(terrain);
+        var trim = ActionButton("투명 부분 자르기", () => { if (ChangeMap("투명 부분 자르기", m => m.TrimTransparent())) SetMapNotice("이미지가 보이는 부분만 마스크로 남겼습니다. Undo로 되돌릴 수 있습니다."); });
+        trim.name = "map-trim-transparent"; trim.SetEnabled(d.terrainPng != null && d.terrainPng.Length > 0); terrain.Add(trim);
+        MapField(terrain, new SliderInt("알파 기준", 1, 255) { showInputField = true }, d.alphaThreshold, v => ChangeMap("알파 기준", m => m.alphaThreshold = v), "map-alpha-threshold");
+        terrain.Add(Text("투명 부분 자르기는 도화지 크기를 유지하고, 기준 미만의 투명 영역만 마스크에서 지웁니다. 충돌도 같은 알파 기준을 사용합니다.", "map-help"));
         var modes = new PopupField<string>("배치", new System.Collections.Generic.List<string> { "연속 타일", "한 장 · 가로 맞춤", "한 장 · 세로 맞춤", "한 장 · 도화지 채움" }, (int)d.textureMode) { name = "map-texture-mode" };
         modes.AddToClassList("map-field"); modes.RegisterValueChangedCallback(e => ChangeMap("이미지 배치", m => m.textureMode = (MapTextureMode)modes.index, true)); terrain.Add(modes);
         if (d.textureMode == MapTextureMode.Tile)
@@ -201,7 +208,8 @@ public sealed partial class AllinOneEditor
         var view = MapSection("보기 / 결과");
         MapField(view, new Toggle("32px 격자"), mapGrid, v => { mapGrid = v; mapCanvas.MarkDirtyRepaint(); }, "map-grid");
         MapField(view, new Toggle("마스크만 보기"), mapMaskOnly, v => { mapMaskOnly = v; mapPreviewDirty = true; mapCanvas.MarkDirtyRepaint(); }, "map-mask");
-        view.Add(Text("충돌은 그린 마스크 기준입니다. 투명한 이미지 부분에도 마스크가 있으면 지형으로 충돌합니다. 지우개로 구멍을 만드세요.", "map-help"));
+        AddMapPreviewSettings(view);
+        view.Add(Text("충돌은 이미지가 보이는 마스크 영역만 생성합니다. 투명한 구멍과 이미지 바깥은 통과할 수 있습니다.", "map-help"));
         view.Add(ActionButton("Make · 지형 씬 만들기", MakeMap, "ew-primary-button"));
         view.Add(ActionButton("마스킹 PNG 내보내기…", ExportMapPng));
         if (!string.IsNullOrEmpty(mapLastScene))
@@ -237,14 +245,15 @@ public sealed partial class AllinOneEditor
     private void NewMap()
     {
         if (!EditorUtility.DisplayDialog("새 도화지", "현재 초안을 새 도화지로 바꿉니다. 실행 취소로 복구할 수 있습니다. 필요한 초안은 파일로 저장하세요.", "새 도화지", "취소")) return;
-        ChangeMap("새 지형", _ => { mapDraft.Data = new MapPaintDocument(); mapDraft.Data.EnsureValid(); mapRecoveryBlocked = false; mapDraftPath = null; mapFitPending = true; }, true);
+        ChangeMap("새 지형", _ => { mapDraft.Data = new MapPaintDocument(); mapDraft.TerrainSource = null; mapDraft.Data.EnsureValid(); mapRecoveryBlocked = false; mapDraftPath = null; mapFitPending = true; }, true);
         SetMapNotice("새 도화지입니다. 지형 이미지를 불러오고 브러시로 그리세요.");
     }
     private void ImportMapImage()
     {
         string path = EditorUtility.OpenFilePanelWithFilters("지형 이미지 불러오기", "", new[] { "PNG / JPG", "png,jpg,jpeg" });
         if (string.IsNullOrEmpty(path)) return;
-        ChangeMap("지형 이미지 불러오기", m => { m.LoadTerrainFile(path); m.tileWidth = m.tileHeight = 0; }, true);
+        if (ChangeMap("지형 이미지 불러오기", m => { m.LoadTerrainFile(path); m.terrainSourceId = null; m.terrainSourceName = Path.GetFileName(path); mapDraft.TerrainSource = null; }, true))
+            SetMapNotice("지형 이미지 적용: " + Path.GetFileName(path));
     }
     private void SaveMapDraftFile()
     {
@@ -261,7 +270,7 @@ public sealed partial class AllinOneEditor
         try
         {
             var data = ReadMapFile(path);
-            ChangeMap("지형 초안 불러오기", _ => { mapDraft.Data = data; mapRecoveryBlocked = false; mapDraftPath = path; mapFitPending = true; }, true);
+            ChangeMap("지형 초안 불러오기", _ => { mapDraft.Data = data; RestoreMapTerrainSource(); mapRecoveryBlocked = false; mapDraftPath = path; mapFitPending = true; }, true);
             SetMapNotice("초안을 불러왔습니다. 이전 그림은 실행 취소로 복구할 수 있습니다.");
         }
         catch (Exception ex) { SetMapNotice("불러오기 실패: " + ex.Message, true); }
@@ -322,9 +331,10 @@ public sealed partial class AllinOneEditor
             EditorGUI.DrawRect(viewport, new Color(.085f, .11f, .15f));
             GUI.BeginClip(viewport);
             EditorGUI.DrawRect(new Rect(canvas.x + 4, canvas.y + 4, canvas.width, canvas.height), new Color(0, 0, 0, .3f));
-            EditorGUI.DrawRect(canvas, Color.white);
+            DrawMapBackground(canvas, viewport);
             if (mapPreview != null) GUI.DrawTexture(canvas, mapPreview, ScaleMode.StretchToFill, true);
             Handles.BeginGUI();
+            DrawMapCollision(canvas);
             if (mapGrid && 32 * mapZoom >= 6)
             {
                 Handles.color = new Color(.15f, .25f, .35f, .18f);
@@ -359,6 +369,7 @@ public sealed partial class AllinOneEditor
             { FinishMapStroke(); mapPanning = true; mapPanStart = evt.mousePosition - mapPan; mapControl = control; GUIUtility.hotControl = control; evt.Use(); }
             else if (evt.button == 0 && canvas.Contains(evt.mousePosition) && !EditorApplication.isPlayingOrWillChangePlaymode)
             {
+                if (mapTool == MapTool.Fill) { ApplyMapBucket(MapPixel(evt.mousePosition, canvas)); evt.Use(); return; }
                 mapCanvas.Focus(); Undo.IncrementCurrentGroup(); mapUndoGroup = Undo.GetCurrentGroup(); Undo.RegisterCompleteObjectUndo(mapDraft, "지형 " + mapTool);
                 mapControl = control; GUIUtility.hotControl = control; mapStroke = true; mapStrokeStart = mapPrevious = MapPixel(evt.mousePosition, canvas);
                 if (mapTool == MapTool.Brush || mapTool == MapTool.Eraser) { d.PaintStroke(mapPrevious, mapPrevious, mapTool == MapTool.Eraser); MapChanged(); }
@@ -411,6 +422,7 @@ public sealed partial class AllinOneEditor
             case KeyCode.L: FinishMapStroke(); mapTool = MapTool.Line; break;
             case KeyCode.R: FinishMapStroke(); mapTool = MapTool.Rectangle; break;
             case KeyCode.O: FinishMapStroke(); mapTool = MapTool.Ellipse; break;
+            case KeyCode.G: FinishMapStroke(); mapTool = MapTool.Fill; break;
             case KeyCode.F: FinishMapStroke(); mapFitPending = true; break;
             case KeyCode.LeftBracket: ChangeMap("브러시 크기", m => m.brushDiameter = Mathf.Max(1, m.brushDiameter - 4)); break;
             case KeyCode.RightBracket: ChangeMap("브러시 크기", m => m.brushDiameter = Mathf.Min(512, m.brushDiameter + 4)); break;

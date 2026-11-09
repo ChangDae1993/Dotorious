@@ -5,4 +5,5 @@ using UnityEngine;
 public sealed class MapEditorDraft : ScriptableObject
 {
     public MapPaintDocument Data = new MapPaintDocument();
+    public Object TerrainSource;
 }

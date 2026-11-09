@@ -19,22 +19,28 @@ namespace JYW.Game.ObjectMaker.Editor
     public static class MapSceneExporter
     {
         public const int MaxColliderRectangles = 10000;
+        public const float MinExportPixelsPerUnit = 1, MaxExportPixelsPerUnit = 100;
 
-        /// <summary>Exact occupied-pixel rectangles, merged vertically. Holes and disconnected islands are preserved.</summary>
+        /// <summary>Exact visible-pixel rectangles, merged vertically. Holes and disconnected islands are preserved.</summary>
         public static List<RectInt> BuildCollisionRectangles(MapPaintDocument document)
         {
-            document.EnsureValid();
+            if (document == null) throw new ArgumentNullException(nameof(document));
+            return BuildCollisionRectangles(document.width, document.height, document.GetVisibleMask());
+        }
+
+        static List<RectInt> BuildCollisionRectangles(int width, int height, byte[] mask)
+        {
             var result = new List<RectInt>();
             var previous = new Dictionary<Vector2Int, int>();
-            for (int y = 0; y < document.height; y++)
+            for (int y = 0; y < height; y++)
             {
                 var current = new Dictionary<Vector2Int, int>();
                 int x = 0;
-                while (x < document.width)
+                while (x < width)
                 {
-                    if (document.mask[y * document.width + x] < 128) { x++; continue; }
+                    if (mask[y * width + x] == 0) { x++; continue; }
                     int start = x++;
-                    while (x < document.width && document.mask[y * document.width + x] >= 128) x++;
+                    while (x < width && mask[y * width + x] != 0) x++;
                     var key = new Vector2Int(start, x - start);
                     int index;
                     if (previous.TryGetValue(key, out index))
@@ -44,7 +50,7 @@ namespace JYW.Game.ObjectMaker.Editor
                     else
                     {
                         if (result.Count >= MaxColliderRectangles)
-                            throw new InvalidOperationException("The mask is too detailed for collision (more than 10,000 rectangles). Erase tiny speckles or use larger filled shapes, then Make again.");
+                            throw new InvalidOperationException("The visible terrain is too detailed for collision (more than 10,000 regions). Erase tiny speckles or use larger filled shapes, then Make again.");
                         index = result.Count; result.Add(new RectInt(start, y, x - start, 1));
                     }
                     current.Add(key, index);
@@ -54,14 +60,94 @@ namespace JYW.Game.ObjectMaker.Editor
             return result;
         }
 
+        /// <summary>
+        /// Exact collision boundaries in bottom-left canvas pixels, for editor previews. Outer loops run
+        /// counterclockwise and holes clockwise. The closing point is not repeated. Only collinear points
+        /// are removed: one-pixel channels and diagonal-touching islands are never smoothed or joined.
+        /// </summary>
+        public static List<Vector2[]> BuildCollisionContours(MapPaintDocument document)
+        {
+            if (document == null) throw new ArgumentNullException(nameof(document));
+            byte[] mask = document.GetVisibleMask();
+            // Share the export complexity guard before allocating/tracing potentially noisy image edges.
+            BuildCollisionRectangles(document.width, document.height, mask);
+            int width = document.width, height = document.height;
+            var visited = new byte[mask.Length];
+            var contours = new List<Vector2[]>();
+            var steps = new[] { Vector2Int.right, Vector2Int.up, Vector2Int.left, Vector2Int.down };
+            for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
+            {
+                if (mask[y * width + x] == 0) continue;
+                for (int edge = 0; edge < 4; edge++)
+                {
+                    if ((visited[y * width + x] & (1 << edge)) != 0) continue;
+                    var start = new Vector2Int(x + (edge == 1 || edge == 2 ? 1 : 0), y + (edge >= 2 ? 1 : 0));
+                    if (!IsBoundary(start, edge, mask, width, height)) continue;
+                    var points = new List<Vector2>();
+                    var vertex = start;
+                    int direction = edge;
+                    points.Add(vertex);
+                    do
+                    {
+                        Vector2Int cell = InsideCell(vertex, direction);
+                        int index = cell.y * width + cell.x;
+                        if ((visited[index] & (1 << direction)) != 0)
+                            throw new InvalidOperationException("The terrain boundary could not be traced safely.");
+                        visited[index] |= (byte)(1 << direction);
+                        Vector2Int next = vertex + steps[direction];
+                        // At a diagonal touch there are two possible exits. Keep solid pixels to the left
+                        // and take the left turn first, so separate islands do not become a crossing loop.
+                        int nextDirection = (direction + 1) % 4;
+                        int attempts = 0;
+                        while (!IsBoundary(next, nextDirection, mask, width, height))
+                        {
+                            if (++attempts == 4) throw new InvalidOperationException("The terrain boundary is not closed.");
+                            nextDirection = (nextDirection + 3) % 4;
+                        }
+                        if (next != start && nextDirection != direction) points.Add(next);
+                        vertex = next; direction = nextDirection;
+                    }
+                    while (vertex != start || direction != edge);
+                    // A scan can begin midway along a straight boundary; omit that redundant start point.
+                    if (points.Count > 3 && Collinear(points[points.Count - 1], points[0], points[1])) points.RemoveAt(0);
+                    contours.Add(points.ToArray());
+                }
+            }
+            return contours;
+        }
+
+        static bool Collinear(Vector2 a, Vector2 b, Vector2 c) =>
+            (b.x - a.x) * (c.y - b.y) == (b.y - a.y) * (c.x - b.x);
+        static Vector2Int InsideCell(Vector2Int vertex, int direction) => new Vector2Int(
+            vertex.x - (direction == 1 || direction == 2 ? 1 : 0), vertex.y - (direction >= 2 ? 1 : 0));
+        static bool IsBoundary(Vector2Int vertex, int direction, byte[] mask, int width, int height)
+        {
+            Vector2Int cell = InsideCell(vertex, direction);
+            if (!Occupied(cell.x, cell.y, mask, width, height)) return false;
+            int x = cell.x + (direction == 1 ? 1 : direction == 3 ? -1 : 0);
+            int y = cell.y + (direction == 0 ? -1 : direction == 2 ? 1 : 0);
+            return !Occupied(x, y, mask, width, height);
+        }
+        static bool Occupied(int x, int y, byte[] mask, int width, int height) =>
+            x >= 0 && y >= 0 && x < width && y < height && mask[y * width + x] != 0;
+
+        static byte[] VisibleMask(Texture2D baked, int alphaThreshold)
+        {
+            var pixels = baked.GetPixels32();
+            var mask = new byte[pixels.Length];
+            for (int i = 0; i < pixels.Length; i++) if (pixels[i].a >= alphaThreshold) mask[i] = 255;
+            return mask;
+        }
         public static MapExportResult Export(MapPaintDocument document, string outputRoot = "Assets/GeneratedMaps")
         {
             if (document == null) throw new ArgumentNullException(nameof(document));
             document.EnsureValid();
+            // This is the editor's tested support range, not a universal Unity physics limit. Keep
+            // older drafts editable/previewable, but never silently export unreliable tiny collision.
+            if (document.pixelsPerUnit < MinExportPixelsPerUnit || document.pixelsPerUnit > MaxExportPixelsPerUnit)
+                throw new InvalidOperationException("Map export supports Pixels Per Unit from 1 to 100 for validated pixel-accurate collision. Change Pixels Per Unit to this range before Make; the draft can still be previewed.");
             if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Exit Play Mode before making a map scene.");
             if (document.terrainPng == null || document.terrainPng.Length == 0) throw new InvalidOperationException("Choose a terrain image before making the scene.");
-            var rectangles = BuildCollisionRectangles(document);
-            if (rectangles.Count == 0) throw new InvalidOperationException("Paint some ground before making the scene.");
             string safeName = SafeName(document.mapName);
             outputRoot = (outputRoot ?? "").Replace('\\', '/').TrimEnd('/');
             if (outputRoot != "Assets" && !outputRoot.StartsWith("Assets/", StringComparison.Ordinal)) throw new ArgumentException("Output must be inside Assets.");
@@ -75,6 +161,8 @@ namespace JYW.Game.ObjectMaker.Editor
             bool complete = false;
             try
             {
+                var rectangles = BuildCollisionRectangles(document.width, document.height, VisibleMask(baked, document.alphaThreshold));
+                if (rectangles.Count == 0) throw new InvalidOperationException("No visible ground remains at the current alpha threshold. Paint ground or choose an opaque terrain image before making the scene.");
                 EnsureFolder(outputRoot);
                 folder = AssetDatabase.GenerateUniqueAssetPath(outputRoot + "/" + safeName);
                 string guid = AssetDatabase.CreateFolder(outputRoot, Path.GetFileName(folder));
@@ -110,15 +198,32 @@ namespace JYW.Game.ObjectMaker.Editor
                 composite.generationType = CompositeCollider2D.GenerationType.Manual;
                 composite.vertexDistance = Mathf.Min(.0001f, .01f / document.pixelsPerUnit);
                 composite.offsetDistance = 0;
-                foreach (var rect in rectangles)
+                composite.useDelaunayMesh = true;
+                // One source component replaces thousands of BoxCollider2D components. Each path is
+                // an occupied rectangle, not a contour filled across its holes. The composite unions
+                // touching rectangles into clean boundaries while retaining channels and cavities.
+                var source = terrain.AddComponent<PolygonCollider2D>();
+                source.autoTiling = false;
+                source.compositeOperation = Collider2D.CompositeOperation.Merge;
+                source.pathCount = rectangles.Count;
+                var origin = new Vector2(document.width * .5f, document.height * .5f);
+                for (int i = 0; i < rectangles.Count; i++)
                 {
-                    var box = terrain.AddComponent<BoxCollider2D>();
-                    box.size = new Vector2(rect.width, rect.height) / document.pixelsPerUnit;
-                    box.offset = (rect.center - new Vector2(document.width * .5f, document.height * .5f)) / document.pixelsPerUnit;
-                    box.compositeOperation = Collider2D.CompositeOperation.Merge;
+                    var rect = rectangles[i];
+                    source.SetPath(i, new[]
+                    {
+                        (new Vector2(rect.xMin, rect.yMin) - origin) / document.pixelsPerUnit,
+                        (new Vector2(rect.xMax, rect.yMin) - origin) / document.pixelsPerUnit,
+                        (new Vector2(rect.xMax, rect.yMax) - origin) / document.pixelsPerUnit,
+                        (new Vector2(rect.xMin, rect.yMax) - origin) / document.pixelsPerUnit
+                    });
                 }
                 composite.GenerateGeometry();
-                if (composite.pathCount == 0) throw new InvalidOperationException("The ground mask did not produce usable collision. Increase the painted area or adjust Pixels Per Unit.");
+                if (composite.pathCount == 0 || composite.shapeCount == 0)
+                    throw new InvalidOperationException("The visible terrain did not produce usable collision. Paint larger shapes or reduce Pixels Per Unit.");
+                // Build once while assigning the source, then let ordinary prefab transform edits and
+                // scene reloads regenerate the union rather than leaving stale manual geometry.
+                composite.generationType = CompositeCollider2D.GenerationType.Synchronous;
                 var prefab = PrefabUtility.SaveAsPrefabAsset(terrain, result.PrefabPath);
                 if (!prefab) throw new IOException("Could not save the terrain prefab.");
                 WritePrefabScene(prefab, result.ScenePath);
@@ -154,7 +259,7 @@ namespace JYW.Game.ObjectMaker.Editor
             {
                 var roots = check.GetRootGameObjects();
                 if (roots.Length != 1 || roots[0].name != prefab.name || !roots[0].GetComponent<SpriteRenderer>() ||
-                    !roots[0].GetComponent<SpriteRenderer>().sprite || !roots[0].GetComponent<CompositeCollider2D>())
+                    !roots[0].GetComponent<SpriteRenderer>().sprite || !roots[0].GetComponent<CompositeCollider2D>() || roots[0].GetComponent<CompositeCollider2D>().shapeCount == 0)
                     throw new IOException("Generated scene did not reopen with its terrain and collision intact.");
             }
             finally { EditorSceneManager.ClosePreviewScene(check); }

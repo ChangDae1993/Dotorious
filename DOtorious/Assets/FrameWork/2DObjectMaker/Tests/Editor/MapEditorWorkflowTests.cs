@@ -200,6 +200,97 @@ namespace JYW.Game.ObjectMaker.Tests
             Call(window, "SaveMapRecovery"); CollectionAssert.AreEqual(corrupted, File.ReadAllBytes(Recovery));
             window.Close(); CollectionAssert.AreEqual(corrupted, File.ReadAllBytes(Recovery));
         }
+        [UnityTest] public IEnumerator ImagePickerRetainsRepeatedSelectionsAndRefreshesTheSameObject()
+        {
+            var window = Open(); yield return Layout(window);
+            var first = new Texture2D(2, 2); var second = new Texture2D(2, 2);
+            first.name = "First terrain"; second.name = "Second terrain";
+            var go = new GameObject("Terrain source"); Sprite sprite = null;
+            try
+            {
+                first.SetPixels(new[] { Color.red, Color.red, Color.red, Color.red }); first.Apply();
+                second.SetPixels(new[] { Color.blue, Color.blue, Color.blue, Color.blue }); second.Apply();
+                var field = window.rootVisualElement.Q<UnityEditor.UIElements.ObjectField>("map-image");
+                field.value = first; Assert.AreSame(first, field.value);
+                var oversized = new Texture2D(4097, 1);
+                try
+                {
+                    field.value = oversized;
+                    Assert.AreSame(field, window.rootVisualElement.Q<UnityEditor.UIElements.ObjectField>("map-image"), "Rejected images must not detach the live Object Picker target.");
+                    Assert.AreSame(first, field.value);
+                }
+                finally { Object.DestroyImmediate(oversized); }
+                field.value = second; Assert.AreSame(second, field.value);
+                Assert.IsFalse(window.rootVisualElement.Q<Label>(className: "map-notice").ClassListContains("is-error"));
+                field.value = first;
+                Assert.AreSame(field, window.rootVisualElement.Q<UnityEditor.UIElements.ObjectField>("map-image"), "Picker target must survive repeated choices.");
+                Assert.AreSame(first, field.value);
+                first.SetPixels(new[] { Color.green, Color.green, Color.green, Color.green }); first.Apply();
+                Document(window).tileWidth = 12; Document(window).tileHeight = 6;
+                Call(window, "SelectMapTerrainSource", first);
+                Assert.AreEqual(12, Document(window).tileWidth); Assert.AreEqual(6, Document(window).tileHeight);
+                Document(window).FillRectangle(Vector2.zero, new Vector2(64, 48));
+                var rendered = Document(window).CreateTexture();
+                try { Assert.Greater(rendered.GetPixel(0, 0).g, .9f); } finally { Object.DestroyImmediate(rendered); }
+                sprite = Sprite.Create(second, new Rect(0, 0, 2, 2), Vector2.one * .5f);
+                go.AddComponent<SpriteRenderer>().sprite = sprite; field.value = go;
+                Assert.AreSame(go, field.value); Assert.AreEqual("Terrain source", Document(window).terrainSourceName);
+                Call(window, "RebuildMapSettings");
+                Assert.AreSame(go, window.rootVisualElement.Q<UnityEditor.UIElements.ObjectField>("map-image").value);
+                Assert.IsTrue(window.rootVisualElement.Q<Button>("map-trim-transparent").enabledSelf);
+                var invalid = new GameObject("Invalid source");
+                try
+                {
+                    window.rootVisualElement.Q<UnityEditor.UIElements.ObjectField>("map-image").value = invalid;
+                    Assert.AreSame(go, window.rootVisualElement.Q<UnityEditor.UIElements.ObjectField>("map-image").value);
+                }
+                finally { Object.DestroyImmediate(invalid); }
+            }
+            finally { Object.DestroyImmediate(go); if (sprite) Object.DestroyImmediate(sprite); Object.DestroyImmediate(first); Object.DestroyImmediate(second); }
+        }
+        [UnityTest] public IEnumerator TrimButtonRemovesTransparentMaskAndCanBeUndone()
+        {
+            var window = Open(); var source = new Texture2D(2, 1);
+            try
+            {
+                source.SetPixels(new[] { Color.green, Color.clear }); source.Apply();
+                var doc = Document(window); doc.FillRectangle(Vector2.zero, new Vector2(doc.width, doc.height));
+                window.rootVisualElement.Q<UnityEditor.UIElements.ObjectField>("map-image").value = source;
+                yield return Layout(window);
+                var button = window.rootVisualElement.Q<Button>("map-trim-transparent");
+                window.rootVisualElement.Q<ScrollView>("map-settings").ScrollTo(button); yield return Layout(window);
+                Undo.IncrementCurrentGroup(); Click(window, button); yield return null;
+                Assert.AreEqual(255, Pixel(window, 0, 0)); Assert.AreEqual(0, Pixel(window, 1, 0));
+                Undo.PerformUndo(); yield return null; Assert.AreEqual(255, Pixel(window, 1, 0));
+                Undo.PerformRedo(); yield return null; Assert.AreEqual(0, Pixel(window, 1, 0));
+            }
+            finally { Object.DestroyImmediate(source); }
+        }
+        [UnityTest] public IEnumerator UndoFromAnotherTabRefreshesMapSettingsWhenReturning()
+        {
+            var window = Open(); yield return Layout(window);
+            Undo.IncrementCurrentGroup(); window.rootVisualElement.Q<SliderInt>("map-alpha-threshold").value = 180;
+            Area(window, "Event"); Undo.PerformUndo(); yield return null;
+            Area(window, "Map"); yield return Layout(window);
+            Assert.AreEqual(1, Document(window).alphaThreshold);
+            Assert.AreEqual(1, window.rootVisualElement.Q<SliderInt>("map-alpha-threshold").value);
+            Undo.PerformRedo(); yield return null;
+            Assert.AreEqual(180, window.rootVisualElement.Q<SliderInt>("map-alpha-threshold").value);
+        }
+        [UnityTest] public IEnumerator BucketKeyboardAndClickFillOnlyConnectedAreaAndUndoAsOneAction()
+        {
+            var window = Open(); var doc = Document(window);
+            doc.FillRectangle(new Vector2(10, 10), new Vector2(40, 40)); doc.FillRectangle(new Vector2(12, 12), new Vector2(38, 38), true);
+            Call(window, "MapChanged"); yield return Layout(window);
+            Key(window, KeyCode.G); Assert.AreEqual("Fill", Field(window, "mapTool").ToString());
+            yield return Layout(window); Stroke(window, new Vector2(20, 20), new Vector2(20, 20));
+            Assert.AreEqual(255, Pixel(window, 20, 20)); Assert.AreEqual(0, Pixel(window, 5, 5));
+            Assert.IsFalse((bool)Field(window, "mapStroke"));
+            Undo.PerformUndo(); yield return null; Assert.AreEqual(0, Pixel(window, 20, 20)); Assert.AreEqual(255, Pixel(window, 10, 10));
+            Undo.PerformRedo(); yield return null; Assert.AreEqual(255, Pixel(window, 20, 20));
+            window.rootVisualElement.Q<Toggle>("map-fill-erase").value = true;
+            Stroke(window, new Vector2(20, 20), new Vector2(20, 20)); Assert.AreEqual(0, Pixel(window, 10, 10));
+        }
     }
 }
 

@@ -6,7 +6,7 @@ namespace JYW.Game.ObjectMaker.Editor
 {
     public enum MapTextureMode { Tile, FitWidth, FitHeight, Stretch }
 
-    /// <summary>Pixel coordinates start at bottom left. Collision follows the painted mask, not texture alpha.</summary>
+    /// <summary>Pixel coordinates start at bottom left. Visible occupancy is shared by trim and collision.</summary>
     [Serializable]
     public sealed class MapPaintDocument
     {
@@ -17,10 +17,15 @@ namespace JYW.Game.ObjectMaker.Editor
         public byte[] terrainPng, mask;
         public MapTextureMode textureMode;
         public float tileWidth, tileHeight, tileScale = 1;
+        public int alphaThreshold = 1;
+        public string terrainSourceId, terrainSourceName;
 
         public void EnsureValid()
         {
             ValidateSize(width, height);
+            // Old drafts have no cutoff field. Preserve their visible pixels when upgrading.
+            if (alphaThreshold == 0) alphaThreshold = 1;
+            if (alphaThreshold < 1 || alphaThreshold > 255) throw new ArgumentOutOfRangeException(nameof(alphaThreshold));
             if (!Finite(pixelsPerUnit) || pixelsPerUnit <= 0 || !Finite(brushDiameter) || brushDiameter <= 0 ||
                 !Finite(tileWidth) || tileWidth < 0 || !Finite(tileHeight) || tileHeight < 0 || !Finite(tileScale) || tileScale <= 0)
                 throw new ArgumentException("Pixel scale, brush diameter and tile scale must be positive finite values; tile sizes must be nonnegative.");
@@ -46,6 +51,65 @@ namespace JYW.Game.ObjectMaker.Editor
             width = newWidth; height = newHeight; mask = resized;
         }
         public void Clear() { EnsureValid(); Array.Clear(mask, 0, mask.Length); }
+        public byte[] GetVisibleMask()
+        {
+            var texture = CreateTexture();
+            try
+            {
+                var pixels = texture.GetPixels32(); var visible = new byte[pixels.Length];
+                for (int i = 0; i < pixels.Length; i++) if (pixels[i].a >= alphaThreshold) visible[i] = 255;
+                return visible;
+            }
+            finally { UnityEngine.Object.DestroyImmediate(texture); }
+        }
+        public void TrimTransparent()
+        {
+            if (terrainPng == null || terrainPng.Length == 0) throw new InvalidOperationException("Choose a terrain image before trimming transparency.");
+            mask = GetVisibleMask();
+        }
+        /// <summary>Four-connected binary fill. Returns changed pixels; no recursion or per-pixel queue allocation.</summary>
+        public int FloodFill(int x, int y, bool erase = false, bool contiguous = true)
+        {
+            EnsureValid(); if (x < 0 || y < 0 || x >= width || y >= height) return 0;
+            bool target = mask[y * width + x] >= 128; byte replacement = erase ? (byte)0 : (byte)255;
+            if (target == !erase) return 0;
+            if (!contiguous)
+            {
+                int changed = 0;
+                for (int i = 0; i < mask.Length; i++) if ((mask[i] >= 128) == target) { mask[i] = replacement; changed++; }
+                return changed;
+            }
+            var stack = new System.Collections.Generic.Stack<Vector2Int>(); stack.Push(new Vector2Int(x, y));
+            int count = 0;
+            while (stack.Count > 0)
+            {
+                var seed = stack.Pop(); int row = seed.y * width;
+                if ((mask[row + seed.x] >= 128) != target) continue;
+                int left = seed.x, right = seed.x;
+                while (left > 0 && (mask[row + left - 1] >= 128) == target) left--;
+                while (right + 1 < width && (mask[row + right + 1] >= 128) == target) right++;
+                for (int px = left; px <= right; px++) { mask[row + px] = replacement; count++; }
+                for (int ny = seed.y - 1; ny <= seed.y + 1; ny += 2)
+                {
+                    if (ny < 0 || ny >= height) continue;
+                    bool inRun = false;
+                    for (int px = left; px <= right; px++)
+                    {
+                        bool match = (mask[ny * width + px] >= 128) == target;
+                        if (match && !inRun) stack.Push(new Vector2Int(px, ny));
+                        inRun = match;
+                    }
+                }
+            }
+            return count;
+        }
+        public void FlipMask(bool horizontal)
+        {
+            EnsureValid(); var flipped = new byte[mask.Length];
+            for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)
+                flipped[(horizontal ? y : height - 1 - y) * width + (horizontal ? width - 1 - x : x)] = mask[y * width + x];
+            mask = flipped;
+        }
         public void PaintStroke(Vector2 from, Vector2 to, bool erase = false)
         {
             EnsureValid(); ValidatePoint(from); ValidatePoint(to);
