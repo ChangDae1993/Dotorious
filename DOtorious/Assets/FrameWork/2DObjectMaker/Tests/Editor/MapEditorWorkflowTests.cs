@@ -129,6 +129,94 @@ namespace JYW.Game.ObjectMaker.Tests
         }
         static byte Pixel(EditorWindow window, int x, int y) { var doc = Document(window); return doc.mask[y * doc.width + x]; }
 
+        string ReferencePng()
+        {
+            string path = Path.Combine(backupFolder, "Reference.png");
+            var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+            try
+            {
+                texture.SetPixels32(new[] { new Color32(255, 0, 0, 0), new Color32(0, 255, 0, 1), new Color32(0, 0, 255, 127), new Color32(255, 255, 0, 255) });
+                texture.Apply(); File.WriteAllBytes(path, texture.EncodeToPNG()); return path;
+            }
+            finally { Object.DestroyImmediate(texture); }
+        }
+        static void WriteDraft(string path, MapPaintDocument document)
+        {
+            Host.GetMethod("WriteMapFile", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { path, document });
+        }
+        [UnityTest] public IEnumerator LoadCanvasMenuOffersReferenceAndSavedCanvasWithoutChangingDraft()
+        {
+            var window = Open(); yield return Layout(window);
+            string before = JsonUtility.ToJson(Document(window));
+            var menu = window.rootVisualElement.Q<UnityEditor.UIElements.ToolbarMenu>("map-load-canvas");
+            Assert.NotNull(menu); Assert.AreEqual("도화지 불러오기", menu.text);
+            var actions = menu.menu.MenuItems().OfType<DropdownMenuAction>().ToArray();
+            CollectionAssert.AreEqual(new[] { "레퍼런스 이미지…", "저장한 도화지 (.mapdraft)…" }, actions.Select(a => a.name).ToArray());
+            Assert.AreEqual(before, JsonUtility.ToJson(Document(window)));
+            Assert.IsFalse((bool)Call(window, "LoadMapCanvas", "", true));
+            Assert.IsFalse((bool)Call(window, "LoadMapCanvas", null, false));
+            Assert.AreEqual(before, JsonUtility.ToJson(Document(window)), "Cancelling either chooser must not replace the canvas.");
+        }
+        [UnityTest] public IEnumerator ReferenceLoadCreatesPaintedCanvasAndUndoRedoRestoresAllPriorData()
+        {
+            var window = Open(); yield return Layout(window);
+            var source = new Texture2D(1, 1); source.SetPixel(0, 0, Color.magenta); source.Apply();
+            try
+            {
+                window.rootVisualElement.Q<UnityEditor.UIElements.ObjectField>("map-image").value = source;
+                var before = Document(window); before.mapName = "Keep this draft"; before.alphaThreshold = 220;
+                before.tileWidth = 11; before.tileHeight = 13; before.tileScale = 2; before.FillRectangle(Vector2.zero, new Vector2(20, 10));
+                string original = JsonUtility.ToJson(before); Call(window, "MapChanged"); Undo.IncrementCurrentGroup();
+                Assert.IsTrue((bool)Call(window, "LoadMapCanvas", ReferencePng(), true)); yield return Layout(window);
+                var imported = Document(window); Assert.AreEqual(2, imported.width); Assert.AreEqual(2, imported.height);
+                CollectionAssert.AreEqual(new byte[] { 0, 255, 255, 255 }, imported.mask);
+                Assert.AreEqual(1, imported.alphaThreshold); Assert.IsNull(Field(window, "mapDraftPath"));
+                Assert.IsNull(window.rootVisualElement.Q<UnityEditor.UIElements.ObjectField>("map-image").value);
+                Assert.AreEqual(2, window.rootVisualElement.Q<IntegerField>("map-width").value);
+                var image = imported.CreateTexture();
+                try { CollectionAssert.AreEqual(new byte[] { 0, 1, 127, 255 }, image.GetPixels32().Select(p => p.a).ToArray()); }
+                finally { Object.DestroyImmediate(image); }
+                Undo.PerformUndo(); yield return Layout(window);
+                Assert.AreEqual(original, JsonUtility.ToJson(Document(window)));
+                Assert.AreSame(source, window.rootVisualElement.Q<UnityEditor.UIElements.ObjectField>("map-image").value);
+                Undo.PerformRedo(); yield return Layout(window);
+                CollectionAssert.AreEqual(new byte[] { 0, 255, 255, 255 }, Document(window).mask);
+                Key(window, KeyCode.G); yield return Layout(window);
+                Stroke(window, new Vector2(.5f, .5f), new Vector2(.5f, .5f));
+                Assert.AreEqual(255, Pixel(window, 0, 0), "Imported canvas must remain editable with the normal tools.");
+                Undo.PerformUndo(); yield return null; Assert.AreEqual(0, Pixel(window, 0, 0));
+            }
+            finally { Object.DestroyImmediate(source); }
+        }
+        [UnityTest] public IEnumerator ReferenceCanvasSurvivesRecoveryAndSavedCanvasLoadWithoutSourceFile()
+        {
+            var window = Open(); yield return Layout(window); string sourcePath = ReferencePng();
+            Assert.IsTrue((bool)Call(window, "LoadMapCanvas", sourcePath, true)); yield return Layout(window);
+            string expected = JsonUtility.ToJson(Document(window)); string draftPath = Path.Combine(backupFolder, "Reference.mapdraft");
+            WriteDraft(draftPath, Document(window)); File.Delete(sourcePath);
+            Call(window, "SaveMapRecovery"); window.Close(); yield return null;
+            var reopened = Open(false); yield return Layout(reopened);
+            Assert.AreEqual(expected, JsonUtility.ToJson(Document(reopened)), "Recovery must embed the reference image and painted mask.");
+            Document(reopened).Resize(7, 5); Document(reopened).Clear(); Call(reopened, "MapChanged");
+            Assert.IsTrue((bool)Call(reopened, "LoadMapCanvas", draftPath, false)); yield return Layout(reopened);
+            Assert.AreEqual(expected, JsonUtility.ToJson(Document(reopened)));
+            Assert.AreEqual(draftPath, Field(reopened, "mapDraftPath"));
+            Undo.PerformUndo(); yield return null; Assert.AreEqual(7, Document(reopened).width); Assert.AreEqual(5, Document(reopened).height);
+            Undo.PerformRedo(); yield return null; Assert.AreEqual(expected, JsonUtility.ToJson(Document(reopened)));
+        }
+        [UnityTest] public IEnumerator InvalidReferenceAndDraftLeaveCanvasAndRecoveryUntouched()
+        {
+            var window = Open(); yield return Layout(window); Stroke(window, new Vector2(8, 8), new Vector2(16, 8));
+            Call(window, "SaveMapRecovery"); byte[] recovery = File.ReadAllBytes(Recovery);
+            string before = JsonUtility.ToJson(Document(window)); string path = Path.Combine(backupFolder, "Invalid.txt"); File.WriteAllText(path, "not an image or map draft");
+            Assert.IsFalse((bool)Call(window, "LoadMapCanvas", path, true));
+            Assert.IsFalse((bool)Call(window, "LoadMapCanvas", path, false));
+            Assert.IsFalse((bool)Call(window, "LoadMapCanvas", Path.Combine(backupFolder, "missing.png"), true));
+            Assert.AreEqual(before, JsonUtility.ToJson(Document(window)));
+            Call(window, "SaveMapRecovery"); CollectionAssert.AreEqual(recovery, File.ReadAllBytes(Recovery));
+            Assert.IsTrue(window.rootVisualElement.Q<Label>(className: "map-notice").ClassListContains("is-error"));
+        }
+
         [UnityTest] public IEnumerator RealCanvasInputPaintsContinuousStrokeAndErasesIncludingMouseUpEndpoint()
         {
             var window = Open(); yield return Layout(window);

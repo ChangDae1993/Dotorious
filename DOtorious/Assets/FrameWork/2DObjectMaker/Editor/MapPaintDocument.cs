@@ -11,6 +11,7 @@ namespace JYW.Game.ObjectMaker.Editor
     public sealed class MapPaintDocument
     {
         public const int MaxDimension = 4096;
+        public static string[] ReferenceImageFilters => new[] { "Reference images", "png,jpg,jpeg,bmp,tga,tif,tiff,psd" };
         public int width = 1024, height = 768;
         public float pixelsPerUnit = 100, brushDiameter = 32;
         public string mapName = "New Map";
@@ -19,6 +20,32 @@ namespace JYW.Game.ObjectMaker.Editor
         public float tileWidth, tileHeight, tileScale = 1;
         public int alphaThreshold = 1;
         public string terrainSourceId, terrainSourceName;
+
+        /// <summary>Creates an independent, embedded canvas. Every nontransparent pixel is painted.</summary>
+        public static MapPaintDocument FromReferenceImage(string path)
+        {
+            var source = MapReferenceImageImporter.Load(path);
+            try
+            {
+                var document = new MapPaintDocument
+                {
+                    width = source.width, height = source.height,
+                    mapName = MapReferenceImageImporter.CanvasName(path),
+                    terrainSourceName = Path.GetFileName(path),
+                    terrainPng = source.EncodeToPNG(),
+                    textureMode = MapTextureMode.Tile, tileScale = 1,
+                    tileWidth = 0, tileHeight = 0, alphaThreshold = 1,
+                    mask = new byte[source.width * source.height]
+                };
+                if (document.terrainPng == null || document.terrainPng.Length == 0)
+                    throw new ArgumentException("Could not embed the reference image.");
+                var pixels = source.GetPixels32();
+                for (int i = 0; i < pixels.Length; i++) if (pixels[i].a > 0) document.mask[i] = 255;
+                document.EnsureValid();
+                return document;
+            }
+            finally { UnityEngine.Object.DestroyImmediate(source); }
+        }
 
         public void EnsureValid()
         {
@@ -186,7 +213,7 @@ namespace JYW.Game.ObjectMaker.Editor
             catch { if (result) UnityEngine.Object.DestroyImmediate(result); throw; }
             finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(temporary); }
         }
-        static Texture2D Decode(byte[] bytes)
+        internal static Texture2D Decode(byte[] bytes)
         {
             if (bytes == null || bytes.Length == 0) throw new ArgumentException("Choose a terrain image first.");
             if (bytes.Length > 64 * 1024 * 1024) throw new ArgumentException("Choose an image smaller than 64 MB.");

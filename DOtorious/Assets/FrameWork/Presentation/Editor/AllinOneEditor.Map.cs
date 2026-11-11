@@ -169,7 +169,13 @@ public sealed partial class AllinOneEditor
         var file = MapSection("MAP / 지형 제작");
         MapField(file, new TextField("씬 이름") { isDelayed = true }, d.mapName, v => ChangeMap("지형 이름", m => m.mapName = v), "map-name");
         var files = new VisualElement(); files.AddToClassList("map-row"); file.Add(files);
-        files.Add(ActionButton("새 도화지", NewMap)); files.Add(ActionButton("불러오기", LoadMapDraftFile)); files.Add(ActionButton("초안 저장", SaveMapDraftFile));
+        files.Add(ActionButton("새 도화지", NewMap));
+        var load = new ToolbarMenu { name = "map-load-canvas", text = "도화지 불러오기" };
+        load.AddToClassList("ew-button");
+        load.menu.AppendAction("레퍼런스 이미지…", _ => LoadMapReferenceFile());
+        load.menu.AppendAction("저장한 도화지 (.mapdraft)…", _ => LoadMapDraftFile());
+        files.Add(load); files.Add(ActionButton("초안 저장", SaveMapDraftFile));
+        file.Add(Text("레퍼런스는 이미지 크기의 새 도화지를 만들고 투명하지 않은 픽셀을 칠해진 영역으로 가져옵니다.", "map-help"));
         file.Add(Text("초안은 자동 복구됩니다. Make는 별도 씬과 재사용 가능한 지형 Prefab을 만듭니다.", "map-help"));
         var size = MapSection("도화지 / 실제 크기");
         var width = MapField(size, new IntegerField("가로 px") { isDelayed = true }, d.width, _ => { }, "map-width");
@@ -266,14 +272,33 @@ public sealed partial class AllinOneEditor
     private void LoadMapDraftFile()
     {
         string path = EditorUtility.OpenFilePanel("Map 초안 불러오기", Application.dataPath, "mapdraft");
-        if (string.IsNullOrEmpty(path)) return;
+        LoadMapCanvas(path, false);
+    }
+    private void LoadMapReferenceFile()
+    {
+        string path = EditorUtility.OpenFilePanelWithFilters("레퍼런스 이미지로 새 도화지 만들기", Application.dataPath, MapPaintDocument.ReferenceImageFilters);
+        LoadMapCanvas(path, true);
+    }
+    private bool LoadMapCanvas(string path, bool reference)
+    {
+        if (string.IsNullOrEmpty(path)) return false;
         try
         {
-            var data = ReadMapFile(path);
-            ChangeMap("지형 초안 불러오기", _ => { mapDraft.Data = data; RestoreMapTerrainSource(); mapRecoveryBlocked = false; mapDraftPath = path; mapFitPending = true; }, true);
-            SetMapNotice("초안을 불러왔습니다. 이전 그림은 실행 취소로 복구할 수 있습니다.");
+            // Decode and validate before replacing anything. Cancelled or invalid files leave the current draft intact.
+            var data = reference ? MapPaintDocument.FromReferenceImage(path) : ReadMapFile(path);
+            Undo.IncrementCurrentGroup();
+            if (!ChangeMap(reference ? "레퍼런스 도화지 불러오기" : "지형 초안 불러오기", _ =>
+            {
+                mapDraft.Data = data; RestoreMapTerrainSource();
+                mapRecoveryBlocked = false; mapDraftPath = reference ? null : path; mapFitPending = true;
+            }, true)) return false;
+            Undo.IncrementCurrentGroup();
+            SetMapNotice(reference
+                ? "레퍼런스 적용: " + Path.GetFileName(path) + " · " + data.width + " × " + data.height + " px. 투명하지 않은 픽셀을 칠했습니다. 이전 그림은 실행 취소로 복구할 수 있습니다."
+                : "초안을 불러왔습니다. 이전 그림은 실행 취소로 복구할 수 있습니다.");
+            return true;
         }
-        catch (Exception ex) { SetMapNotice("불러오기 실패: " + ex.Message, true); }
+        catch (Exception ex) { SetMapNotice("불러오기 실패: " + ex.Message, true); return false; }
     }
     private void ExportMapPng()
     {
