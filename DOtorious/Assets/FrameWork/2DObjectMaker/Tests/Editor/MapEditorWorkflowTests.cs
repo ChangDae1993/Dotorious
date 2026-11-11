@@ -157,6 +157,13 @@ namespace JYW.Game.ObjectMaker.Tests
             Assert.IsFalse((bool)Call(window, "LoadMapCanvas", null, false));
             Assert.AreEqual(before, JsonUtility.ToJson(Document(window)), "Cancelling either chooser must not replace the canvas.");
         }
+        [UnityTest] public IEnumerator CanvasRecoversFromInvalidFirstLayoutZoomInsteadOfStayingInvisible()
+        {
+            var window = Open(); Field(window, "mapZoom", float.NaN); Field(window, "mapPan", new Vector2(float.PositiveInfinity, 0));
+            Field(window, "mapFitPending", false); yield return Layout(window);
+            float zoom = (float)Field(window, "mapZoom"); Assert.IsFalse(float.IsNaN(zoom)); Assert.IsFalse(float.IsInfinity(zoom)); Assert.Greater(zoom, 0);
+            Assert.AreEqual(Vector2.zero, Field(window, "mapPan"));
+        }
         [UnityTest] public IEnumerator ReferenceLoadCreatesPaintedCanvasAndUndoRedoRestoresAllPriorData()
         {
             var window = Open(); yield return Layout(window);
@@ -172,9 +179,15 @@ namespace JYW.Game.ObjectMaker.Tests
                 CollectionAssert.AreEqual(new byte[] { 0, 255, 255, 255 }, imported.mask);
                 Assert.AreEqual(1, imported.alphaThreshold); Assert.IsNull(Field(window, "mapDraftPath"));
                 Assert.IsNull(window.rootVisualElement.Q<UnityEditor.UIElements.ObjectField>("map-image").value);
+                Assert.IsNull(imported.terrainPng, "Reference import must not assign a terrain image.");
+                Assert.IsFalse(window.rootVisualElement.Q<Button>("map-trim-transparent").enabledSelf);
                 Assert.AreEqual(2, window.rootVisualElement.Q<IntegerField>("map-width").value);
                 var image = imported.CreateTexture();
-                try { CollectionAssert.AreEqual(new byte[] { 0, 1, 127, 255 }, image.GetPixels32().Select(p => p.a).ToArray()); }
+                try
+                {
+                    CollectionAssert.AreEqual(new byte[] { 0, 255, 255, 255 }, image.GetPixels32().Select(p => p.a).ToArray());
+                    Assert.AreEqual(new Color32(139, 100, 60, 255), image.GetPixels32()[1], "Even alpha 1 becomes the same solid color as normal pen painting.");
+                }
                 finally { Object.DestroyImmediate(image); }
                 Undo.PerformUndo(); yield return Layout(window);
                 Assert.AreEqual(original, JsonUtility.ToJson(Document(window)));
@@ -196,7 +209,7 @@ namespace JYW.Game.ObjectMaker.Tests
             WriteDraft(draftPath, Document(window)); File.Delete(sourcePath);
             Call(window, "SaveMapRecovery"); window.Close(); yield return null;
             var reopened = Open(false); yield return Layout(reopened);
-            Assert.AreEqual(expected, JsonUtility.ToJson(Document(reopened)), "Recovery must embed the reference image and painted mask.");
+            Assert.AreEqual(expected, JsonUtility.ToJson(Document(reopened)), "Recovery must preserve the painted mask without the reference image.");
             Document(reopened).Resize(7, 5); Document(reopened).Clear(); Call(reopened, "MapChanged");
             Assert.IsTrue((bool)Call(reopened, "LoadMapCanvas", draftPath, false)); yield return Layout(reopened);
             Assert.AreEqual(expected, JsonUtility.ToJson(Document(reopened)));
@@ -215,6 +228,53 @@ namespace JYW.Game.ObjectMaker.Tests
             Assert.AreEqual(before, JsonUtility.ToJson(Document(window)));
             Call(window, "SaveMapRecovery"); CollectionAssert.AreEqual(recovery, File.ReadAllBytes(Recovery));
             Assert.IsTrue(window.rootVisualElement.Q<Label>(className: "map-notice").ClassListContains("is-error"));
+        }
+
+        [UnityTest] public IEnumerator ReferencePaintThenSeparateTerrainImageMakesOneTerrainWithMatchingCollider()
+        {
+            var window = Open(); yield return Layout(window);
+            string name = "ReferenceWorkflow_" + Guid.NewGuid().ToString("N");
+            string generatedFolder = "Assets/GeneratedMaps/" + name;
+            var terrain = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            var preview = default(UnityEngine.SceneManagement.Scene);
+            try
+            {
+                Assert.IsTrue((bool)Call(window, "LoadMapCanvas", ReferencePng(), true)); yield return Layout(window);
+                var doc = Document(window); byte[] mask = (byte[])doc.mask.Clone();
+                Assert.IsNull(doc.terrainPng); Assert.IsTrue(string.IsNullOrEmpty(doc.terrainSourceName));
+                terrain.SetPixel(0, 0, Color.blue); terrain.Apply(); terrain.name = "Later terrain";
+                window.rootVisualElement.Q<UnityEditor.UIElements.ObjectField>("map-image").value = terrain;
+                yield return Layout(window); CollectionAssert.AreEqual(mask, Document(window).mask);
+                var painted = Document(window).CreateTexture();
+                try
+                {
+                    var pixels = painted.GetPixels32(); Assert.AreEqual(0, pixels[0].a);
+                    for (int i = 1; i < pixels.Length; i++) Assert.AreEqual(new Color32(0, 0, 255, 255), pixels[i]);
+                }
+                finally { Object.DestroyImmediate(painted); }
+                window.rootVisualElement.Q<TextField>("map-name").value = name;
+                var make = window.rootVisualElement.Q<ScrollView>("map-settings").Query<Button>().ToList().First(b => b.text == "Make · 지형 씬 만들기");
+                window.rootVisualElement.Q<ScrollView>("map-settings").ScrollTo(make); yield return Layout(window);
+                Click(window, make); yield return Layout(window);
+                string scene = (string)Field(window, "mapLastScene"); Assert.IsNotEmpty(scene);
+                Assert.IsTrue(scene.StartsWith(generatedFolder + "/", StringComparison.Ordinal));
+                preview = UnityEditor.SceneManagement.EditorSceneManager.OpenPreviewScene(scene);
+                var roots = preview.GetRootGameObjects(); Assert.AreEqual(1, roots.Length);
+                Assert.NotNull(roots[0].GetComponent<SpriteRenderer>());
+                var collider = roots[0].GetComponent<CompositeCollider2D>(); Assert.NotNull(collider); Assert.Greater(collider.shapeCount, 0);
+                Physics2D.SyncTransforms();
+                for (int y = 0; y < 2; y++) for (int x = 0; x < 2; x++)
+                {
+                    var point = new Vector2(x + .5f - 1, y + .5f - 1) / Document(window).pixelsPerUnit;
+                    Assert.AreEqual(mask[y * 2 + x] != 0, collider.OverlapPoint(roots[0].transform.TransformPoint(point)), "Collision cell " + x + "," + y);
+                }
+            }
+            finally
+            {
+                if (preview.IsValid() && preview.isLoaded) UnityEditor.SceneManagement.EditorSceneManager.ClosePreviewScene(preview);
+                Object.DestroyImmediate(terrain);
+                if (AssetDatabase.IsValidFolder(generatedFolder)) AssetDatabase.DeleteAsset(generatedFolder);
+            }
         }
 
         [UnityTest] public IEnumerator RealCanvasInputPaintsContinuousStrokeAndErasesIncludingMouseUpEndpoint()

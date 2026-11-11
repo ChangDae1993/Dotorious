@@ -21,7 +21,7 @@ namespace JYW.Game.ObjectMaker.Editor
         public int alphaThreshold = 1;
         public string terrainSourceId, terrainSourceName;
 
-        /// <summary>Creates an independent, embedded canvas. Every nontransparent pixel is painted.</summary>
+        /// <summary>Creates a pen-painted mask from nontransparent pixels. Terrain is chosen separately.</summary>
         public static MapPaintDocument FromReferenceImage(string path)
         {
             var source = MapReferenceImageImporter.Load(path);
@@ -31,14 +31,10 @@ namespace JYW.Game.ObjectMaker.Editor
                 {
                     width = source.width, height = source.height,
                     mapName = MapReferenceImageImporter.CanvasName(path),
-                    terrainSourceName = Path.GetFileName(path),
-                    terrainPng = source.EncodeToPNG(),
                     textureMode = MapTextureMode.Tile, tileScale = 1,
                     tileWidth = 0, tileHeight = 0, alphaThreshold = 1,
                     mask = new byte[source.width * source.height]
                 };
-                if (document.terrainPng == null || document.terrainPng.Length == 0)
-                    throw new ArgumentException("Could not embed the reference image.");
                 var pixels = source.GetPixels32();
                 for (int i = 0; i < pixels.Length; i++) if (pixels[i].a > 0) document.mask[i] = 255;
                 document.EnsureValid();

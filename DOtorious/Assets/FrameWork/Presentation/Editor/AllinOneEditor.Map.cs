@@ -175,7 +175,7 @@ public sealed partial class AllinOneEditor
         load.menu.AppendAction("레퍼런스 이미지…", _ => LoadMapReferenceFile());
         load.menu.AppendAction("저장한 도화지 (.mapdraft)…", _ => LoadMapDraftFile());
         files.Add(load); files.Add(ActionButton("초안 저장", SaveMapDraftFile));
-        file.Add(Text("레퍼런스는 이미지 크기의 새 도화지를 만들고 투명하지 않은 픽셀을 칠해진 영역으로 가져옵니다.", "map-help"));
+        file.Add(Text("레퍼런스는 투명하지 않은 픽셀을 펜으로 칠한 영역으로 바꿉니다. 지형 이미지는 그 후에 따로 적용하세요.", "map-help"));
         file.Add(Text("초안은 자동 복구됩니다. Make는 별도 씬과 재사용 가능한 지형 Prefab을 만듭니다.", "map-help"));
         var size = MapSection("도화지 / 실제 크기");
         var width = MapField(size, new IntegerField("가로 px") { isDelayed = true }, d.width, _ => { }, "map-width");
@@ -294,7 +294,7 @@ public sealed partial class AllinOneEditor
             }, true)) return false;
             Undo.IncrementCurrentGroup();
             SetMapNotice(reference
-                ? "레퍼런스 적용: " + Path.GetFileName(path) + " · " + data.width + " × " + data.height + " px. 투명하지 않은 픽셀을 칠했습니다. 이전 그림은 실행 취소로 복구할 수 있습니다."
+                ? "레퍼런스 변환 완료: " + Path.GetFileName(path) + " · " + data.width + " × " + data.height + " px. 펜으로 칠한 영역만 만들었습니다. 이제 지형 이미지를 따로 적용하세요. 이전 그림은 실행 취소로 복구할 수 있습니다."
                 : "초안을 불러왔습니다. 이전 그림은 실행 취소로 복구할 수 있습니다.");
             return true;
         }
@@ -333,7 +333,9 @@ public sealed partial class AllinOneEditor
     {
         RestoreMapDraft(); var d = mapDraft.Data;
         Rect viewport = new Rect(0, 0, mapCanvas.contentRect.width, mapCanvas.contentRect.height);
-        if (viewport.width < 2 || viewport.height < 2) return;
+        if (float.IsNaN(viewport.width) || float.IsNaN(viewport.height) || float.IsInfinity(viewport.width) || float.IsInfinity(viewport.height) || viewport.width < 2 || viewport.height < 2) return;
+        if (float.IsNaN(mapZoom) || float.IsInfinity(mapZoom) || mapZoom <= 0 ||
+            float.IsNaN(mapPan.x) || float.IsNaN(mapPan.y) || float.IsInfinity(mapPan.x) || float.IsInfinity(mapPan.y)) mapFitPending = true;
         if (mapFitPending) { mapZoom = Mathf.Clamp(Mathf.Min((viewport.width - 48) / d.width, (viewport.height - 48) / d.height), .05f, 8); mapPan = Vector2.zero; mapFitPending = false; }
         var evt = Event.current; int control = GUIUtility.GetControlID("MapPaintCanvas".GetHashCode(), FocusType.Passive);
         Rect canvas = MapImageRect(viewport); mapMouse = evt.mousePosition;

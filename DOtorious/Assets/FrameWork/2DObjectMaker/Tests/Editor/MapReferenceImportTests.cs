@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using JYW.Game.ObjectMaker.Editor;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
@@ -22,6 +24,11 @@ namespace JYW.Game.ObjectMaker.Tests
             new Color32(17, 31, 47, 0), new Color32(91, 53, 21, 1), new Color32(19, 173, 73, 127),
             new Color32(207, 45, 119, 255), new Color32(81, 177, 223, 255), new Color32(255, 143, 35, 255)
         };
+        static readonly Color32[] LaterTerrainPixels =
+        {
+            new Color32(9, 81, 213, 255), new Color32(23, 147, 191, 255), new Color32(57, 99, 201, 0),
+            new Color32(191, 63, 77, 127), new Color32(131, 235, 49, 128), new Color32(211, 19, 87, 255)
+        };
         T Own<T>(T value) where T : Object { owned.Add(value); return value; }
         Texture2D Texture(Color32[] pixels = null)
         {
@@ -33,6 +40,30 @@ namespace JYW.Game.ObjectMaker.Tests
             string path = Path.Combine(folder, name); File.WriteAllBytes(path, bytes); return path;
         }
         static string[] ImportFolders() => Directory.GetDirectories(Application.dataPath, "__MapReferenceImport_*").OrderBy(p => p).ToArray();
+        static void AssertNoTerrain(MapPaintDocument document)
+        {
+            Assert.IsTrue(document.terrainPng == null || document.terrainPng.Length == 0, "A reference must not become the terrain texture.");
+            Assert.IsTrue(string.IsNullOrEmpty(document.terrainSourceId));
+            Assert.IsTrue(string.IsNullOrEmpty(document.terrainSourceName));
+        }
+        Texture2D DecodeReference(string path)
+        {
+            var importer = typeof(MapPaintDocument).Assembly.GetType("JYW.Game.ObjectMaker.Editor.MapReferenceImageImporter", true);
+            var load = importer.GetMethod("Load", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.IsNotNull(load);
+            return Own((Texture2D)load.Invoke(null, new object[] { path }));
+        }
+        static MapPaintDocument PaintReferencePixels(Color32[] pixels, int width, int height)
+        {
+            var document = new MapPaintDocument { width = width, height = height, brushDiameter = 1 };
+            document.EnsureValid();
+            for (int i = 0; i < pixels.Length; i++) if (pixels[i].a > 0)
+            {
+                var point = new Vector2(i % width + .5f, i / width + .5f);
+                document.PaintStroke(point, point);
+            }
+            return document;
+        }
 
         [SetUp] public void SetUp()
         {
@@ -53,23 +84,25 @@ namespace JYW.Game.ObjectMaker.Tests
             CollectionAssert.AreEqual(temporaryAssetsBefore, ImportFolders(), "No temporary imported assets may remain.");
         }
 
-        [Test] public void PngCreatesNativeCanvasWithEveryNonzeroAlphaPaintedAndExactEmbeddedColors()
+        [Test] public void PngCreatesNativeCanvasExactlyLikePenPaintingEveryNonzeroAlphaPixel()
         {
             string path = Write("Reference island.PNG", Texture().EncodeToPNG());
             byte[] original = File.ReadAllBytes(path);
             var document = MapPaintDocument.FromReferenceImage(path);
             Assert.AreEqual(3, document.width); Assert.AreEqual(2, document.height);
-            Assert.AreEqual("Reference island", document.mapName); Assert.AreEqual("Reference island.PNG", document.terrainSourceName);
-            Assert.IsTrue(string.IsNullOrEmpty(document.terrainSourceId));
+            Assert.AreEqual("Reference island", document.mapName); AssertNoTerrain(document);
             Assert.AreEqual(MapTextureMode.Tile, document.textureMode); Assert.AreEqual(1, document.tileScale);
             Assert.AreEqual(0, document.tileWidth); Assert.AreEqual(0, document.tileHeight); Assert.AreEqual(1, document.alphaThreshold);
+            Assert.AreEqual(100, document.pixelsPerUnit); Assert.AreEqual(32, document.brushDiameter);
             CollectionAssert.AreEqual(new byte[] { 0, 255, 255, 255, 255, 255 }, document.mask);
             CollectionAssert.AreEqual(document.mask, document.GetVisibleMask());
-            var embedded = Own(new Texture2D(2, 2)); Assert.IsTrue(embedded.LoadImage(document.terrainPng));
-            CollectionAssert.AreEqual(Pixels, embedded.GetPixels32());
+            CollectionAssert.AreEqual(Pixels, DecodeReference(path).GetPixels32(), "The decoder still preserves source colors and alpha before mask conversion.");
+            var painted = PaintReferencePixels(Pixels, 3, 2);
+            CollectionAssert.AreEqual(painted.mask, document.mask);
             var rendered = Own(document.CreateTexture()).GetPixels32();
+            CollectionAssert.AreEqual(Own(painted.CreateTexture()).GetPixels32(), rendered);
             Assert.AreEqual(0, rendered[0].a);
-            for (int i = 1; i < Pixels.Length; i++) Assert.AreEqual(Pixels[i], rendered[i], "Pixel " + i);
+            for (int i = 1; i < Pixels.Length; i++) Assert.AreEqual(new Color32(139, 100, 60, 255), rendered[i], "Pen-rendered pixel " + i);
             CollectionAssert.AreEqual(original, File.ReadAllBytes(path));
             Assert.IsFalse(File.Exists(path + ".meta")); Assert.IsNull(AssetImporter.GetAtPath(path));
         }
@@ -78,9 +111,11 @@ namespace JYW.Game.ObjectMaker.Tests
         {
             string path = Write("Empty.png", Texture(new Color32[6]).EncodeToPNG());
             var document = MapPaintDocument.FromReferenceImage(path);
+            AssertNoTerrain(document);
             CollectionAssert.AreEqual(new byte[6], document.mask); Assert.AreEqual(3, document.width); Assert.AreEqual(2, document.height);
             document.PaintStroke(new Vector2(.5f, .5f), new Vector2(.5f, .5f));
             Assert.AreEqual(255, document.mask[0]);
+            Assert.AreEqual(255, Own(document.CreateTexture()).GetPixels32()[0].a);
         }
 
         [TestCase("jpg")]
@@ -92,7 +127,7 @@ namespace JYW.Game.ObjectMaker.Tests
             Assert.AreEqual(3, document.width); Assert.AreEqual(2, document.height);
             Assert.IsTrue(document.mask.All(value => value == 255));
             Assert.IsTrue(Own(document.CreateTexture()).GetPixels32().All(pixel => pixel.a == 255));
-            Assert.AreEqual(137, document.terrainPng[0]); Assert.AreEqual(80, document.terrainPng[1]);
+            AssertNoTerrain(document);
         }
 
         [TestCase("bmp")]
@@ -100,19 +135,24 @@ namespace JYW.Game.ObjectMaker.Tests
         [TestCase("tif")]
         [TestCase("tiff")]
         [TestCase("psd")]
-        public void NativeRasterFormatsPreserveDimensionsColorsAndTransparency(string extension)
+        public void NativeRasterFormatsDecodeExactColorsAndConvertAlphaToPenPaintedMask(string extension)
         {
             string path = Write("Native." + extension, Raster(extension)); byte[] original = File.ReadAllBytes(path);
             var document = MapPaintDocument.FromReferenceImage(path);
             Assert.AreEqual(3, document.width); Assert.AreEqual(2, document.height);
-            var embedded = Own(new Texture2D(2, 2)); Assert.IsTrue(embedded.LoadImage(document.terrainPng));
-            var actual = embedded.GetPixels32();
+            AssertNoTerrain(document);
+            var decoded = DecodeReference(path);
+            Assert.AreEqual(3, decoded.width); Assert.AreEqual(2, decoded.height);
+            var actual = decoded.GetPixels32();
             for (int i = 0; i < Pixels.Length; i++)
             {
                 Color32 expected = Pixels[i]; if (extension == "bmp") expected.a = 255;
-                Assert.AreEqual(expected, actual[i], "Embedded pixel " + i);
+                Assert.AreEqual(expected, actual[i], "Decoded source pixel " + i);
                 Assert.AreEqual(expected.a == 0 ? 0 : 255, document.mask[i], "Mask pixel " + i);
             }
+            var painted = PaintReferencePixels(actual, 3, 2);
+            CollectionAssert.AreEqual(painted.mask, document.mask);
+            CollectionAssert.AreEqual(Own(painted.CreateTexture()).GetPixels32(), Own(document.CreateTexture()).GetPixels32());
             CollectionAssert.AreEqual(original, File.ReadAllBytes(path)); Assert.IsFalse(File.Exists(path + ".meta"));
         }
 
@@ -122,9 +162,12 @@ namespace JYW.Game.ObjectMaker.Tests
             var bytes = new byte[18 + width * 4]; bytes[2] = 2; bytes[12] = (byte)(width & 255); bytes[13] = (byte)(width >> 8);
             bytes[14] = 1; bytes[16] = 32; bytes[17] = 8;
             for (int i = 0; i < width; i++) { bytes[18 + i * 4] = 17; bytes[19 + i * 4] = 31; bytes[20 + i * 4] = 47; bytes[21 + i * 4] = 1; }
-            var document = MapPaintDocument.FromReferenceImage(Write("Wide.tga", bytes));
+            string path = Write("Wide.tga", bytes);
+            var document = MapPaintDocument.FromReferenceImage(path);
             Assert.AreEqual(width, document.width); Assert.AreEqual(1, document.height); Assert.IsTrue(document.mask.All(value => value == 255));
-            Assert.AreEqual(new Color32(47, 31, 17, 1), Own(document.CreateTexture()).GetPixels32()[width - 1]);
+            AssertNoTerrain(document);
+            Assert.AreEqual(new Color32(47, 31, 17, 1), DecodeReference(path).GetPixels32()[width - 1]);
+            Assert.AreEqual(new Color32(139, 100, 60, 255), Own(document.CreateTexture()).GetPixels32()[width - 1]);
         }
 
         [Test] public void MaximumSupportedPngDimensionRemainsAccepted()
@@ -133,6 +176,7 @@ namespace JYW.Game.ObjectMaker.Tests
             var pixels = Enumerable.Repeat(new Color32(37, 91, 143, 1), texture.width).ToArray(); texture.SetPixels32(pixels); texture.Apply();
             var document = MapPaintDocument.FromReferenceImage(Write("Maximum.png", texture.EncodeToPNG()));
             Assert.AreEqual(MapPaintDocument.MaxDimension, document.width); Assert.IsTrue(document.mask.All(value => value == 255));
+            AssertNoTerrain(document); Assert.IsTrue(Own(document.CreateTexture()).GetPixels32().All(pixel => pixel.a == 255));
         }
 
         [Test] public void NativeDecoderFailureAlsoRemovesTheTemporaryAssets()
@@ -162,18 +206,73 @@ namespace JYW.Game.ObjectMaker.Tests
             var imported = MapPaintDocument.FromReferenceImage(path);
             string saved = JsonUtility.ToJson(imported); File.Delete(path);
             var restored = JsonUtility.FromJson<MapPaintDocument>(saved); restored.EnsureValid();
-            CollectionAssert.AreEqual(imported.mask, restored.mask); CollectionAssert.AreEqual(imported.terrainPng, restored.terrainPng);
+            CollectionAssert.AreEqual(imported.mask, restored.mask); AssertNoTerrain(imported); AssertNoTerrain(restored);
             CollectionAssert.AreEqual(Own(imported.CreateTexture()).GetPixels32(), Own(restored.CreateTexture()).GetPixels32());
             restored.brushDiameter = 1; restored.PaintStroke(new Vector2(1.5f, .5f), new Vector2(1.5f, .5f), true);
             Assert.AreEqual(0, restored.mask[1]); restored.PaintStroke(new Vector2(1.5f, .5f), new Vector2(1.5f, .5f));
-            Assert.AreEqual(255, restored.mask[1]); Assert.AreEqual(1, Own(restored.CreateTexture()).GetPixels32()[1].a);
+            Assert.AreEqual(255, restored.mask[1]); Assert.AreEqual(255, Own(restored.CreateTexture()).GetPixels32()[1].a);
+            restored.PaintStroke(new Vector2(.5f, .5f), new Vector2(.5f, .5f));
+            Assert.AreEqual(255, restored.mask[0]); Assert.AreEqual(255, Own(restored.CreateTexture()).GetPixels32()[0].a);
+        }
+
+        [TestCase(MapTextureMode.Tile)]
+        [TestCase(MapTextureMode.FitWidth)]
+        [TestCase(MapTextureMode.FitHeight)]
+        [TestCase(MapTextureMode.Stretch)]
+        public void TerrainChosenLaterUsesOnlyTheImportedMaskAndItsOwnColorsAndAlpha(MapTextureMode mode)
+        {
+            string referencePath = Write("Mask.png", Texture().EncodeToPNG());
+            var document = MapPaintDocument.FromReferenceImage(referencePath); File.Delete(referencePath);
+            AssertNoTerrain(document);
+            byte[] mask = (byte[])document.mask.Clone();
+            string terrainPath = Write("Later terrain.png", Texture(LaterTerrainPixels).EncodeToPNG());
+            document.LoadTerrainFile(terrainPath); document.textureMode = mode; File.Delete(terrainPath);
+            var rendered = Own(document.CreateTexture()).GetPixels32();
+            for (int i = 0; i < rendered.Length; i++)
+                Assert.AreEqual(mask[i] == 0 ? new Color32() : LaterTerrainPixels[i], rendered[i], "Later terrain pixel " + i);
+            CollectionAssert.AreEqual(mask, document.mask, "Choosing terrain must not change the painted mask.");
+            var restored = JsonUtility.FromJson<MapPaintDocument>(JsonUtility.ToJson(document)); restored.EnsureValid();
+            CollectionAssert.AreEqual(mask, restored.mask);
+            CollectionAssert.AreEqual(rendered, Own(restored.CreateTexture()).GetPixels32());
+            document.terrainPng = null;
+            CollectionAssert.AreEqual(mask, document.GetVisibleMask(), "Removing terrain restores all painted pixels, including pixels hidden by its alpha.");
+        }
+
+        [Test] public void ReferenceMaskRequiresLaterTerrainBeforeExportAndColliderUsesThatTerrainAlpha()
+        {
+            var document = MapPaintDocument.FromReferenceImage(Write("Reference export.png", Texture().EncodeToPNG()));
+            document.pixelsPerUnit = 1; document.alphaThreshold = 128;
+            assetFolder = "Assets/__MapReferenceExportTests_" + Guid.NewGuid().ToString("N");
+            Assert.Throws<InvalidOperationException>(() => MapSceneExporter.Export(document, assetFolder));
+            Assert.IsFalse(AssetDatabase.IsValidFolder(assetFolder), "An untextured mask must not produce export assets.");
+            byte[] mask = (byte[])document.mask.Clone();
+            document.LoadTerrainFile(Write("Explicit terrain.png", Texture(LaterTerrainPixels).EncodeToPNG()));
+            var result = MapSceneExporter.Export(document, assetFolder);
+            var baked = Own(new Texture2D(2, 2)); Assert.IsTrue(baked.LoadImage(File.ReadAllBytes(result.TexturePath)));
+            CollectionAssert.AreEqual(Own(document.CreateTexture()).GetPixels32(), baked.GetPixels32());
+            CollectionAssert.AreEqual(mask, document.mask);
+            CollectionAssert.AreEqual(new byte[] { 0, 255, 0, 0, 255, 255 }, document.GetVisibleMask());
+            var scene = EditorSceneManager.OpenPreviewScene(result.ScenePath);
+            try
+            {
+                var roots = scene.GetRootGameObjects(); Assert.AreEqual(1, roots.Length);
+                var collider = roots[0].GetComponent<CompositeCollider2D>(); Assert.IsNotNull(collider);
+                Physics2D.SyncTransforms();
+                var visible = document.GetVisibleMask();
+                for (int y = 0; y < document.height; y++) for (int x = 0; x < document.width; x++)
+                {
+                    var point = new Vector2(x + .5f - document.width * .5f, y + .5f - document.height * .5f) / document.pixelsPerUnit;
+                    Assert.AreEqual(visible[y * document.width + x] != 0, collider.OverlapPoint(point), "Exported collider pixel " + x + "," + y);
+                }
+            }
+            finally { EditorSceneManager.ClosePreviewScene(scene); }
         }
 
         [Test] public void RepeatedImportsAreIndependentAndFailureCannotChangeExistingDocument()
         {
             string path = Write("Independent.png", Texture().EncodeToPNG());
             var previous = MapPaintDocument.FromReferenceImage(path); string before = JsonUtility.ToJson(previous);
-            var another = MapPaintDocument.FromReferenceImage(path); another.Clear(); another.terrainPng[0] = 0;
+            var another = MapPaintDocument.FromReferenceImage(path); another.Clear(); another.terrainPng = Texture().EncodeToPNG();
             Assert.AreEqual(before, JsonUtility.ToJson(previous));
             string malformed = Write("Broken.png", new byte[] { 1, 2, 3, 4 });
             Assert.Throws<ArgumentException>(() => previous = MapPaintDocument.FromReferenceImage(malformed));
@@ -202,7 +301,7 @@ namespace JYW.Game.ObjectMaker.Tests
         {
             var document = MapPaintDocument.FromReferenceImage(Write(name, Texture().EncodeToPNG()));
             Assert.IsFalse(string.IsNullOrWhiteSpace(document.mapName)); Assert.LessOrEqual(document.mapName.Length, 80);
-            Assert.AreEqual(document.mapName.Trim('.', ' '), document.mapName); Assert.AreEqual(name, document.terrainSourceName);
+            Assert.AreEqual(document.mapName.Trim('.', ' '), document.mapName); AssertNoTerrain(document);
             Assert.AreEqual(-1, document.mapName.IndexOfAny(Path.GetInvalidFileNameChars()));
         }
 
