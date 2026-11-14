@@ -1,0 +1,819 @@
+fileFormatVersion: 2
+guid: 98060bd22b95f184a8c6512249db4cc4
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 7863991197310568501
+    second: Stage1_Seq1_Middle-Back_0
+  - first:
+      213: 3391669193587410135
+    second: Stage1_Seq1_Middle-Back_1
+  - first:
+      213: -2212576224486484641
+    second: Stage1_Seq1_Middle-Back_2
+  - first:
+      213: -3497847113236555756
+    second: Stage1_Seq1_Middle-Back_3
+  - first:
+      213: -3174668861218272216
+    second: Stage1_Seq1_Middle-Back_4
+  - first:
+      213: -4324296938901463519
+    second: Stage1_Seq1_Middle-Back_5
+  - first:
+      213: -8277854343228427867
+    second: Stage1_Seq1_Middle-Back_6
+  - first:
+      213: 3110198605761698140
+    second: Stage1_Seq1_Middle-Back_7
+  - first:
+      213: -8837096107389434001
+    second: Stage1_Seq1_Middle-Back_8
+  - first:
+      213: -3898737540868798365
+    second: Stage1_Seq1_Middle-Back_9
+  - first:
+      213: -5478911350355851192
+    second: Stage1_Seq1_Middle-Back_10
+  - first:
+      213: 8392141182344928870
+    second: Stage1_Seq1_Middle-Back_11
+  - first:
+      213: 2267723872994415874
+    second: Stage1_Seq1_Middle-Back_12
+  - first:
+      213: -7421822902006014192
+    second: Stage1_Seq1_Middle-Back_13
+  - first:
+      213: 5052511977925208966
+    second: Stage1_Seq1_Middle-Back_14
+  - first:
+      213: -5667564039174613429
+    second: Stage1_Seq1_Middle-Back_15
+  - first:
+      213: -3923257405222851020
+    second: Stage1_Seq1_Middle-Back_16
+  - first:
+      213: 679900601344589500
+    second: Stage1_Seq1_Middle-Back_17
+  - first:
+      213: 2569814601510970438
+    second: Stage1_Seq1_Middle-Back_18
+  - first:
+      213: 3865973575656484745
+    second: Stage1_Seq1_Middle-Back_19
+  - first:
+      213: 4999895296921571649
+    second: Stage1_Seq1_Middle-Back_20
+  - first:
+      213: 7676808809487668226
+    second: Stage1_Seq1_Middle-Back_21
+  - first:
+      213: 2197561640783067538
+    second: Stage1_Seq1_Middle-Back_22
+  - first:
+      213: 3752297968980117426
+    second: Stage1_Seq1_Middle-Back_23
+  - first:
+      213: 5350813744648863105
+    second: Stage1_Seq1_Middle-Back_24
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WindowsStoreApps
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_0
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 0
+        width: 2141
+        height: 716
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 538ce782452822d60800000000000000
+      internalID: 7863991197310568501
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_1
+      rect:
+        serializedVersion: 2
+        x: 615
+        y: 689
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d4c9676921a11f20800000000000000
+      internalID: 3391669193587410135
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_2
+      rect:
+        serializedVersion: 2
+        x: 617
+        y: 685
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f55120585a95b41e0800000000000000
+      internalID: -2212576224486484641
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_3
+      rect:
+        serializedVersion: 2
+        x: 621
+        y: 689
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 418d8e83596257fc0800000000000000
+      internalID: -3497847113236555756
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_4
+      rect:
+        serializedVersion: 2
+        x: 633
+        y: 596
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82c4797ad7f41f3d0800000000000000
+      internalID: -3174668861218272216
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_5
+      rect:
+        serializedVersion: 2
+        x: 1357
+        y: 142
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 12e187d58d20df3c0800000000000000
+      internalID: -4324296938901463519
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_6
+      rect:
+        serializedVersion: 2
+        x: 1707
+        y: 130
+        width: 14
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a1f17135572f1d80800000000000000
+      internalID: -8277854343228427867
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_7
+      rect:
+        serializedVersion: 2
+        x: 265
+        y: 130
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c5957554725a92b20800000000000000
+      internalID: 3110198605761698140
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_8
+      rect:
+        serializedVersion: 2
+        x: 330
+        y: 122
+        width: 9
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f67c01949e35c5580800000000000000
+      internalID: -8837096107389434001
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_9
+      rect:
+        serializedVersion: 2
+        x: 1705
+        y: 132
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 368090cecd6e4e9c0800000000000000
+      internalID: -3898737540868798365
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_10
+      rect:
+        serializedVersion: 2
+        x: 374
+        y: 96
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8480f26c72ff6f3b0800000000000000
+      internalID: -5478911350355851192
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_11
+      rect:
+        serializedVersion: 2
+        x: 1305
+        y: 95
+        width: 9
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 66e989e11ffd67470800000000000000
+      internalID: 8392141182344928870
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_12
+      rect:
+        serializedVersion: 2
+        x: 1313
+        y: 99
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 205518af8d2987f10800000000000000
+      internalID: 2267723872994415874
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_13
+      rect:
+        serializedVersion: 2
+        x: 1319
+        y: 97
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01f9214a463600990800000000000000
+      internalID: -7421822902006014192
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_14
+      rect:
+        serializedVersion: 2
+        x: 1325
+        y: 96
+        width: 9
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68b63a3efd02e1640800000000000000
+      internalID: 5052511977925208966
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_15
+      rect:
+        serializedVersion: 2
+        x: 1725
+        y: 93
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b46183fc884c851b0800000000000000
+      internalID: -5667564039174613429
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_16
+      rect:
+        serializedVersion: 2
+        x: 364
+        y: 83
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 43e654f1d2acd89c0800000000000000
+      internalID: -3923257405222851020
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_17
+      rect:
+        serializedVersion: 2
+        x: 647
+        y: 83
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cbef7b1aefd7f6900800000000000000
+      internalID: 679900601344589500
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_18
+      rect:
+        serializedVersion: 2
+        x: 816
+        y: 85
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6446cadb3c0d9a320800000000000000
+      internalID: 2569814601510970438
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_19
+      rect:
+        serializedVersion: 2
+        x: 992
+        y: 83
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 98f2d08fb72b6a530800000000000000
+      internalID: 3865973575656484745
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_20
+      rect:
+        serializedVersion: 2
+        x: 998
+        y: 82
+        width: 17
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 141182f2842336540800000000000000
+      internalID: 4999895296921571649
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_21
+      rect:
+        serializedVersion: 2
+        x: 666
+        y: 63
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2041a1250f0898a60800000000000000
+      internalID: 7676808809487668226
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_22
+      rect:
+        serializedVersion: 2
+        x: 1868
+        y: 25
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 29936ea4bae4f7e10800000000000000
+      internalID: 2197561640783067538
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_23
+      rect:
+        serializedVersion: 2
+        x: 1882
+        y: 20
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b7ca7c4f17d21430800000000000000
+      internalID: 3752297968980117426
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Stage1_Seq1_Middle-Back_24
+      rect:
+        serializedVersion: 2
+        x: 1888
+        y: 0
+        width: 25
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 18db21d30c8e14a40800000000000000
+      internalID: 5350813744648863105
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Stage1_Seq1_Middle-Back_0: 7863991197310568501
+      Stage1_Seq1_Middle-Back_1: 3391669193587410135
+      Stage1_Seq1_Middle-Back_10: -5478911350355851192
+      Stage1_Seq1_Middle-Back_11: 8392141182344928870
+      Stage1_Seq1_Middle-Back_12: 2267723872994415874
+      Stage1_Seq1_Middle-Back_13: -7421822902006014192
+      Stage1_Seq1_Middle-Back_14: 5052511977925208966
+      Stage1_Seq1_Middle-Back_15: -5667564039174613429
+      Stage1_Seq1_Middle-Back_16: -3923257405222851020
+      Stage1_Seq1_Middle-Back_17: 679900601344589500
+      Stage1_Seq1_Middle-Back_18: 2569814601510970438
+      Stage1_Seq1_Middle-Back_19: 3865973575656484745
+      Stage1_Seq1_Middle-Back_2: -2212576224486484641
+      Stage1_Seq1_Middle-Back_20: 4999895296921571649
+      Stage1_Seq1_Middle-Back_21: 7676808809487668226
+      Stage1_Seq1_Middle-Back_22: 2197561640783067538
+      Stage1_Seq1_Middle-Back_23: 3752297968980117426
+      Stage1_Seq1_Middle-Back_24: 5350813744648863105
+      Stage1_Seq1_Middle-Back_3: -3497847113236555756
+      Stage1_Seq1_Middle-Back_4: -3174668861218272216
+      Stage1_Seq1_Middle-Back_5: -4324296938901463519
+      Stage1_Seq1_Middle-Back_6: -8277854343228427867
+      Stage1_Seq1_Middle-Back_7: 3110198605761698140
+      Stage1_Seq1_Middle-Back_8: -8837096107389434001
+      Stage1_Seq1_Middle-Back_9: -3898737540868798365
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
