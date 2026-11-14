@@ -284,6 +284,7 @@ public sealed partial class AllinOneEditor
             selected.Add(ActionButton("전체 동작 설정…", () => { SetDetailed(true); SetInspectorMode(0); RefreshSelection(); }));
             if (entry) selected.Add(ActionButton("이 항목 삭제", () => { embeddedEditor.RemoveWorkspaceFeature(selectedPhasePath, selectedFeaturePath); selectedFeaturePath = null; RequestRefresh(); }));
         }
+        DrawCollisionStartCondition();
         var detail = SimpleFold("단계 연결 · 실행 위치 · 타임라인"); detail.name = "basic-event-more";
         var links = new VisualElement(); links.AddToClassList("aio-simple-links"); detail.Add(links);
         links.Add(ActionButton("다음 단계 추가", () => AddNextPhase(selectedPhasePath)));

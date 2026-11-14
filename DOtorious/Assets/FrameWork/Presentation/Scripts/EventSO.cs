@@ -330,6 +330,12 @@ namespace JYW.Game.EventPlay
             CameraView = 1 << 8
         }
 
+        public enum CollisionCheckMode
+        {
+            ContactHistory = 0,
+            CurrentContact2D = 1
+        }
+
         public enum ObjectStateCheck { Exists, Missing, Active, Inactive }
         public enum DistanceCheck { AtMost, AtLeast }
         public enum InputKeyCheck { PressedThisFrame, Held }
@@ -364,6 +370,7 @@ namespace JYW.Game.EventPlay
             [SerializeField] public string CollisionObjectA = "";
             [Tooltip("충돌을 확인할 씬 오브젝트 B의 이름 또는 Root/Child 경로입니다.")]
             [SerializeField] public string CollisionObjectB = "";
+            [SerializeField] public CollisionCheckMode CollisionMode = CollisionCheckMode.ContactHistory;
 
             [Tooltip("존재 또는 활성 상태를 확인할 오브젝트 이름이나 Root/Child 경로입니다.")]
             [SerializeField] public string ObjectStateTarget = "";

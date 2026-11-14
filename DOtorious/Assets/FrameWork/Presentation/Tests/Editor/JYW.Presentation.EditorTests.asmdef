@@ -1,0 +1,7 @@
+{
+  "name": "JYW.Presentation.EditorTests",
+  "references": ["JYW.Framework", "JYW.ObjectMaker.Editor", "JYW.FrameWork.Core"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": false,
+  "optionalUnityReferences": ["TestAssemblies"]
+}

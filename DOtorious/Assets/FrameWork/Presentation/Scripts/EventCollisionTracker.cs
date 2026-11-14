@@ -53,6 +53,35 @@ namespace JYW.Game.EventPlay
             return contacts.Contains(new InstancePair(a, b));
         }
 
+        private static readonly List<Collider2D> currentCollidersA = new List<Collider2D>();
+        private static readonly List<Collider2D> currentCollidersB = new List<Collider2D>();
+
+        // Query the actual contact from the most recent 2D physics step. Unlike
+        // HasCollided, this never creates probes, installs relays or reads history.
+        internal static bool AreCurrentlyTouching2D(GameObject a, GameObject b)
+        {
+            if (a == null || b == null || a == b || !a.activeInHierarchy || !b.activeInHierarchy)
+                return false;
+
+            a.GetComponents<Collider2D>(currentCollidersA);
+            b.GetComponents<Collider2D>(currentCollidersB);
+            try
+            {
+                if (currentCollidersA.Count != 1 || currentCollidersB.Count != 1)
+                    return false;
+
+                var first = currentCollidersA[0];
+                var second = currentCollidersB[0];
+                return first != null && second != null && first.enabled && second.enabled &&
+                    first.IsTouching(second);
+            }
+            finally
+            {
+                currentCollidersA.Clear();
+                currentCollidersB.Clear();
+            }
+        }
+
         [Flags]
         private enum PhysicsSpace
         {

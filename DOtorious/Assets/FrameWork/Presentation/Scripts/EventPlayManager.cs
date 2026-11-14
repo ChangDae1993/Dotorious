@@ -660,9 +660,7 @@ namespace JYW.Game.EventPlay
 
             if ((checks & EventSO.ConditionChecks.CollisionAB) != 0)
             {
-                ResolveCollisionObjects(condGroup, out GameObject objectA, out GameObject objectB);
-                if (objectA == null || objectB == null || objectA == objectB ||
-                    !EventCollisionTracker.HasCollided(objectA, objectB))
+                if (!IsCollisionConditionSatisfied(condGroup))
                     selectedChecksPass = false;
             }
 
@@ -927,6 +925,80 @@ namespace JYW.Game.EventPlay
             return checkType == EventSO.CheckType.Value && equals;
         }
 
+        internal static bool UsesCurrent2DContact(EventSO.ConditionGroupData condition) =>
+            condition != null && (condition.Checks & EventSO.ConditionChecks.CollisionAB) != 0 &&
+            condition.CollisionMode == EventSO.CollisionCheckMode.CurrentContact2D;
+
+        internal bool IsCollisionConditionSatisfied(EventSO.ConditionGroupData condition)
+        {
+            if (UsesCurrent2DContact(condition))
+            {
+                // Each locator identifies the exact collider host. Do not use
+                // ResolveByName's first match/cache for a physical start condition.
+                GameObject a = FindUniqueContactObject(condition.CollisionObjectA);
+                GameObject b = FindUniqueContactObject(condition.CollisionObjectB);
+                return EventCollisionTracker.AreCurrentlyTouching2D(a, b);
+            }
+
+            ResolveCollisionObjects(condition, out GameObject objectA, out GameObject objectB);
+            return objectA != null && objectB != null && objectA != objectB &&
+                EventCollisionTracker.HasCollided(objectA, objectB);
+        }
+
+        private static GameObject FindUniqueContactObject(string locator)
+        {
+            if (string.IsNullOrWhiteSpace(locator))
+                return null;
+            locator = locator.Trim();
+            string[] path = locator.Contains("/") ? locator.TrimStart('/').Split('/') : null;
+            GameObject match = null;
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                var scene = SceneManager.GetSceneAt(i);
+                if (!scene.IsValid() || !scene.isLoaded)
+                    continue;
+                foreach (var root in scene.GetRootGameObjects())
+                {
+                    bool unique = path != null
+                        ? CollectUniqueContactPath(root.transform, path, 0, ref match)
+                        : CollectUniqueContactName(root.transform, locator, ref match);
+                    if (!unique)
+                        return null;
+                }
+            }
+            return match;
+        }
+
+        private static bool CollectUniqueContactPath(Transform node, string[] path, int depth, ref GameObject match)
+        {
+            if (!string.Equals(node.name, path[depth], StringComparison.Ordinal))
+                return true;
+            if (depth == path.Length - 1)
+                return AddUniqueContactMatch(node, ref match);
+            for (int i = 0; i < node.childCount; i++)
+                if (!CollectUniqueContactPath(node.GetChild(i), path, depth + 1, ref match))
+                    return false;
+            return true;
+        }
+
+        private static bool CollectUniqueContactName(Transform node, string locator, ref GameObject match)
+        {
+            if (string.Equals(node.name, locator, StringComparison.Ordinal) && !AddUniqueContactMatch(node, ref match))
+                return false;
+            for (int i = 0; i < node.childCount; i++)
+                if (!CollectUniqueContactName(node.GetChild(i), locator, ref match))
+                    return false;
+            return true;
+        }
+
+        private static bool AddUniqueContactMatch(Transform node, ref GameObject match)
+        {
+            if (match != null)
+                return false;
+            match = node.gameObject;
+            return true;
+        }
+
         private void ResolveCollisionObjects(
             EventSO.ConditionGroupData condition,
             out GameObject objectA,
@@ -1052,7 +1124,8 @@ namespace JYW.Game.EventPlay
             {
                 EventSO.ConditionGroupData condition = eventSO.Conditions[i];
                 if (condition == null ||
-                    (condition.Checks & EventSO.ConditionChecks.CollisionAB) == 0)
+                    (condition.Checks & EventSO.ConditionChecks.CollisionAB) == 0 ||
+                    UsesCurrent2DContact(condition))
                     continue;
 
                 ResolveCollisionObjects(condition, out GameObject objectA, out GameObject objectB);
@@ -1064,9 +1137,17 @@ namespace JYW.Game.EventPlay
         internal bool TryGetAutoConditionStep(
             EventSO eventSO,
             GameObject caller,
-            out EventSO.EventStep capturedStep)
+            out EventSO.EventStep capturedStep) =>
+            TryGetAutoConditionSelection(eventSO, caller, out capturedStep, out _);
+
+        internal bool TryGetAutoConditionSelection(
+            EventSO eventSO,
+            GameObject caller,
+            out EventSO.EventStep capturedStep,
+            out EventSO.ConditionGroupData matchedCondition)
         {
             capturedStep = null;
+            matchedCondition = null;
             if (eventSO == null || !eventSO.UseCondition ||
                 eventSO.Conditions == null || eventSO.Conditions.Length == 0)
                 return false;
@@ -1077,6 +1158,7 @@ namespace JYW.Game.EventPlay
                 if (!IsCompleteAutoCondition(condition) || !EvaluateConditionGroup(condition, caller))
                     continue;
 
+                matchedCondition = condition;
                 if (eventSO.ConditionSteps != null && i < eventSO.ConditionSteps.Length)
                 {
                     capturedStep = eventSO.ConditionSteps[i];

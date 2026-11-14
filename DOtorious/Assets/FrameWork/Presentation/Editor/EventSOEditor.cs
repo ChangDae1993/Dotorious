@@ -2914,6 +2914,7 @@ public class EventSOEditor : Editor
 
             SetStringRelative(added, "CollisionObjectA", string.Empty);
             SetStringRelative(added, "CollisionObjectB", string.Empty);
+            SetEnumRelative(added, "CollisionMode", (int)EventSO.CollisionCheckMode.ContactHistory);
             SetStringRelative(added, "ObjectStateTarget", string.Empty);
             SetEnumRelative(added, "ObjectState", (int)EventSO.ObjectStateCheck.Exists);
             SetStringRelative(added, "DistanceObjectA", string.Empty);
@@ -2998,6 +2999,7 @@ public class EventSOEditor : Editor
 
         SerializedProperty checksProp = condGroupProp.FindPropertyRelative("Checks");
         SerializedProperty secondsProp = condGroupProp.FindPropertyRelative("TimeCountSeconds");
+        SerializedProperty collisionModeProp = condGroupProp.FindPropertyRelative("CollisionMode");
         SerializedProperty collisionAProp = condGroupProp.FindPropertyRelative("CollisionObjectA");
         SerializedProperty collisionBProp = condGroupProp.FindPropertyRelative("CollisionObjectB");
         SerializedProperty objectStateTargetProp = condGroupProp.FindPropertyRelative("ObjectStateTarget");
@@ -3104,12 +3106,24 @@ public class EventSOEditor : Editor
                 EventSceneTargetField.PropertyField(collisionAProp, FeatureContent("Object A (Name / Path)"));
             if (collisionBProp != null)
                 EventSceneTargetField.PropertyField(collisionBProp, FeatureContent("Object B (Name / Path)"));
-            EditorGUILayout.HelpBox(
-                "3D/2D의 Collision 또는 Trigger에서 A와 B가 접촉하면 참이 됩니다. " +
-                "필요한 Collider가 없으면 오브젝트 크기에 맞는 런타임 Trigger Collider를 자동으로 추가합니다. " +
-                "기존 static Collider만 있거나 Rigidbody의 충돌 감지가 꺼진 조합도 원본을 변경하지 않고 Collider별 보조 Trigger/숨김 kinematic probe를 런타임에 준비합니다. " +
-                "짧게 접촉해도 이번 Play의 해당 오브젝트 생명주기 동안 기억합니다.",
-                MessageType.Info);
+            if (collisionModeProp != null)
+                EventSceneTargetField.PropertyField(collisionModeProp, new GUIContent("충돌 확인 방식"));
+
+            if (collisionModeProp?.intValue == (int)EventSO.CollisionCheckMode.CurrentContact2D)
+            {
+                EditorGUILayout.HelpBox(
+                    "지정한 오브젝트의 실제 Collider2D가 현재 접촉 중일 때만 통과합니다. " +
+                    "과거 접촉을 기억하거나 임시 콜라이더를 만들지 않습니다. 각 경로는 Collider2D가 하나만 있는 정확한 오브젝트를 지정해야 합니다.",
+                    MessageType.Info);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox(
+                    "3D/2D Collision 또는 Trigger에서 A와 B가 접촉하면 참이 됩니다. " +
+                    "필요한 경우 런타임 Trigger Collider/kinematic probe를 추가합니다. " +
+                    "잠깐 접촉해도 해당 오브젝트 생명주기 동안 기억합니다.",
+                    MessageType.Info);
+            }
 
             string objectA = collisionAProp?.stringValue?.Trim() ?? string.Empty;
             string objectB = collisionBProp?.stringValue?.Trim() ?? string.Empty;

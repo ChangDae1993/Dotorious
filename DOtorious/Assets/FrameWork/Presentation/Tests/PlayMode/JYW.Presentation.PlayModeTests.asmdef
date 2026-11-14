@@ -1,0 +1,7 @@
+{
+    "name": "JYW.Presentation.PlayModeTests",
+    "rootNamespace": "JYW.Game.EventPlay.Tests",
+    "references": ["JYW.Framework"],
+    "autoReferenced": false,
+    "optionalUnityReferences": ["TestAssemblies"]
+}

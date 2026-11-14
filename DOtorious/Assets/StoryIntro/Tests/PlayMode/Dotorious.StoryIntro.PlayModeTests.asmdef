@@ -1,0 +1,2 @@
+{"name":"Dotorious.StoryIntro.PlayModeTests","references":["Dotorious.StoryIntro","JYW.Framework","Unity.InputSystem","Unity.InputSystem.TestFramework","UnityEngine.UI"],"optionalUnityReferences":["TestAssemblies"],"autoReferenced":false}
+

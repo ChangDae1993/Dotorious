@@ -175,16 +175,35 @@ namespace JYW.Game.EventPlay
                 ArmPendingEvents(manager);
 
                 // 실행 중인 다른 이벤트가 있어도 조건 충족 순간은 기억한다.
+                bool managerIdle = !manager.HasRunningEvents;
+                PendingSceneEvent readyEvent = null;
+                EventSO.EventStep readyStep = null;
+                EventSO.ConditionGroupData liveContact = null;
                 for (int i = 0; i < pendingEvents.Count; i++)
                 {
                     PendingSceneEvent candidate = pendingEvents[i];
-                    if (candidate.CapturedStep == null &&
-                        manager.TryGetAutoConditionStep(candidate.Asset, gameObject, out EventSO.EventStep step))
+                    EventSO.EventStep step = candidate.CapturedStep;
+                    EventSO.ConditionGroupData matched = null;
+                    if (step == null &&
+                        !manager.TryGetAutoConditionSelection(candidate.Asset, gameObject, out step, out matched))
+                        continue;
+
+                    bool mustKeepTouching = EventPlayManager.UsesCurrent2DContact(matched);
+                    if (!mustKeepTouching)
                         candidate.CapturedStep = step;
+
+                    // Live contacts are not queued behind another event. In
+                    // particular, an earlier key press must not become eligible
+                    // later merely because the player visits this collider again.
+                    if (readyEvent == null && (!mustKeepTouching || managerIdle))
+                    {
+                        readyEvent = candidate;
+                        readyStep = step;
+                        liveContact = mustKeepTouching ? matched : null;
+                    }
                 }
 
-                PendingSceneEvent readyEvent = pendingEvents.FirstOrDefault(item => item.CapturedStep != null);
-                if (readyEvent == null || manager.HasRunningEvents)
+                if (readyEvent == null || !managerIdle)
                 {
                     yield return null;
                     continue;
@@ -192,8 +211,9 @@ namespace JYW.Game.EventPlay
 
                 // 같은 프레임에 시작된 수동 이벤트를 취소하지 않도록 한 프레임 양보한다.
                 yield return null;
-                if (!pendingEvents.Contains(readyEvent) ||
-                    !manager.TryPlayCapturedEventIfIdle(readyEvent.Asset, gameObject, readyEvent.CapturedStep))
+                if (!pendingEvents.Contains(readyEvent) || !IsManagerAvailable(manager) ||
+                    (liveContact != null && !manager.IsCollisionConditionSatisfied(liveContact)) ||
+                    !manager.TryPlayCapturedEventIfIdle(readyEvent.Asset, gameObject, readyStep))
                     continue;
 
                 pendingEvents.Remove(readyEvent);

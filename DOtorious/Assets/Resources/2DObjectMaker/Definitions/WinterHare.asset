@@ -704,6 +704,18 @@ MonoBehaviour:
           audioClip: {fileID: 0}
           volume: 1
           isLoop: 0
+        pattern: 0
+        effectPrefab: {fileID: 0}
+        effectOffset: {x: 0, y: 0}
+        projectileSpeed: 10
+        projectileLifetime: 2
+        projectileRadius: 0.15
+        projectileGravity: 0
+        dashSpeed: 15
+        obstacleMask:
+          serializedVersion: 2
+          m_Bits: 4294967295
+        animationSpeed: 1
       walkSound:
         delaySeconds: 0
         audioClip: {fileID: 0}

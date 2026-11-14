@@ -151,7 +151,11 @@ internal sealed class EventStepListModel
             parts.Add(group.Conditions == null || group.Conditions.Length == 0 ? "값 조건 없음 (불충족)" :
                 "값 [" + string.Join(" AND ", group.Conditions.Select(DescribeValue)) + "]");
         if ((checks & ConditionChecks.TimeCount) != 0) parts.Add("게임 경과 ≥ " + group.TimeCountSeconds.ToString("0.##") + "초");
-        if ((checks & ConditionChecks.CollisionAB) != 0) parts.Add(Name(group.CollisionObjectA) + " ↔ " + Name(group.CollisionObjectB) + " 충돌 이력");
+        if ((checks & ConditionChecks.CollisionAB) != 0)
+        {
+            string collisionMode = group.CollisionMode == CollisionCheckMode.CurrentContact2D ? "현재 2D 접촉" : "충돌 이력";
+            parts.Add(Name(group.CollisionObjectA) + " ↔ " + Name(group.CollisionObjectB) + " " + collisionMode);
+        }
         if ((checks & ConditionChecks.ObjectState) != 0) parts.Add(Name(group.ObjectStateTarget) + " " + ObjectState(group.ObjectState));
         if ((checks & ConditionChecks.Distance) != 0) parts.Add(Name(group.DistanceObjectA) + " ↔ " + Name(group.DistanceObjectB) +
             " 거리 " + (group.DistanceComparison == DistanceCheck.AtMost ? "≤ " : "≥ ") + group.DistanceThreshold.ToString("0.##") + (group.DistanceUse2D ? " (2D)" : " (3D)"));
